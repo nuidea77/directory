@@ -118,6 +118,13 @@ Route::prefix('v1')->group(function () {
             Route::post('reviews/{review}/moderate', [AdminController::class, 'moderateReview']);
             Route::get('corrections', [AdminController::class, 'corrections']);
             Route::post('corrections/{correction}/moderate', [AdminController::class, 'moderateCorrection']);
+            Route::get('plans', [AdminController::class, 'plans']);
+            Route::post('plans', [AdminController::class, 'storePlan']);
+            Route::put('plans/{plan}', [AdminController::class, 'updatePlan']);
+            Route::post('categories', [AdminController::class, 'storeCategory']);
+            Route::put('categories/{category}', [AdminController::class, 'updateCategory']);
+            Route::delete('categories/{category}', [AdminController::class, 'destroyCategory']);
+            Route::get('campaigns', [AdminController::class, 'campaigns']);
         });
     });
 });

@@ -56,6 +56,9 @@ const routes = [
             { path: 'revenue', name: 'admin-revenue', component: () => import('./pages/admin/RevenueTab.vue') },
             { path: 'businesses', name: 'admin-businesses', component: () => import('./pages/admin/BusinessesTab.vue') },
             { path: 'reviews', name: 'admin-reviews', component: () => import('./pages/admin/ReviewsModTab.vue') },
+            { path: 'ads', name: 'admin-ads', component: () => import('./pages/admin/AdsTab.vue') },
+            { path: 'plans', name: 'admin-plans', component: () => import('./pages/admin/PlansTab.vue') },
+            { path: 'categories', name: 'admin-categories', component: () => import('./pages/admin/CategoriesAdminTab.vue') },
         ],
     },
 

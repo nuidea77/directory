@@ -20,6 +20,7 @@ const slotState = ref(null);
 const selectedPlan = ref('standard');
 const featuredDays = ref(0); // 0 = авахгүй
 const error = ref('');
+const loadError = ref('');
 const busy = ref(false);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
@@ -117,33 +118,47 @@ async function checkout() {
     }
 }
 
-onMounted(async () => {
-    const [orgs, pricing] = await Promise.all([
-        api.get('/console/organizations'),
-        api.get('/pricing'),
-    ]);
+async function load() {
+    loadError.value = '';
+    try {
+        const [orgs, pricing] = await Promise.all([
+            api.get('/console/organizations'),
+            api.get('/pricing'),
+        ]);
 
-    organization.value = orgs.data.find((o) => o.id === Number(route.params.orgId)) || orgs.data[0];
-    business.value = organization.value?.businesses?.[organization.value.businesses.length - 1];
-    plans.value = pricing.plans;
-    ads.value = pricing.ads;
-    branchAddon.value = pricing.branch_addon_price;
+        organization.value = orgs.data.find((o) => o.id === Number(route.params.orgId)) || orgs.data[0];
+        business.value = organization.value?.businesses?.[organization.value.businesses.length - 1];
+        plans.value = pricing.plans;
+        ads.value = pricing.ads;
+        branchAddon.value = pricing.branch_addon_price;
 
-    if ((business.value?.branches?.length || 1) > 1) selectedPlan.value = 'standard';
+        if ((business.value?.branches?.length || 1) > 1) selectedPlan.value = 'standard';
 
-    if (business.value?.category?.id && mainBranch.value?.district) {
-        const slots = await api.get('/slots', {
-            type: 'category_featured',
-            category_id: business.value.category.id,
-            district: mainBranch.value.district,
-        });
-        slotState.value = slots;
+        if (business.value?.category?.id && mainBranch.value?.district) {
+            const slots = await api.get('/slots', {
+                type: 'category_featured',
+                category_id: business.value.category.id,
+                district: mainBranch.value.district,
+            });
+            slotState.value = slots;
+        }
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     }
-});
+}
+
+onMounted(load);
 </script>
 
 <template>
-    <div class="min-h-screen bg-white">
+    <div v-if="loadError" class="flex min-h-screen items-center justify-center bg-white">
+        <div class="card p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="load">Дахин оролдох</button>
+        </div>
+    </div>
+
+    <div v-else class="min-h-screen bg-white">
         <!-- Толгой + шат (10a) -->
         <div class="flex items-center justify-between border-b border-line px-5 py-3.5 sm:px-10">
             <div class="flex items-center gap-2.5">

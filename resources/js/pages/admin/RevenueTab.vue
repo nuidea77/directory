@@ -4,12 +4,20 @@ import { api } from '../../api';
 
 // Эрх, сурталчилгаа, орлого (9b)
 const data = ref(null);
+const loadError = ref('');
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
-onMounted(async () => {
-    data.value = await api.get('/admin/revenue');
-});
+async function fetchData() {
+    loadError.value = '';
+    try {
+        data.value = await api.get('/admin/revenue');
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
+}
+
+onMounted(fetchData);
 </script>
 
 <template>
@@ -19,7 +27,12 @@ onMounted(async () => {
             <span class="text-[12.5px] font-medium text-mute">Сүүлийн 30 хоног</span>
         </div>
 
-        <div v-if="!data" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-5 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchData">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!data" class="card mt-5 h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- KPI -->

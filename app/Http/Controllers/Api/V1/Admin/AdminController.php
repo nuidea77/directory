@@ -244,6 +244,173 @@ class AdminController extends Controller
     }
 
     /**
+     * Эрхийн бичгүүд — админаас үнэ, хугацаа, лимит удирдана.
+     */
+    public function plans(): JsonResponse
+    {
+        return response()->json(['data' => \App\Models\Plan::orderBy('sort_order')->get()]);
+    }
+
+    public function storePlan(Request $request): JsonResponse
+    {
+        $data = $this->validatePlan($request);
+        $data['key'] = \Illuminate\Support\Str::slug($request->string('key')) ?: 'plan-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
+
+        $request->validate(['key' => ['required', 'string', 'max:30']]);
+        abort_if(\App\Models\Plan::where('key', $data['key'])->exists(), 422, 'Ийм түлхүүртэй эрх бүртгэлтэй байна.');
+
+        $data['sort_order'] = (int) \App\Models\Plan::max('sort_order') + 1;
+        $plan = \App\Models\Plan::create($data);
+
+        return response()->json(['message' => 'Эрхийн бичиг үүслээ.', 'data' => $plan], 201);
+    }
+
+    public function updatePlan(Request $request, \App\Models\Plan $plan): JsonResponse
+    {
+        $plan->update($this->validatePlan($request));
+
+        return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $plan->refresh()]);
+    }
+
+    protected function validatePlan(Request $request): array
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:60'],
+            'price' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'term_years' => ['required', 'integer', 'min:1', 'max:5'],
+            'limits' => ['required', 'array'],
+            'limits.businesses' => ['required', 'integer', 'min:1', 'max:100'],
+            'limits.branches' => ['required', 'integer', 'min:0', 'max:1000'], // 0 = хязгааргүй
+            'limits.images_per_branch' => ['required', 'integer', 'min:1', 'max:100'],
+            'analytics' => ['boolean'],
+            'top_list' => ['boolean'],
+            'verified_badge' => ['boolean'],
+            'is_active' => ['boolean'],
+        ]);
+
+        return $data;
+    }
+
+    /**
+     * Ангиллын CRUD — админаас нэмэх/засах/устгах.
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $category = \App\Models\Category::create([
+            ...$data,
+            'slug' => $this->categorySlug($data['name']),
+            'sort_order' => $data['sort_order'] ?? ((int) \App\Models\Category::max('sort_order') + 1),
+        ]);
+
+        \Illuminate\Support\Facades\Cache::forget('categories:index');
+
+        return response()->json(['message' => 'Ангилал үүслээ.', 'data' => $category], 201);
+    }
+
+    public function updateCategory(Request $request, \App\Models\Category $category): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $category->update(array_filter($data, fn ($v) => $v !== null));
+        \Illuminate\Support\Facades\Cache::forget('categories:index');
+
+        return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $category->refresh()]);
+    }
+
+    public function destroyCategory(Request $request, \App\Models\Category $category): JsonResponse
+    {
+        // Бизнестэй эсвэл бизнестэй дэд ангилалтай бол устгахгүй (cascade-аас хамгаална)
+        $hasBusinesses = $category->businesses()->exists()
+            || \App\Models\Business::whereIn('category_id', $category->children()->pluck('id'))->exists();
+
+        if ($hasBusinesses) {
+            return response()->json(['message' => 'Энэ ангилалд бизнес бүртгэлтэй тул устгах боломжгүй. Эхлээд бизнесүүдийг өөр ангилалд шилжүүлнэ үү.'], 422);
+        }
+
+        $category->children()->delete();
+        $category->delete();
+        \Illuminate\Support\Facades\Cache::forget('categories:index');
+
+        return response()->json(['message' => 'Ангилал устгагдлаа.']);
+    }
+
+    protected function categorySlug(string $name): string
+    {
+        $base = \Illuminate\Support\Str::slug($name) ?: 'cat-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
+        $slug = $base;
+        $n = 1;
+
+        while (\App\Models\Category::where('slug', $slug)->exists()) {
+            $slug = $base.'-'.(++$n);
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Бүх кампанит ажил (зар) — төлөв, дуусах хугацаатайгаа.
+     */
+    public function campaigns(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'status' => ['nullable', 'in:active,queued,pending_payment,expired,canceled'],
+            'type' => ['nullable', 'in:category_featured,home_featured,keyword'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        app(CampaignService::class)->sync();
+
+        $campaigns = Campaign::with(['business:id,name,slug', 'organization:id,name', 'category:id,name'])
+            ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
+            ->when($filters['type'] ?? null, fn ($q, $t) => $q->where('type', $t))
+            ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'queued' THEN 1 WHEN 'pending_payment' THEN 2 ELSE 3 END")
+            ->orderBy('ends_at')
+            ->paginate(20);
+
+        $kpis = [
+            'active' => Campaign::query()->running()->count(),
+            'queued' => Campaign::where('status', 'queued')->count(),
+            'pending_payment' => Campaign::where('status', 'pending_payment')->count(),
+            'expiring_7d' => Campaign::query()->running()->where('ends_at', '<=', now()->addDays(7))->count(),
+            'running_revenue' => (int) Campaign::query()->running()->sum('price'),
+        ];
+
+        return response()->json([
+            'kpis' => $kpis,
+            'data' => $campaigns->getCollection()->map(fn (Campaign $c) => [
+                'id' => $c->id,
+                'type' => $c->type,
+                'type_name' => config("billing.ads.{$c->type}.name"),
+                'business' => $c->business?->name,
+                'business_slug' => $c->business?->slug,
+                'organization' => $c->organization?->name,
+                'target' => implode(' · ', array_filter([$c->category?->name, $c->district, $c->city, $c->keyword ? '“'.$c->keyword.'”' : null])),
+                'slot' => $c->slot,
+                'status' => $c->status,
+                'days' => $c->days,
+                'price' => $c->price,
+                'starts_at' => $c->starts_at,
+                'ends_at' => $c->ends_at,
+                'days_left' => $c->ends_at ? max(0, (int) ceil(now()->diffInDays($c->ends_at, false))) : null,
+                'views_count' => $c->views_count,
+                'calls_count' => $c->calls_count,
+            ]),
+            'meta' => ['total' => $campaigns->total(), 'current_page' => $campaigns->currentPage(), 'last_page' => $campaigns->lastPage(), 'per_page' => $campaigns->perPage()],
+        ]);
+    }
+
+    /**
      * Хэрэглэгчдийн илгээсэн залруулгууд.
      */
     public function corrections(Request $request): JsonResponse

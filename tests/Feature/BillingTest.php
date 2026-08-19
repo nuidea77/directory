@@ -224,7 +224,7 @@ class BillingTest extends TestCase
             ]);
         }
 
-        // 4 дэх нь дараалалд орно
+        // Хатуу лимит: нэг ангилал+дүүрэгт ихдээ 3 зар — 4 дэхийг худалдахгүй
         $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
             'organization_id' => $this->organization->id,
             'campaigns' => [[
@@ -234,15 +234,25 @@ class BillingTest extends TestCase
                 'district' => 'Баянзүрх',
                 'days' => 7,
             ]],
-        ])->assertCreated();
+        ])->assertStatus(422)->assertJsonValidationErrors(['campaigns']);
 
-        $this->assertSame('queued', Campaign::latest('id')->first()->status);
+        // Өөр дүүрэгт зай сул тул худалдаж болно
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'campaigns' => [[
+                'type' => 'category_featured',
+                'business_id' => $this->business->id,
+                'category_id' => $this->category->id,
+                'district' => 'Хан-Уул',
+                'days' => 7,
+            ]],
+        ])->assertCreated();
 
         // Slots endpoint зөв тоолно
         $this->actingAs($this->owner)->getJson('/api/v1/slots?type=category_featured&category_id='.$this->category->id.'&district='.urlencode('Баянзүрх'))
             ->assertOk()
             ->assertJsonPath('occupied', 3)
-            ->assertJsonPath('queued', 1);
+            ->assertJsonPath('queued', 0);
     }
 
     public function test_queued_campaign_promoted_when_slot_frees(): void
@@ -348,6 +358,69 @@ class BillingTest extends TestCase
         $this->business->update(['is_verified' => true]);
         $this->artisan('plans:sync')->assertSuccessful();
         $this->assertTrue($this->business->refresh()->is_verified);
+    }
+
+    public function test_admin_can_edit_plan_price_and_it_applies_immediately(): void
+    {
+        $this->seed(\Database\Seeders\PlanSeeder::class);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $plan = \App\Models\Plan::where('key', 'standard')->first();
+
+        $this->actingAs($admin)->putJson("/api/v1/admin/plans/{$plan->id}", [
+            'name' => 'Стандарт',
+            'price' => 150000,
+            'term_years' => 1,
+            'limits' => ['businesses' => 2, 'branches' => 0, 'images_per_branch' => 5],
+            'analytics' => true,
+        ])->assertOk();
+
+        // Production дээр request бүр boot хийхдээ DB-ээс уншина;
+        // нэг процессын тестэд override-ийг гараар сэргээнэ
+        config(['billing.plans' => \App\Models\Plan::asConfig()]);
+
+        $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+        ]);
+
+        $order->assertCreated()->assertJsonPath('data.total', 150000);
+    }
+
+    public function test_admin_campaigns_list_shows_active_ads_with_end_dates(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        // 3 зай дүүрэн (5 хоногийн дараа дуусна) + 1 дараалалд — sync идэвхжүүлж чадахгүй
+        foreach (range(1, 3) as $i) {
+            Campaign::factory()->create([
+                'organization_id' => $this->organization->id,
+                'business_id' => $this->business->id,
+                'category_id' => $this->category->id,
+                'district' => 'Баянзүрх',
+                'status' => 'active',
+                'slot' => $i,
+                'starts_at' => now()->subDays(2),
+                'ends_at' => now()->addDays(5),
+            ]);
+        }
+        Campaign::factory()->create([
+            'organization_id' => $this->organization->id,
+            'business_id' => $this->business->id,
+            'category_id' => $this->category->id,
+            'district' => 'Баянзүрх',
+            'status' => 'queued',
+        ]);
+
+        $res = $this->actingAs($admin)->getJson('/api/v1/admin/campaigns');
+        $res->assertOk()
+            ->assertJsonPath('kpis.active', 3)
+            ->assertJsonPath('kpis.queued', 1)
+            ->assertJsonPath('kpis.expiring_7d', 3);
+
+        $active = collect($res->json('data'))->firstWhere('status', 'active');
+        $this->assertNotNull($active['ends_at']);
+        $this->assertSame(5, $active['days_left']);
     }
 
     public function test_only_owner_can_checkout_for_organization(): void

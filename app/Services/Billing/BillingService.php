@@ -98,6 +98,25 @@ class BillingService
                 $discount = (int) round($price * $adConfig['business_plan_discount']);
             }
 
+            // Зай дүүрсэн targeting-д худалдахгүй — «нэг ангилалд ихдээ 3 зар» хатуу лимит
+            $slotState = $this->campaigns->slotState(
+                $c['type'],
+                $c['category_id'] ?? null,
+                $c['district'] ?? null,
+                $c['city'] ?? null,
+                ! empty($c['keyword']) ? mb_strtolower(trim($c['keyword'])) : null,
+            );
+
+            if ($slotState['occupied'] + $slotState['queued'] >= $slotState['total']) {
+                $freesAt = $slotState['running']->min('ends_at');
+
+                throw ValidationException::withMessages([
+                    'campaigns' => 'Энэ байршилд бүх зай эзлэгдсэн байна ('
+                        .$slotState['total'].' зай).'
+                        .($freesAt ? ' Ойрын зай '.$freesAt->format('Y-m-d').'-нд суларна.' : ''),
+                ]);
+            }
+
             $total += $price - $discount;
 
             $metaParts = array_filter([

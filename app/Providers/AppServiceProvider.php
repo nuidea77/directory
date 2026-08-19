@@ -27,6 +27,22 @@ class AppServiceProvider extends ServiceProvider
         // N+1 query-г хөгжүүлэлтийн үед шууд илрүүлнэ
         Model::preventLazyLoading(! $this->app->isProduction());
 
+        // Эрхийн бичгүүдийг DB-ээс уншиж config-ийг override хийнэ —
+        // админ dashboard-оос үнэ/лимит засварлах боломж (60с cache)
+        try {
+            $plans = \Illuminate\Support\Facades\Cache::remember(
+                'plans:config',
+                60,
+                fn () => \Illuminate\Support\Facades\Schema::hasTable('plans') ? \App\Models\Plan::asConfig() : [],
+            );
+
+            if ($plans !== []) {
+                config(['billing.plans' => $plans]);
+            }
+        } catch (\Throwable) {
+            // Мигрэйшн хийгдээгүй үед (fresh install) config/billing.php хэвээр
+        }
+
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)

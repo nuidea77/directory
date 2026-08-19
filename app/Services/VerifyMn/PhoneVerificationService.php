@@ -44,19 +44,24 @@ class PhoneVerificationService
         ]);
 
         if (! $this->client->enabled()) {
-            // Fail-open хориотой: авто-баталгаажуулалт зөвхөн local/testing орчинд.
-            // Production дээр түлхүүр дутуу бол нээлттэй орхихын оронд алдаа өгнө.
-            if (! app()->environment('local', 'testing')) {
-                Log::error('verify.mn: API түлхүүр тохируулаагүй байхад баталгаажуулалт эхлүүлэх оролдлого');
+            $explicitlyDisabled = config('services.verify_mn.enabled') === false;
 
-                throw ValidationException::withMessages([
-                    'phone' => 'Баталгаажуулалтын үйлчилгээ түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
-                ]);
+            // Авто-баталгаажуулалт (SMS-гүй) зөвхөн VERIFY_MN_ENABLED=false гэж
+            // САНААТАЙ тавьсан local/testing орчинд. Идэвхтэй ч түлхүүр дутуу
+            // бол аль ч орчинд ойлгомжтой алдаа өгнө — чимээгүй bypass хийхгүй.
+            if ($explicitlyDisabled && app()->environment('local', 'testing')) {
+                $this->markVerified($verification);
+
+                return $verification->refresh();
             }
 
-            $this->markVerified($verification);
+            Log::error('verify.mn: VERIFY_MN_API_KEY тохируулаагүй байхад баталгаажуулалт эхлүүлэх оролдлого');
 
-            return $verification->refresh();
+            throw ValidationException::withMessages([
+                'phone' => app()->environment('local', 'testing')
+                    ? 'VERIFY_MN_API_KEY тохируулаагүй байна. Бодит SMS урсгалд түлхүүрээ .env-д тавих, эсвэл dev горимд VERIFY_MN_ENABLED=false болгоно уу.'
+                    : 'Баталгаажуулалтын үйлчилгээ түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
+            ]);
         }
 
         $callbackUrl = route('webhooks.verify-mn', [

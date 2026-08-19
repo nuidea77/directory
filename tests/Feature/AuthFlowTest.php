@@ -139,6 +139,18 @@ class AuthFlowTest extends TestCase
         $this->assertNull(User::where('phone', '99112233')->first()->phone_verified_at);
     }
 
+    public function test_missing_api_key_never_silently_bypasses_verification(): void
+    {
+        // Идэвхтэй (enabled=true) боловч түлхүүргүй — авто-баталгаажуулалт ХИЙХГҮЙ, алдаа өгнө
+        config(['services.verify_mn.enabled' => true, 'services.verify_mn.api_key' => null]);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ])->assertStatus(422)->assertJsonValidationErrors(['phone']);
+
+        $this->assertNull(User::where('phone', '99112233')->first()?->phone_verified_at);
+    }
+
     public function test_bad_api_key_returns_validation_error_not_500(): void
     {
         Http::fake([

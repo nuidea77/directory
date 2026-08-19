@@ -4,6 +4,9 @@ const nav = [
     { name: 'Модерац', route: 'admin' },
     { name: 'Бизнесүүд', route: 'admin-businesses' },
     { name: 'Сэтгэгдэл, залруулга', route: 'admin-reviews' },
+    { name: 'Сурталчилгаа', route: 'admin-ads' },
+    { name: 'Эрхийн бичиг', route: 'admin-plans' },
+    { name: 'Ангилал', route: 'admin-categories' },
     { name: 'Эрх, орлого', route: 'admin-revenue' },
 ];
 </script>

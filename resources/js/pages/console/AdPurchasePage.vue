@@ -20,6 +20,7 @@ const selectedBranchId = ref(null);
 const keyword = ref('');
 const days = ref(30);
 const error = ref('');
+const loadError = ref('');
 const busy = ref(false);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
@@ -50,17 +51,22 @@ const scopeLabel = computed(() => {
 
 async function fetchSlots() {
     slots.value = null;
+    loadError.value = '';
     if (type.value === 'keyword' && !keyword.value.trim()) return;
     if (type.value === 'category_featured' && (!business.value?.category?.id || !branch.value?.district)) return;
 
-    const data = await api.get('/slots', {
-        type: type.value,
-        category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
-        district: type.value === 'category_featured' ? branch.value.district : undefined,
-        city: type.value === 'home_featured' ? 'Улаанбаатар' : undefined,
-        keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
-    });
-    slots.value = data;
+    try {
+        const data = await api.get('/slots', {
+            type: type.value,
+            category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
+            district: type.value === 'category_featured' ? branch.value.district : undefined,
+            city: type.value === 'home_featured' ? 'Улаанбаатар' : undefined,
+            keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
+        });
+        slots.value = data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function checkout() {

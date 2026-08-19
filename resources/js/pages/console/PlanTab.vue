@@ -7,6 +7,7 @@ import { useConsoleStore } from '../../stores/console';
 const store = useConsoleStore();
 const campaigns = ref([]);
 const orders = ref([]);
+const loadError = ref('');
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
@@ -72,6 +73,12 @@ onMounted(fetchData);
             <router-link :to="{ name: 'ad-purchase' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Онцлох байршил авах</router-link>
         </div>
 
+        <div v-if="loadError" class="card mt-4 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchData">Дахин оролдох</button>
+        </div>
+
+        <template v-else>
         <div class="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-[1.25fr_1fr]">
             <!-- Одоогийн эрх (9a) -->
             <div class="card p-5">
@@ -156,5 +163,6 @@ onMounted(fetchData);
             <div v-if="!campaigns.length" class="p-8 text-center text-[13px] text-mute">Кампанит ажил алга</div>
             <div class="px-4 py-3 text-[12px] font-medium text-mute">Онцлохоос ирсэн үзэлт нь үнэгүй хайлтын үзэлтээс тусад нь бүртгэгддэг.</div>
         </div>
+        </template>
     </div>
 </template>
