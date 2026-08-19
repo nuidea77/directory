@@ -1,118 +1,113 @@
-# Лавлах.мн — Монголын бизнес лавлах
+# Хаана.mn — Монголын бизнес лавлах
 
-Байгууллага, үйлчилгээний нэгдсэн лавлах сайт. Laravel + Vue 3 + Tailwind CSS + MySQL.
+Claude Design дээр гарсан «Mongolia Business Directory» дизайны бүрэн хэрэгжүүлэлт.
+Laravel + Vue 3 + Tailwind CSS + MySQL.
 
-## Онцлогууд
+## Бүтээгдэхүүний тойм
 
-- 🔍 **Лавлах**: ангилал, дүүрэг, түлхүүр үгээр хайх; үнэлгээ, үзэлтээр эрэмбэлэх
-- 📱 **Утасны баталгаажуулалт**: [verify.mn](https://verify.mn) — хэрэглэгч 144773 дугаарт SMS илгээж дугаараа баталгаажуулна (MO SMS)
-- 💳 **Төлбөр**: [byl.mn](https://byl.mn) — QPay, SocialPay, Pocket, Golomt-оор «Онцлох байршуулалт» худалдан авах
-- ⭐ **Үнэлгээ, сэтгэгдэл**, ❤️ **Хадгалах** (favorites)
-- 🏪 **Бизнес удирдлага**: лого, ковер, галерей зураг, цагийн хуваарь, сошиал хаяг
-- 🔌 **REST API** (`/api/v1`, Sanctum Bearer token) — мобайл апп-д шууд ашиглахад бэлэн
+**Нийтийн хэсэг**
+- 🔍 Хайлт-төвтэй нүүр хуудас: 12 ангилал, нүүрийн онцлох (6 зай)
+- 📂 Ангиллын хуудас: дэд ангилал, дүүрэг/үнэ/үнэлгээ/онцлог шүүлтүүр, онцлох бизнесүүд дээрээ
+- 🏢 Бизнесийн дэлгэрэнгүй: салбар сонгогч, галерей, цагийн хуваарь, салбар тус бүрийн сэтгэгдэл
+- 📍 «Миний ойролцоо»: байршил/дүүргээр, радиус шүүлтүүр, зураглал + зайгаар эрэмбэлсэн жагсаалт
+- 💬 Хэрэглэгч ↔ бизнесийн зурвас, хадгалсан жагсаалт, тоймчийн зэрэглэл (Lv)
+
+**Бизнес эзэн («Бизнес зөвлөл»)**
+- Байгууллага → бизнес → салбар бүтэц: нэр/лого/ангилал байгууллагад, хаяг/утас/цаг/зураг/сэтгэгдэл салбарт
+- 3 шаттай бүртгэл: мэдээлэл → салбарууд (цагийн хуваарийн editor) → verify.mn баталгаажуулалт
+- Дашбоард: салбаруудын KPI, статистик (хандалт/залгалт график, «хэрхэн олсон»), зурвасын inbox, сэтгэгдэлд хариулах, нэхэмжлэх, тохиргоо
+- Салбар засах editor: бүрэн байдлын checklist, зураг (эрхийн хязгаартай), хаяг өөрчлөлт → редакцын хяналт
+
+**Эрхийн бичиг ба сурталчилгаа**
+- Эрх: Үнэгүй (1 бизнес · 1 зураг · салбаргүй) / Стандарт ₮120,000/жил / Бизнес ₮290,000/2 жил (5 бизнес, ТОП, ✓ тэмдэг)
+- Салбарын нэмэлт: салбар бүрд +₮5,000
+- Ангиллын онцлох: ангилал+дүүрэг тус бүрт 3 зай (₮44k/79k/149k — 7/14/30 хоног), Бизнес эрхтэйд −10%
+- Нүүрийн онцлох: хот бүрт 6 зай · Хайлтын үгийн онцлох: үг тутамд 3 зай
+- Зай дүүрсэн үед дараалалд орж, зай суларвал FIFO-оор автоматаар идэвхжинэ
+
+**Админ**
+- Модерацын дараалал (шинэ салбар батлах/татгалзах), дата чанарын үзүүлэлт
+- Орлогын тайлан: эрх/сурталчилгааны орлого, эрхийн тархалт, онцлох зайн инвентор
 
 ## Технологи
 
 | Давхарга | Хэрэгсэл |
 |---|---|
-| Backend | Laravel 13, PHP 8.4, Sanctum |
-| Frontend | Vue 3 (SPA), Vue Router, Pinia, Tailwind CSS 4, Vite |
-| Өгөгдлийн сан | MySQL (production), SQLite (dev/test) |
-| SMS баталгаажуулалт | verify.mn |
-| Төлбөр | byl.mn |
+| Backend | Laravel 13, PHP 8.4, Sanctum (API token) |
+| Frontend | Vue 3 SPA, Vue Router, Pinia, Tailwind CSS 4, Vite |
+| Өгөгдлийн сан | MySQL (production) · SQLite (dev/test) |
+| SMS баталгаажуулалт | [verify.mn](https://verify.mn) — MO SMS |
+| Төлбөр | [byl.mn](https://byl.mn) — нэхэмжлэх + HMAC webhook |
 
 ## Суулгах
 
 ```bash
-composer install
-npm install
-
+composer install && npm install
 cp .env.example .env
 php artisan key:generate
 
-# .env дотор MySQL холболтоо тохируулна:
-#   DB_DATABASE=directory, DB_USERNAME=..., DB_PASSWORD=...
+# .env: MySQL холболтоо тохируулна (DB_DATABASE=directory ...)
 
 php artisan migrate --seed
 php artisan storage:link
-
-npm run build        # эсвэл хөгжүүлэлтэд: composer run dev
+npm run build
 php artisan serve
 ```
 
-### Гуравдагч үйлчилгээний тохиргоо (.env)
+Демо хэрэглэгчид (local seed): эзэмшигч `99000000` / админ `99000001`, нууц үг `password123`.
+
+### Гуравдагч үйлчилгээ (.env)
 
 ```env
-# verify.mn — Developer Console-оос API key авна
-VERIFY_MN_ENABLED=true          # false бол dev горимд SMS-гүйгээр авто баталгаажна
+# verify.mn — Developer Console-оос API key
+VERIFY_MN_ENABLED=true      # false бол dev горимд SMS-гүйгээр авто баталгаажна
 VERIFY_MN_API_KEY=vrf_xxxx
 
-# byl.mn — Dashboard-оос token, project id, webhook secret авна
-BYL_API_TOKEN=...
-BYL_PROJECT_ID=...
-BYL_WEBHOOK_SECRET=...
+# byl.mn — Dashboard-оос (хоосон бол dev горимд төлбөр шууд батлагдана)
+BYL_API_TOKEN=
+BYL_PROJECT_ID=
+BYL_WEBHOOK_SECRET=
 ```
 
-byl.mn dashboard дээр webhook URL-ийг `https://тань-домэйн/webhooks/byl` гэж бүртгүүлнэ.
+byl.mn dashboard дээр webhook URL: `https://тань-домэйн/webhooks/byl`
 
-## Архитектур
+## Гол урсгалууд
 
-### Утас баталгаажуулах урсгал (verify.mn — MO SMS)
+**verify.mn (MO SMS)** — бид SMS илгээдэггүй, хэрэглэгч илгээдэг:
+1. Backend `POST api.verify.mn/sessions` → `sessionId`, `smsUri`, `displayInstruction`
+2. Хэрэглэгч кодоо verify.mn-ийн богино дугаарт өөрөө илгээнэ (нэг товчтой `sms:` линк)
+3. verify.mn callback (`GET /webhooks/verify-mn/{uuid}?token=…`) → албан ёсны төлвийг API-аас давхар шалгана
+4. Клиент 3 секунд тутам poll (`GET /api/v1/auth/verifications/{uuid}`)
+5. Хэрэглэгддэг газрууд: бүртгэл, мессежээр нэвтрэх, нууц үг сэргээх, салбарын утас баталгаажуулах
 
-1. `POST /api/v1/auth/register` — нэр, утас, нууц үг. Сервер verify.mn дээр session үүсгээд `sms_uri`, `display_instruction`, `expires_at` буцаана. **Хэрэглэгч энэ үед үүсэхгүй.**
-2. Хэрэглэгч 144773 дугаарт заасан кодоо SMS-ээр илгээнэ (UI дээр нэг товчтой `sms:` линк).
-3. verify.mn манай callback (`GET /webhooks/verify-mn/{uuid}?token=...`) руу мэдэгдэнэ; сервер албан ёсны төлвийг `GET /sessions/:id`-ээр давхар шалгана (callback-д итгэхгүй).
-4. Клиент `GET /api/v1/auth/verifications/{uuid}`-ийг 3 секунд тутам poll хийнэ. `verified` болмогц хэрэглэгч үүсч, Sanctum token олгогдоно (зөвхөн нэг удаа).
-5. Нууц үг сэргээх ижил урсгалаар: `POST /auth/reset` → баталгаажуулалт → `POST /auth/reset/confirm`.
+**byl.mn төлбөр** — эрх + салбарын нэмэлт + онцлох нэг захиалгаар:
+1. `POST /api/v1/checkout` → order (KH-YYYY-MM-XXXX) + byl нэхэмжлэх + QR
+2. `POST /webhooks/byl` — `Byl-Signature` (HMAC-SHA256, raw body, constant-time) шалгаад идэвхжүүлнэ
+3. Идэвхжүүлэлт idempotent: эрх сунгах, ✓ тэмдэг, онцлох зай эзлэх/дараалалд оруулах
+4. Fallback: `GET /api/v1/orders/{id}` төлөв poll
 
-### Төлбөрийн урсгал (byl.mn)
+## API v1 (мобайл апп-д бэлэн)
 
-1. `POST /api/v1/my/listings/{id}/feature` `{plan: featured_7|featured_30|featured_90}` — byl.mn invoice үүсгээд `invoice_url` буцаана.
-2. Хэрэглэгч byl.mn hosted хуудсаар төлнө.
-3. `POST /webhooks/byl` — `Byl-Signature` (HMAC-SHA256, raw body, constant-time харьцуулалт) шалгаад `invoice.paid` дээр төлбөрийг баталгаажуулж, `featured_until`-ийг сунгана. Давхардсан webhook-д idempotent.
-4. Клиент `GET /api/v1/payments/{id}`-ээр төлөв шалгах боломжтой (fallback polling).
+Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 
-## API (мобайл апп-д)
-
-Base URL: `/api/v1`. Auth: `Authorization: Bearer <token>`.
-
-### Нээлттэй
-
-| Method | Path | Тайлбар |
-|---|---|---|
-| POST | `/auth/register` | Бүртгэл эхлүүлэх (баталгаажуулалт үүсгэнэ) |
-| GET | `/auth/verifications/{uuid}` | Баталгаажуулалтын төлөв poll хийх (≥3s) |
-| POST | `/auth/login` | `{phone, password, device_name?}` → token |
-| POST | `/auth/reset` / `/auth/reset/confirm` | Нууц үг сэргээх |
-| GET | `/categories`, `/categories/{slug}` | Ангилалууд |
-| GET | `/listings` | Хайлт: `q, category, district, featured, sort, page, per_page` |
-| GET | `/listings/featured` | Онцлох байгууллагууд |
-| GET | `/listings/{slug}` | Дэлгэрэнгүй (үзэлт +1) |
-| GET | `/plans` | Онцлох байршуулалтын тарифууд |
-
-### Нэвтэрсэн хэрэглэгч
-
-| Method | Path | Тайлбар |
-|---|---|---|
-| GET | `/me` · PUT `/me` · PUT `/me/password` · POST `/auth/logout` | Профайл |
-| GET/POST | `/my/listings` | Өөрийн бизнесүүд / шинээр нэмэх (multipart: `logo`, `cover`) |
-| GET/POST/DELETE | `/my/listings/{id}` | Харах / засах (POST multipart) / устгах |
-| POST | `/my/listings/{id}/images` | Галерей зураг нэмэх (`images[]`, макс 10) |
-| DELETE | `/my/listings/{id}/images/{imageId}` | Зураг устгах |
-| POST | `/listings/{id}/reviews` | Үнэлгээ өгөх/шинэчлэх `{rating: 1-5, comment?}` |
-| DELETE | `/listings/{id}/reviews` | Өөрийн үнэлгээг устгах |
-| POST | `/listings/{id}/favorite` | Хадгалах toggle |
-| GET | `/favorites` | Хадгалсан жагсаалт |
-| POST | `/my/listings/{id}/feature` | Онцлох болгох нэхэмжлэх үүсгэх `{plan}` |
-| GET | `/payments` · `/payments/{id}` | Төлбөрийн түүх / төлөв |
+| Бүлэг | Endpoints |
+|---|---|
+| Auth | `POST auth/register`, `auth/login`, `auth/login-sms`, `auth/reset`, `auth/reset/confirm`, `GET auth/verifications/{uuid}`, `POST auth/verify/start`, `auth/logout`, `GET/PUT me`, `PUT me/password` |
+| Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, verified, amenity, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `pricing`, `POST branches/{id}/event` |
+| Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `GET my/messages`, `GET/POST businesses/{id}/messages` |
+| Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг + `verify-phone`, `GET …/stats`, `…/reviews` + `reply`, зурвасын inbox |
+| Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
+| Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve|reject`, `GET admin/revenue`, `admin/businesses`, `admin/reviews` |
 
 ## Тест
 
 ```bash
-php artisan test    # 23 тест: auth урсгал (verify.mn mock), byl webhook (гарын үсэг, idempotency), listing CRUD, эрхийн шалгалт
+php artisan test   # 32 тест: verify.mn урсгал (mock), byl webhook + идэвхжүүлэлт,
+                   # зайн дараалал/promote, хайлт + онцлох эрэмбэ, эрхийн хязгаар, модерац
 ```
 
-## Демо өгөгдөл
+## Тэмдэглэл
 
-`php artisan db:seed` нь 12 ангилал, (local орчинд) 10 жишээ байгууллага, үнэлгээнүүд үүсгэнэ.
-Демо эзэмшигч: утас `99000000`, нууц үг `password123`.
+- Дизайн дээрх verify.mn-ийн «1414» дугаар нь mockup — бодит integration нь verify.mn API-аас ирсэн жинхэнэ shortcode/кодыг харуулна.
+- Хайлтын үгийн онцлох нь дизайнд «аукцион» гэж байгаа ч энэ хувилбарт тогтмол үнэтэй (үг тутамд 3 зай, дараалалтай) хэрэгжсэн.
+- Зураглалууд нь дизайны placeholder хэв маягаар (бодит газрын зургийн санг дараа нь холбож болно), «Зам заах» нь Google Maps руу гардаг.

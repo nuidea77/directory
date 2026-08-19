@@ -7,15 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Favorite extends Model
 {
-    protected $fillable = ['user_id', 'listing_id'];
+    protected $fillable = ['user_id', 'business_id', 'list_name'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function listing(): BelongsTo
+    public function business(): BelongsTo
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(Business::class);
     }
 }

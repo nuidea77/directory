@@ -20,72 +20,84 @@ class AuthController extends Controller
     }
 
     /**
-     * Step 1 of registration: validate input, start a verify.mn session.
-     * The user record is only created once the phone is verified.
+     * Бүртгүүлэх: хэрэглэгч шууд үүсч токен авна, утас нь дараа нь
+     * verify.mn-ээр баталгаажина (баталгаажаагүй бол сэтгэгдэл, бизнес
+     * нэмэх зэрэг үйлдэл хаалттай).
      */
-    public function registerStart(Request $request): JsonResponse
+    public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'regex:/^[0-9]{8}$/', 'unique:users,phone'],
+            'email' => ['nullable', 'email', 'max:190', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'max:100'],
         ], [
             'phone.regex' => 'Утасны дугаар 8 оронтой тоо байх ёстой.',
             'phone.unique' => 'Энэ дугаараар аль хэдийн бүртгүүлсэн байна.',
         ]);
 
-        $verification = $this->verifications->start($data['phone'], 'register', [
-            'name' => $data['name'],
-            'password_hash' => Hash::make($data['password']),
-        ]);
+        $user = User::create($data);
 
-        return $this->verificationStatusResponse($verification);
+        $verification = $this->verifications->start($user->phone, 'register');
+
+        return response()->json([
+            'token' => $user->createToken('auth')->plainTextToken,
+            'user' => new UserResource($user->refresh()),
+            'verification' => new VerificationResource($verification),
+        ], 201);
     }
 
     /**
-     * Poll a verification's status. When a "register" verification flips to
-     * verified, the user is created exactly once and an API token returned.
-     * Frontend polls this every >= 3 seconds until verified or expired.
+     * Нэвтэрсэн (гэхдээ баталгаажаагүй) хэрэглэгч баталгаажуулалтаа дахин эхлүүлэх.
+     */
+    public function startVerification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedPhone()) {
+            return response()->json(['message' => 'Дугаар аль хэдийн баталгаажсан.']);
+        }
+
+        $verification = $this->verifications->start($user->phone, 'register');
+
+        return response()->json(['verification' => new VerificationResource($verification)]);
+    }
+
+    /**
+     * Баталгаажуулалтын төлөв poll хийх (клиент ≥3 секунд тутам).
+     * login/reset_password purpose-ууд verified болмогц нэг удаа token олгоно.
      */
     public function verificationStatus(Request $request, string $uuid): JsonResponse
     {
         $verification = PhoneVerification::where('uuid', $uuid)->firstOrFail();
         $verification = $this->verifications->check($verification);
 
-        return $this->verificationStatusResponse($verification);
-    }
-
-    protected function verificationStatusResponse(PhoneVerification $verification): JsonResponse
-    {
         $payload = ['verification' => new VerificationResource($verification)];
 
-        if ($verification->isVerified() && $verification->purpose === 'register') {
-            $meta = $verification->meta ?? [];
+        if ($verification->isVerified() && in_array($verification->purpose, ['register', 'login'], true)) {
+            $user = User::where('phone', $verification->phone)->first();
 
-            if (empty($meta['consumed'])) {
-                $user = User::firstOrCreate(
-                    ['phone' => $verification->phone],
-                    [
-                        'name' => $meta['name'] ?? 'Хэрэглэгч',
-                        'password' => $meta['password_hash'] ?? Hash::make(str()->random(32)),
-                        'phone_verified_at' => now(),
-                    ],
-                );
-
+            if ($user !== null && empty(($verification->meta ?? [])['consumed'])) {
                 if ($user->phone_verified_at === null) {
                     $user->forceFill(['phone_verified_at' => now()])->save();
                 }
 
-                $verification->forceFill(['meta' => array_merge($meta, ['consumed' => true])])->save();
+                $verification->forceFill(['meta' => array_merge($verification->meta ?? [], ['consumed' => true])])->save();
 
-                $payload['token'] = $user->createToken('auth')->plainTextToken;
                 $payload['user'] = new UserResource($user);
+
+                if ($verification->purpose === 'login') {
+                    $payload['token'] = $user->createToken('auth')->plainTextToken;
+                }
             }
         }
 
         return response()->json($payload);
     }
 
+    /**
+     * Нэвтрэх — нууц үгээр.
+     */
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -94,17 +106,14 @@ class AuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $user = User::where('phone', $data['phone'])->first();
+        // Утас эсвэл и-мэйлээр
+        $user = User::where('phone', $data['phone'])
+            ->orWhere('email', $data['phone'])
+            ->first();
 
         if ($user === null || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'phone' => 'Утасны дугаар эсвэл нууц үг буруу байна.',
-            ]);
-        }
-
-        if (! $user->hasVerifiedPhone()) {
-            throw ValidationException::withMessages([
-                'phone' => 'Утасны дугаар баталгаажаагүй байна. Дахин бүртгүүлнэ үү.',
+                'password' => 'Нууц үг таарсангүй. 3 удаа буруу оруулбал 15 минут хаагдана.',
             ]);
         }
 
@@ -112,6 +121,22 @@ class AuthController extends Controller
             'token' => $user->createToken($data['device_name'] ?? 'auth')->plainTextToken,
             'user' => new UserResource($user),
         ]);
+    }
+
+    /**
+     * Нэвтрэх — мессежээр (verify.mn session эхлүүлнэ).
+     */
+    public function loginBySms(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'phone' => ['required', 'string', 'regex:/^[0-9]{8}$/', 'exists:users,phone'],
+        ], [
+            'phone.exists' => 'Энэ дугаараар бүртгэл олдсонгүй.',
+        ]);
+
+        $verification = $this->verifications->start($data['phone'], 'login');
+
+        return response()->json(['verification' => new VerificationResource($verification)]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -157,7 +182,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Step 1 of password reset: start a verify.mn session for an existing user.
+     * Нууц үг сэргээх — 1-р шат (хүсэлт).
      */
     public function resetStart(Request $request): JsonResponse
     {
@@ -173,7 +198,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Step 2 of password reset: once the verification is VERIFIED, set the new password.
+     * Нууц үг сэргээх — 2-р шат (шинэ нууц үг).
      */
     public function resetConfirm(Request $request): JsonResponse
     {
@@ -196,13 +221,13 @@ class AuthController extends Controller
 
         if (! empty(($verification->meta ?? [])['consumed'])) {
             throw ValidationException::withMessages([
-                'verification_uuid' => 'Энэ баталгаажуулалт аль хэдийн ашиглагдсан байна.',
+                'verification_uuid' => 'Энэ баталгаажуулалт аль хэдийн ашиглагдсан.',
             ]);
         }
 
         $user = User::where('phone', $verification->phone)->firstOrFail();
         $user->update(['password' => $data['password']]);
-        $user->tokens()->delete();
+        $user->tokens()->delete(); // бүх төхөөрөмжөөс гаргана
 
         $verification->forceFill(['meta' => array_merge($verification->meta ?? [], ['consumed' => true])])->save();
 

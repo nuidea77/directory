@@ -11,7 +11,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'icon', 'parent_id', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'description', 'parent_id', 'sort_order'];
 
     public function parent(): BelongsTo
     {
@@ -23,8 +23,8 @@ class Category extends Model
         return $this->hasMany(Category::class, 'parent_id')->orderBy('sort_order');
     }
 
-    public function listings(): HasMany
+    public function businesses(): HasMany
     {
-        return $this->hasMany(Listing::class);
+        return $this->hasMany(Business::class);
     }
 }

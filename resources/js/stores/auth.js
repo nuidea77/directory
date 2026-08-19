@@ -26,6 +26,16 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
+        async refresh() {
+            if (!getToken()) return;
+            try {
+                const data = await api.get('/me');
+                this.user = data.data ?? data;
+            } catch {
+                this.user = null;
+            }
+        },
+
         setSession(token, user) {
             setToken(token);
             this.user = user;

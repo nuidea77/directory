@@ -3,20 +3,19 @@
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
+use App\Models\Order;
+use App\Services\Billing\BillingService;
 use App\Services\Byl\BylClient;
-use App\Services\Byl\FeaturePaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * byl.mn webhook receiver. Every request is signed with HMAC-SHA256 over the
- * raw body, delivered in the Byl-Signature header.
+ * byl.mn webhook — Byl-Signature (HMAC-SHA256, raw body) шалгана.
  */
 class BylWebhookController extends Controller
 {
-    public function __invoke(Request $request, BylClient $byl, FeaturePaymentService $payments): JsonResponse
+    public function __invoke(Request $request, BylClient $byl, BillingService $billing): JsonResponse
     {
         if (! $byl->verifyWebhookSignature($request->getContent(), $request->header('Byl-Signature'))) {
             Log::warning('byl.mn webhook: invalid signature', ['ip' => $request->ip()]);
@@ -29,18 +28,19 @@ class BylWebhookController extends Controller
         $object = $event['data']['object'] ?? [];
 
         if (in_array($type, ['invoice.paid', 'invoice.void'], true)) {
-            $payment = Payment::where('byl_invoice_id', $object['id'] ?? 0)->first();
+            $order = Order::where('byl_invoice_id', $object['id'] ?? 0)->first();
 
-            if ($payment === null) {
-                Log::info('byl.mn webhook: no matching payment', ['type' => $type, 'invoice_id' => $object['id'] ?? null]);
+            if ($order === null) {
+                Log::info('byl.mn webhook: no matching order', ['type' => $type, 'invoice_id' => $object['id'] ?? null]);
 
                 return response()->json(['ok' => true]);
             }
 
             if ($type === 'invoice.paid') {
-                $payments->markPaid($payment, $object);
+                $billing->markPaid($order, $object);
             } else {
-                $payment->update(['status' => 'void', 'provider_payload' => $object]);
+                $order->update(['status' => 'void', 'provider_payload' => $object]);
+                $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
             }
         }
 

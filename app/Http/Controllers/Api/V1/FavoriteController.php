@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\ListingResource;
-use App\Models\Listing;
+use App\Http\Resources\BusinessResource;
+use App\Models\Business;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -13,31 +13,43 @@ class FavoriteController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $listings = Listing::query()
-            ->active()
-            ->whereIn('id', $request->user()->favorites()->pluck('listing_id'))
-            ->with('category')
-            ->latest()
-            ->paginate(20);
+        $favorites = $request->user()->favorites()->with('business.category', 'business.branches.images')->latest()->get();
 
-        $listings->getCollection()->each(fn (Listing $l) => $l->is_favorited = true);
+        $businesses = $favorites->map(function ($favorite) {
+            $business = $favorite->business;
+            $business->is_favorited = true;
+            $business->list_name = $favorite->list_name;
 
-        return ListingResource::collection($listings);
+            return $business;
+        })->filter()->values();
+
+        return BusinessResource::collection($businesses)->additional([
+            'lists' => $favorites->pluck('list_name')->filter()->unique()->values(),
+        ]);
     }
 
-    public function toggle(Request $request, Listing $listing): JsonResponse
+    public function toggle(Request $request, Business $business): JsonResponse
     {
-        abort_unless($listing->status === 'active', 404);
+        $data = $request->validate(['list_name' => ['nullable', 'string', 'max:60']]);
 
-        $existing = $request->user()->favorites()->where('listing_id', $listing->id)->first();
+        $existing = $request->user()->favorites()->where('business_id', $business->id)->first();
 
-        if ($existing !== null) {
+        if ($existing !== null && ! array_key_exists('list_name', $data)) {
             $existing->delete();
 
             return response()->json(['favorited' => false]);
         }
 
-        $request->user()->favorites()->create(['listing_id' => $listing->id]);
+        if ($existing !== null) {
+            $existing->update(['list_name' => $data['list_name'] ?? null]);
+
+            return response()->json(['favorited' => true]);
+        }
+
+        $request->user()->favorites()->create([
+            'business_id' => $business->id,
+            'list_name' => $data['list_name'] ?? null,
+        ]);
 
         return response()->json(['favorited' => true]);
     }

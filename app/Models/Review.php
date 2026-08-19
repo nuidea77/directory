@@ -10,17 +10,22 @@ class Review extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['listing_id', 'user_id', 'rating', 'comment'];
+    protected $fillable = ['branch_id', 'user_id', 'rating', 'comment', 'reply', 'replied_at', 'status'];
+
+    protected function casts(): array
+    {
+        return ['replied_at' => 'datetime'];
+    }
 
     protected static function booted(): void
     {
-        static::saved(fn (Review $review) => $review->listing?->refreshRating());
-        static::deleted(fn (Review $review) => $review->listing?->refreshRating());
+        static::saved(fn (Review $review) => $review->branch?->refreshRating());
+        static::deleted(fn (Review $review) => $review->branch?->refreshRating());
     }
 
-    public function listing(): BelongsTo
+    public function branch(): BelongsTo
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(Branch::class);
     }
 
     public function user(): BelongsTo

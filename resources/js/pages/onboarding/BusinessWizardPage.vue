@@ -1,0 +1,437 @@
+<script setup>
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { api, ApiError } from '../../api';
+import { useAuthStore } from '../../stores/auth';
+import HoursEditor from '../../components/HoursEditor.vue';
+import VerifyPanel from '../../components/VerifyPanel.vue';
+
+/**
+ * Бизнес нэмэх шаталсан форм (2c → 3a/5a → 3b):
+ * 1. Бизнесийн үндсэн мэдээлэл  2. Салбарууд (хаяг, цаг)  3. Баталгаажуулалт
+ */
+const router = useRouter();
+const auth = useAuthStore();
+
+const step = ref(1);
+const categories = ref([]);
+const error = ref('');
+const busy = ref(false);
+
+const organization = ref(null);
+const business = ref(null);
+
+const info = ref({
+    organization_name: '',
+    registration_number: '',
+    business_name: '',
+    category_id: '',
+    subcategory: '',
+    description: '',
+    website: '',
+    facebook: '',
+    instagram: '',
+    price_level: '₮₮',
+});
+
+const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан', 'Налайх', 'Багануур'];
+const amenityOptions = ['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Хүлээх танхим', 'Англи хэл', '24/7 дуудлага', 'Урьдчилсан цаг', 'Танхим'];
+
+const defaultHours = () => ({
+    mon: { from: '09:00', to: '19:00', closed: false }, tue: { from: '09:00', to: '19:00', closed: false },
+    wed: { from: '09:00', to: '19:00', closed: false }, thu: { from: '09:00', to: '19:00', closed: false },
+    fri: { from: '09:00', to: '19:00', closed: false }, sat: { from: '10:00', to: '16:00', closed: false },
+    sun: { from: '09:00', to: '19:00', closed: true },
+});
+
+const structure = ref('single'); // single | multi
+const branchForms = ref([newBranchForm()]);
+const savedBranches = ref([]);
+
+const verifications = ref({}); // branch_id → verification
+const verifiedBranches = ref({});
+
+const selectedCategory = computed(() => categories.value.find((c) => c.id === Number(info.value.category_id)));
+
+function newBranchForm() {
+    return {
+        district: '', khoroo: '', address: '', landmark: '',
+        phone: '', email: '', hours: defaultHours(), amenities: [],
+    };
+}
+
+function toggleAmenity(form, amenity) {
+    const i = form.amenities.indexOf(amenity);
+    if (i >= 0) form.amenities.splice(i, 1);
+    else form.amenities.push(amenity);
+}
+
+async function submitInfo() {
+    error.value = '';
+    busy.value = true;
+    try {
+        const data = await api.post('/console/organizations', info.value);
+        organization.value = data.organization.data ?? data.organization;
+        business.value = data.business.data ?? data.business;
+        step.value = 2;
+        window.scrollTo({ top: 0 });
+    } catch (e) {
+        if (e instanceof ApiError && e.data?.code === 'phone_unverified') {
+            router.push({ name: 'verify' });
+            return;
+        }
+        error.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function submitBranches() {
+    error.value = '';
+    busy.value = true;
+    try {
+        const forms = structure.value === 'single' ? branchForms.value.slice(0, 1) : branchForms.value;
+
+        for (const form of forms) {
+            if (!form.district || !form.address || !form.phone) {
+                error.value = 'Салбар бүрийн дүүрэг, хаяг, утсыг бөглөнө үү.';
+                busy.value = false;
+                return;
+            }
+        }
+
+        savedBranches.value = [];
+        for (const form of forms) {
+            const data = await api.post(`/console/businesses/${business.value.id}/branches`, {
+                ...form,
+                name: form.district + ' салбар',
+                phone: form.phone.replace(/\s/g, ''),
+            });
+            savedBranches.value.push(data.data);
+        }
+        step.value = 3;
+        window.scrollTo({ top: 0 });
+    } catch (e) {
+        error.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function startVerify(branch) {
+    const data = await api.post(`/console/branches/${branch.id}/verify-phone`);
+    if (data.verification.status === 'verified') {
+        verifiedBranches.value[branch.id] = true;
+    } else {
+        verifications.value[branch.id] = data.verification;
+    }
+}
+
+function finish() {
+    router.push({ name: 'plan-select', params: { orgId: organization.value.id } });
+}
+
+const timeline = computed(() => [
+    { title: 'Улсын бүртгэл шалгагдсан', text: `${info.value.registration_number || '—'} — “${info.value.organization_name}” нэртэй бүртгэгдлээ.`, state: 'done' },
+    { title: 'Утас баталгаажуулж байна', text: 'Салбарын дугаараас verify.mn-ийн дугаарт код илгээмэгц автоматаар батлагдана.', state: Object.keys(verifiedBranches.value).length ? 'done' : 'active' },
+    { title: 'Редакцын хяналт', text: 'Хаяг, зураг, ангиллыг 1–2 ажлын өдөрт хянана.', state: 'pending' },
+    { title: 'Баталгаажсан тэмдэг', text: 'Хайлтад дээгүүр эрэмбэлэгдэж, ✓ тэмдэг нэмэгдэнэ.', state: 'pending' },
+]);
+
+onMounted(async () => {
+    if (!auth.user?.phone_verified) {
+        router.push({ name: 'verify' });
+        return;
+    }
+    const data = await api.get('/categories');
+    categories.value = data.data;
+});
+</script>
+
+<template>
+    <div class="min-h-screen bg-white">
+        <!-- Толгой -->
+        <div class="flex items-center justify-between border-b border-line px-5 py-3.5 sm:px-10">
+            <div class="flex items-center gap-2.5">
+                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
+                <span class="text-base font-extrabold text-ink">Хаана<span class="text-brand">.mn</span> <span class="text-[13px] font-medium text-mute">· Бизнес нэмэх</span></span>
+            </div>
+            <router-link :to="{ name: 'home' }" class="text-[13px] font-medium text-soft">Гарах</router-link>
+        </div>
+
+        <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[1fr_380px]">
+            <div class="border-line px-5 py-8 sm:px-10 lg:border-r">
+                <!-- Шатны заалт -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <template v-for="(s, i) in ['Мэдээлэл', 'Салбарууд', 'Баталгаажуулалт']" :key="s">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="flex h-6 w-6 items-center justify-center rounded-full text-[11.5px] font-bold"
+                                :class="step > i + 1 ? 'bg-brand text-white' : step === i + 1 ? 'border-[1.5px] border-brand bg-bluetint text-brand' : 'border-[1.5px] border-inputline bg-white text-ph'"
+                            >{{ step > i + 1 ? '✓' : i + 1 }}</span>
+                            <span class="text-[13px] font-semibold" :class="step >= i + 1 ? 'text-ink' : 'text-ph'">{{ s }}</span>
+                        </div>
+                        <div v-if="i < 2" class="h-[1.5px] w-9" :class="step > i + 1 ? 'bg-brand' : 'bg-searchline'"></div>
+                    </template>
+                </div>
+
+                <p v-if="error" class="mt-5 max-w-[620px] rounded-lg bg-redtint px-4 py-2.5 text-[13px] font-medium text-red">{{ error }}</p>
+
+                <!-- ШАТ 1: Үндсэн мэдээлэл (2c) -->
+                <template v-if="step === 1">
+                    <h1 class="mt-7 text-[26px] font-extrabold tracking-[-.02em] text-ink">Бизнесийн үндсэн мэдээлэл</h1>
+                    <p class="mt-2 max-w-[520px] text-[14px] leading-relaxed text-soft">Улсын бүртгэлийн дугаараар шалгагдсан бизнес «Баталгаажсан» тэмдэг авч, хайлтад дээгүүр эрэмбэлэгдэнэ.</p>
+
+                    <form class="mt-6 grid max-w-[620px] grid-cols-1 gap-4 sm:grid-cols-2" @submit.prevent="submitInfo">
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Бизнесийн нэр</label>
+                            <input v-model="info.business_name" type="text" placeholder="Хангай Авто Сервис" class="input" required maxlength="150" />
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Ангилал</label>
+                            <select v-model="info.category_id" class="input cursor-pointer" required>
+                                <option value="" disabled>Сонгоно уу</option>
+                                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Дэд ангилал</label>
+                            <select v-model="info.subcategory" class="input cursor-pointer">
+                                <option value="">Сонгоно уу</option>
+                                <option v-for="sub in selectedCategory?.children || []" :key="sub.id" :value="sub.name">{{ sub.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Байгууллагын нэр (ХХК)</label>
+                            <input v-model="info.organization_name" type="text" placeholder="Хангай Авто ХХК" class="input" required maxlength="150" />
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Улсын бүртгэлийн дугаар</label>
+                            <input v-model="info.registration_number" type="text" inputmode="numeric" placeholder="6183492" class="input" maxlength="20" />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Тайлбар</label>
+                            <textarea v-model="info.description" rows="3" maxlength="400" placeholder="Танай бизнес юугаараа онцлог вэ?" class="input resize-none"></textarea>
+                            <p class="mt-1 text-[11.5px] text-mute">{{ info.description.length }} / 400 тэмдэгт</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Вэб сайт</label>
+                            <input v-model="info.website" type="text" placeholder="hangaiauto.mn" class="input" />
+                            <p class="mt-1 text-[11.5px] text-mute">https:// шаардлагагүй</p>
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Facebook хуудас</label>
+                            <input v-model="info.facebook" type="text" placeholder="facebook.com/hangaiauto" class="input" />
+                        </div>
+                        <div>
+                            <label class="field-label !text-[12px]">Instagram</label>
+                            <input v-model="info.instagram" type="text" placeholder="@hangai.auto" class="input" />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Үнийн зэрэглэл</label>
+                            <div class="flex gap-1.5">
+                                <button v-for="p in ['₮', '₮₮', '₮₮₮']" :key="p" type="button" class="cursor-pointer rounded-[7px] px-4 py-2 text-[13px] font-semibold" :class="info.price_level === p ? 'bg-brand text-white' : 'bg-chip text-chiptext'" @click="info.price_level = p">{{ p }}</button>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex gap-2.5 sm:col-span-2">
+                            <button type="submit" class="btn-primary !px-6" :disabled="busy">{{ busy ? 'Хадгалж байна…' : 'Хаяг, цагийн хуваарь →' }}</button>
+                        </div>
+                    </form>
+                </template>
+
+                <!-- ШАТ 2: Салбарууд (5a/3a) -->
+                <template v-else-if="step === 2">
+                    <div class="mt-7 text-[11px] font-semibold tracking-[.12em] text-brand">2-Р ШАТ · БҮТЭЦ</div>
+                    <h1 class="mt-2.5 text-[26px] font-extrabold tracking-[-.02em] text-ink">Бизнес хэдэн салбартай вэ?</h1>
+                    <p class="mt-2 max-w-[540px] text-[14px] leading-relaxed text-soft">
+                        Салбар тус бүр өөрийн хаяг, утас, цагийн хуваарьтай тусдаа бүртгэл болно — ингэснээр «миний ойролцоо» хайлтад зөв салбар олдоно.
+                    </p>
+
+                    <div class="mt-5 grid max-w-[600px] grid-cols-1 gap-3 sm:grid-cols-2">
+                        <button class="cursor-pointer rounded-[11px] border-[1.5px] p-4 text-left" :class="structure === 'single' ? 'border-brand bg-bluecard' : 'border-inputline'" @click="structure = 'single'; branchForms = branchForms.slice(0, 1)">
+                            <div class="flex items-center gap-2.5">
+                                <span class="h-4 w-4 rounded-full border-[1.5px]" :class="structure === 'single' ? 'border-[5px] border-brand bg-white' : 'border-[#cfccc5]'"></span>
+                                <span class="text-[13.5px] font-bold text-ink">Нэг хаяг</span>
+                            </div>
+                            <div class="mt-2 text-[12.5px] leading-normal text-mute">Зөвхөн нэг байршилтай бизнес.</div>
+                        </button>
+                        <button class="cursor-pointer rounded-[11px] border-[1.5px] p-4 text-left" :class="structure === 'multi' ? 'border-brand bg-bluecard' : 'border-inputline'" @click="structure = 'multi'">
+                            <div class="flex items-center gap-2.5">
+                                <span class="h-4 w-4 rounded-full border-[1.5px]" :class="structure === 'multi' ? 'border-[5px] border-brand bg-white' : 'border-[#cfccc5]'"></span>
+                                <span class="text-[13.5px] font-bold text-ink">Олон салбар</span>
+                                <span v-if="structure === 'multi'" class="ml-auto rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[10px] font-semibold text-brand">{{ branchForms.length }} САЛБАР</span>
+                            </div>
+                            <div class="mt-2 text-[12.5px] leading-normal text-body">Нэг байгууллага, дүүрэг тус бүрт салбар. Статистик салбараар тусдаа.</div>
+                        </button>
+                    </div>
+                    <p v-if="structure === 'multi' && organization?.effective_plan === 'free'" class="mt-3 max-w-[600px] rounded-[10px] border border-amberline bg-ambertint px-4 py-2.5 text-[12.5px] font-medium leading-relaxed text-ambertext">
+                        Үнэгүй эрхэд 1 хаяг л бүртгэнэ. Олон салбар нэмэхийн тулд дараагийн шатанд Стандарт эсвэл Бизнес эрх сонгоно — салбаруудаа одоо бөглөөд хамт төлж болно.
+                    </p>
+
+                    <div class="mt-7 flex max-w-[600px] items-baseline justify-between">
+                        <h2 class="text-[17px] font-bold text-ink">Салбарууд</h2>
+                        <span class="text-[12.5px] font-medium text-mute">Ерөнхий мэдээллийг бүх салбар хуваалцана</span>
+                    </div>
+
+                    <div class="mt-3 flex max-w-[600px] flex-col gap-3">
+                        <div v-for="(form, i) in branchForms" :key="i" class="overflow-hidden rounded-xl border-[1.5px] border-line">
+                            <div class="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
+                                <span class="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-bluetint text-[11px] font-bold text-brand">{{ i + 1 }}</span>
+                                <span class="text-[14px] font-bold text-ink">{{ form.district ? form.district + ' салбар' : 'Шинэ салбар' }}</span>
+                                <span v-if="i === 0" class="rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[10px] font-semibold text-brand">ТӨВ</span>
+                                <button v-if="branchForms.length > 1" class="ml-auto cursor-pointer text-[12px] font-semibold text-red" @click="branchForms.splice(i, 1)">Устгах</button>
+                            </div>
+                            <div class="grid grid-cols-1 gap-3.5 p-4 sm:grid-cols-2">
+                                <div>
+                                    <label class="field-label !text-[12px]">Дүүрэг / сум</label>
+                                    <select v-model="form.district" class="input cursor-pointer" required>
+                                        <option value="" disabled>Сонгоно уу</option>
+                                        <option v-for="d in districts" :key="d" :value="d">{{ d }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label !text-[12px]">Хороо</label>
+                                    <input v-model="form.khoroo" type="text" placeholder="13-р хороо" class="input" />
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="field-label !text-[12px]">Гудамж, тоот</label>
+                                    <input v-model="form.address" type="text" placeholder="Энхтайваны өргөн чөлөө 68" class="input" required />
+                                </div>
+                                <div>
+                                    <label class="field-label !text-[12px]">Ориентир (сонголт)</label>
+                                    <input v-model="form.landmark" type="text" placeholder="жш: 13-р хорооллын эсрэг талд" class="input" />
+                                </div>
+                                <div>
+                                    <label class="field-label !text-[12px]">Салбарын утас</label>
+                                    <input v-model="form.phone" type="tel" inputmode="numeric" placeholder="9500 1122" class="input" required />
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <HoursEditor v-model="form.hours">
+                                        <template #title><span class="field-label !mb-0 !text-[12px]">Цагийн хуваарь</span></template>
+                                    </HoursEditor>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="field-label !text-[12px]">Үйлчилгээ, онцлог <span class="font-normal text-mute">— шүүлтүүрт харагдана</span></label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button
+                                            v-for="a in amenityOptions"
+                                            :key="a"
+                                            type="button"
+                                            class="cursor-pointer rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+                                            :class="form.amenities.includes(a) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
+                                            @click="toggleAmenity(form, a)"
+                                        >{{ a }}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button v-if="structure === 'multi'" class="flex cursor-pointer items-center gap-3 rounded-xl border-[1.5px] border-dashed border-inputline p-4 text-left hover:border-brand" @click="branchForms.push(newBranchForm())">
+                            <span class="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-blueline bg-bluetint text-[15px] font-bold text-brand">+</span>
+                            <span>
+                                <span class="block text-[13.5px] font-bold text-ink">Салбар нэмэх</span>
+                                <span class="mt-0.5 block text-[12px] text-mute">Хаяг, утас, цагийн хуваарь л бөглөнө — бусад мэдээлэл автоматаар хуулагдана</span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="mt-7 flex max-w-[600px] items-center gap-2.5">
+                        <button class="btn-outline !px-5" @click="step = 1">← Буцах</button>
+                        <button class="btn-primary !px-6" :disabled="busy" @click="submitBranches">
+                            {{ busy ? 'Хадгалж байна…' : branchForms.length > 1 ? `${branchForms.length} салбарыг батлах →` : 'Баталгаажуулалт →' }}
+                        </button>
+                        <span class="ml-auto hidden text-[12.5px] font-medium text-mute sm:block">Салбар тус бүр тусад нь хянагдана</span>
+                    </div>
+                </template>
+
+                <!-- ШАТ 3: Баталгаажуулалт (3b) -->
+                <template v-else>
+                    <div class="mt-7 text-[11px] font-semibold tracking-[.12em] text-brand">3 / 3 ШАТ</div>
+                    <h1 class="mt-2.5 text-[26px] font-extrabold tracking-[-.02em] text-ink">Дугаараас мессеж илгээж баталгаажуулна</h1>
+                    <p class="mt-2 max-w-[470px] text-[14px] leading-relaxed text-soft">
+                        Бид танд код илгээхгүй. Та <b>өөрийн бизнесийн дугаараас</b> кодыг verify.mn-ийн дугаарт мессежээр илгээнэ — дугаар үнэхээр таны хяналтад байгаа нь нотлогдоно.
+                    </p>
+
+                    <div class="mt-5 flex max-w-[520px] flex-col gap-3">
+                        <div v-for="branch in savedBranches" :key="branch.id" class="rounded-xl border border-line p-4">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-[14px] font-bold text-ink">{{ branch.name }}</span>
+                                <span class="font-mono text-[12px] text-soft">{{ branch.phone }}</span>
+                                <span v-if="verifiedBranches[branch.id]" class="ml-auto text-[12px] font-bold text-green">✓ Баталгаажлаа</span>
+                                <button v-else-if="!verifications[branch.id]" class="btn-primary ml-auto !px-3.5 !py-2 !text-[12px]" @click="startVerify(branch)">Баталгаажуулах</button>
+                            </div>
+                            <div v-if="verifications[branch.id] && !verifiedBranches[branch.id]" class="mt-3">
+                                <VerifyPanel
+                                    :verification="verifications[branch.id]"
+                                    @verified="verifiedBranches[branch.id] = true"
+                                    @expired="delete verifications[branch.id]"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-7 flex max-w-[520px] items-center gap-3">
+                        <button class="btn-primary !px-6" @click="finish">Эрх сонгох →</button>
+                        <button class="btn-outline" @click="finish">Дараа баталгаажуулах</button>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Баруун sidebar -->
+            <aside class="bg-panel px-6 py-8 sm:px-8">
+                <template v-if="step < 3">
+                    <div class="kicker">ХЭРХЭН ХАРАГДАХ</div>
+                    <div class="card mt-3 overflow-hidden bg-white">
+                        <div class="img-ph h-[120px]"></div>
+                        <div class="p-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[15px] font-bold text-ink">{{ info.business_name || 'Бизнесийн нэр' }}</span>
+                                <span v-if="info.registration_number" class="rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[10px] font-semibold text-brand">✓</span>
+                            </div>
+                            <div class="mt-1 text-[12.5px] text-mute">{{ selectedCategory?.name || 'Ангилал' }}{{ branchForms[0]?.district ? ' · ' + branchForms[0].district : '' }}</div>
+                            <div class="mt-2.5 flex items-center gap-2 text-[12px] font-medium text-mute"><b class="text-ink">Шинэ</b> сэтгэгдэл хараахан үгүй</div>
+                            <div class="mt-3 flex gap-2 text-[12.5px] font-semibold">
+                                <span class="flex-1 rounded-lg border border-inputline py-2 text-center text-ink">{{ branchForms[0]?.phone || 'Утас' }}</span>
+                                <span class="flex-1 rounded-lg bg-brand py-2 text-center text-white">Дэлгэрэнгүй</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
+                        <div class="text-[13.5px] font-bold text-ink">Баталгаажуулалт хэрхэн явагддаг</div>
+                        <div class="mt-3 flex flex-col gap-2.5">
+                            <div v-for="(v, i) in ['Улсын бүртгэлийн дугаарыг автоматаар шалгана (шууд).', 'Та өөрийн дугаараас verify.mn-д код илгээж дугаарыг баталгаажуулна (бид мессеж илгээхгүй).', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана.']" :key="i" class="flex gap-2.5">
+                                <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">{{ i + 1 }}</span>
+                                <span class="text-[12.5px] leading-normal text-body">{{ v }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-[12px] leading-relaxed text-mute">Бүртгэл үнэгүй (1 жил). Салбар, аналитик, онцлох байршил нь төлбөртэй.</p>
+                </template>
+
+                <template v-else>
+                    <div class="kicker">ХЯНАЛТЫН ЯВЦ</div>
+                    <div class="card mt-3 bg-white p-5">
+                        <div v-for="(t, i) in timeline" :key="t.title" class="flex gap-3.5">
+                            <div class="flex flex-col items-center">
+                                <span
+                                    class="flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] text-[10px] font-bold"
+                                    :class="t.state === 'done' ? 'border-green bg-green text-white' : t.state === 'active' ? 'border-brand bg-bluetint text-brand' : 'border-inputline bg-white text-ph'"
+                                >{{ t.state === 'done' ? '✓' : '' }}</span>
+                                <span v-if="i < timeline.length - 1" class="w-[1.5px] flex-1 bg-divider" style="min-height: 14px"></span>
+                            </div>
+                            <div class="pb-4">
+                                <div class="text-[13.5px] font-bold" :class="t.state === 'pending' ? 'text-ph' : 'text-ink'">{{ t.title }}</div>
+                                <div class="mt-1 max-w-[300px] text-[12.5px] leading-relaxed text-mute">{{ t.text }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
+                        <div class="text-[13.5px] font-bold text-ink">Хяналтын хугацаанд ч бүртгэл ажиллана</div>
+                        <div class="mt-1.5 text-[12.5px] leading-relaxed text-body">Бизнес тань хайлтад шууд харагдана, зөвхөн «Баталгаажсан» тэмдэг л хяналтын дараа нэмэгдэнэ.</div>
+                    </div>
+                </template>
+            </aside>
+        </div>
+    </div>
+</template>

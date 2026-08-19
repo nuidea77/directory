@@ -1,0 +1,106 @@
+<script setup>
+import { computed, ref, watch } from 'vue';
+import { api, ApiError } from '../../api';
+import { useConsoleStore } from '../../stores/console';
+
+// Байгууллагын нийтлэг мэдээлэл (нэр, регистр, бизнесийн танилцуулга)
+const store = useConsoleStore();
+
+const orgForm = ref({ name: '', registration_number: '' });
+const bizForm = ref({});
+const msg = ref({ type: '', text: '' });
+
+const business = computed(() => store.businesses[0]);
+
+function syncForms() {
+    if (store.organization) {
+        orgForm.value = {
+            name: store.organization.name,
+            registration_number: store.organization.registration_number || '',
+        };
+    }
+    if (business.value) {
+        bizForm.value = {
+            name: business.value.name,
+            description: business.value.description || '',
+            website: business.value.website || '',
+            facebook: business.value.facebook || '',
+            instagram: business.value.instagram || '',
+            price_level: business.value.price_level || '₮₮',
+        };
+    }
+}
+
+async function saveOrg() {
+    msg.value = { type: '', text: '' };
+    try {
+        await api.put(`/console/organizations/${store.organization.id}`, orgForm.value);
+        await store.load(true);
+        msg.value = { type: 'ok', text: 'Байгууллагын мэдээлэл хадгалагдлаа.' };
+    } catch (e) {
+        msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа' };
+    }
+}
+
+async function saveBusiness() {
+    msg.value = { type: '', text: '' };
+    try {
+        await api.post(`/console/businesses/${business.value.id}`, bizForm.value);
+        await store.load(true);
+        msg.value = { type: 'ok', text: 'Бизнесийн мэдээлэл хадгалагдлаа.' };
+    } catch (e) {
+        msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа' };
+    }
+}
+
+watch(() => store.organization?.id, syncForms, { immediate: true });
+</script>
+
+<template>
+    <div class="max-w-2xl p-5 sm:p-7">
+        <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Тохиргоо</h1>
+        <p class="mt-1 text-[12.5px] text-mute">Нэр, лого, ангилал, тайлбар — байгууллагын хэмжээнд. Хаяг, утас, цаг — салбар тус бүрт.</p>
+
+        <p v-if="msg.text" class="mt-4 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
+
+        <div class="card mt-4 p-5">
+            <div class="text-[15px] font-bold text-ink">Байгууллага</div>
+            <form class="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2" @submit.prevent="saveOrg">
+                <div>
+                    <label class="field-label">Байгууллагын нэр</label>
+                    <input v-model="orgForm.name" type="text" class="input" required />
+                </div>
+                <div>
+                    <label class="field-label">Улсын бүртгэлийн дугаар</label>
+                    <input v-model="orgForm.registration_number" type="text" class="input" />
+                </div>
+                <div class="sm:col-span-2"><button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Хадгалах</button></div>
+            </form>
+        </div>
+
+        <div v-if="business" class="card mt-3.5 p-5">
+            <div class="text-[15px] font-bold text-ink">Бизнес — {{ business.name }}</div>
+            <form class="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2" @submit.prevent="saveBusiness">
+                <div class="sm:col-span-2">
+                    <label class="field-label">Бизнесийн нэр</label>
+                    <input v-model="bizForm.name" type="text" class="input" required />
+                    <p class="mt-1 text-[11.5px] text-mute">Нэр өөрчлөхөд редакцын хяналт шаардана</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="field-label">Тайлбар</label>
+                    <textarea v-model="bizForm.description" rows="3" maxlength="400" class="input resize-none"></textarea>
+                </div>
+                <div><label class="field-label">Вэб сайт</label><input v-model="bizForm.website" type="text" class="input" /></div>
+                <div>
+                    <label class="field-label">Үнийн зэрэглэл</label>
+                    <div class="flex gap-1.5">
+                        <button v-for="p in ['₮', '₮₮', '₮₮₮']" :key="p" type="button" class="cursor-pointer rounded-[7px] px-4 py-2 text-[13px] font-semibold" :class="bizForm.price_level === p ? 'bg-brand text-white' : 'bg-chip text-chiptext'" @click="bizForm.price_level = p">{{ p }}</button>
+                    </div>
+                </div>
+                <div><label class="field-label">Facebook</label><input v-model="bizForm.facebook" type="text" class="input" /></div>
+                <div><label class="field-label">Instagram</label><input v-model="bizForm.instagram" type="text" class="input" /></div>
+                <div class="sm:col-span-2"><button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Хадгалах</button></div>
+            </form>
+        </div>
+    </div>
+</template>

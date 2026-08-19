@@ -42,143 +42,132 @@ class AuthFlowTest extends TestCase
         ]);
     }
 
-    public function test_registration_creates_verify_mn_session(): void
+    public function test_registration_creates_user_and_verify_session(): void
     {
         $this->fakeVerifyMn();
 
         $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Бат',
+            'name' => 'Энхжин',
             'phone' => '99112233',
             'password' => 'secret123',
         ]);
 
-        $response->assertOk()
+        $response->assertCreated()
+            ->assertJsonStructure(['token', 'user', 'verification'])
             ->assertJsonPath('verification.status', 'pending')
             ->assertJsonPath('verification.sms_uri', 'sms:144773?body=482916')
-            ->assertJsonMissingPath('token');
+            ->assertJsonPath('user.phone_verified', false);
 
-        // The user must NOT exist until the phone is verified.
-        $this->assertDatabaseMissing('users', ['phone' => '99112233']);
+        $this->assertDatabaseHas('users', ['phone' => '99112233']);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sessions')
             && $request['phone'] === '99112233'
             && $request->hasHeader('Authorization', 'Bearer vrf_test_key'));
     }
 
-    public function test_user_created_and_token_issued_once_session_verified(): void
+    public function test_phone_marked_verified_after_session_verified(): void
     {
         $this->fakeVerifyMn('VERIFIED');
 
         $start = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Бат',
-            'phone' => '99112233',
-            'password' => 'secret123',
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
         ]);
 
         $uuid = $start->json('verification.uuid');
 
-        $poll = $this->getJson("/api/v1/auth/verifications/{$uuid}");
-
-        $poll->assertOk()
-            ->assertJsonPath('verification.status', 'verified')
-            ->assertJsonStructure(['token', 'user']);
-
-        $this->assertDatabaseHas('users', ['phone' => '99112233']);
-        $this->assertNotNull(User::where('phone', '99112233')->first()->phone_verified_at);
-
-        // Second poll must not issue a second token (consumed).
-        $again = $this->getJson("/api/v1/auth/verifications/{$uuid}");
-        $again->assertOk()->assertJsonMissingPath('token');
-    }
-
-    public function test_polling_is_throttled_to_provider_minimum_interval(): void
-    {
-        $this->fakeVerifyMn();
-
-        $start = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Бат',
-            'phone' => '99112233',
-            'password' => 'secret123',
-        ]);
-
-        $uuid = $start->json('verification.uuid');
-
-        // Two immediate polls: only one upstream status request may go out.
-        $this->getJson("/api/v1/auth/verifications/{$uuid}");
-        $this->getJson("/api/v1/auth/verifications/{$uuid}");
-
-        Http::assertSentCount(2); // 1 createSession + 1 getSession
-    }
-
-    public function test_callback_requires_valid_token_and_verifies(): void
-    {
-        $this->fakeVerifyMn('VERIFIED');
-
-        $start = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Бат',
-            'phone' => '99112233',
-            'password' => 'secret123',
-        ]);
-
-        $verification = PhoneVerification::where('uuid', $start->json('verification.uuid'))->first();
-
-        // Wrong token: nothing changes (still 200 so the provider stops retrying).
-        $this->get("/webhooks/verify-mn/{$verification->uuid}?token=wrong")->assertOk();
-        $this->assertSame('pending', $verification->refresh()->status);
-
-        // Correct token: the session is re-checked and marked verified.
-        $this->get("/webhooks/verify-mn/{$verification->uuid}?token={$verification->callback_token}")->assertOk();
-        $this->assertSame('verified', $verification->refresh()->status);
-    }
-
-    public function test_login_with_phone_and_password(): void
-    {
-        $user = User::factory()->create(['phone' => '88001122', 'password' => 'secret123']);
-
-        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'wrong'])
-            ->assertStatus(422);
-
-        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'secret123'])
+        $this->getJson("/api/v1/auth/verifications/{$uuid}")
             ->assertOk()
-            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'phone']]);
+            ->assertJsonPath('verification.status', 'verified');
+
+        $this->assertNotNull(User::where('phone', '99112233')->first()->phone_verified_at);
     }
 
-    public function test_unverified_phone_cannot_login(): void
+    public function test_unverified_user_cannot_review_or_message(): void
     {
-        User::factory()->unverified()->create(['phone' => '88001122', 'password' => 'secret123']);
+        $user = User::factory()->unverified()->create();
+        $branch = \App\Models\Branch::factory()->create();
 
-        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'secret123'])
-            ->assertStatus(422);
+        $this->actingAs($user)->postJson("/api/v1/branches/{$branch->id}/reviews", ['rating' => 5])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'phone_unverified');
     }
 
-    public function test_password_reset_flow(): void
+    public function test_sms_login_issues_token_when_verified(): void
     {
         $this->fakeVerifyMn('VERIFIED');
 
-        $user = User::factory()->create(['phone' => '88001122', 'password' => 'oldpass123']);
+        User::factory()->create(['phone' => '99112233']);
 
-        $start = $this->postJson('/api/v1/auth/reset', ['phone' => '88001122']);
+        $start = $this->postJson('/api/v1/auth/login-sms', ['phone' => '99112233']);
         $start->assertOk();
 
         $uuid = $start->json('verification.uuid');
 
-        // Poll once so the local record syncs to verified.
-        $this->getJson("/api/v1/auth/verifications/{$uuid}")->assertOk();
+        $poll = $this->getJson("/api/v1/auth/verifications/{$uuid}");
+        $poll->assertOk()->assertJsonStructure(['token', 'user']);
 
-        $confirm = $this->postJson('/api/v1/auth/reset/confirm', [
-            'verification_uuid' => $uuid,
-            'password' => 'newpass123',
+        // Хоёр дахь poll token дахин олгохгүй (consumed)
+        $this->getJson("/api/v1/auth/verifications/{$uuid}")->assertOk()->assertJsonMissingPath('token');
+    }
+
+    public function test_polling_respects_provider_min_interval(): void
+    {
+        $this->fakeVerifyMn();
+
+        $start = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Т', 'phone' => '99112233', 'password' => 'secret123',
         ]);
 
-        $confirm->assertOk()->assertJsonStructure(['token']);
+        $uuid = $start->json('verification.uuid');
 
-        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'newpass123'])
-            ->assertOk();
+        $this->getJson("/api/v1/auth/verifications/{$uuid}");
+        $this->getJson("/api/v1/auth/verifications/{$uuid}");
 
-        // A second confirm with the same verification must fail (consumed).
+        Http::assertSentCount(2); // 1 createSession + 1 getSession (хоёр дахь нь 3с дотор тул алгасна)
+    }
+
+    public function test_callback_requires_valid_token(): void
+    {
+        $this->fakeVerifyMn('VERIFIED');
+
+        $start = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Т', 'phone' => '99112233', 'password' => 'secret123',
+        ]);
+
+        $verification = PhoneVerification::where('uuid', $start->json('verification.uuid'))->first();
+
+        $this->get("/webhooks/verify-mn/{$verification->uuid}?token=wrong")->assertOk();
+        $this->assertSame('pending', $verification->refresh()->status);
+
+        $this->get("/webhooks/verify-mn/{$verification->uuid}?token={$verification->callback_token}")->assertOk();
+        $this->assertSame('verified', $verification->refresh()->status);
+    }
+
+    public function test_password_login_and_reset_flow(): void
+    {
+        $this->fakeVerifyMn('VERIFIED');
+
+        User::factory()->create(['phone' => '88001122', 'password' => 'oldpass123']);
+
+        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'wrong'])->assertStatus(422);
+        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'oldpass123'])->assertOk()->assertJsonStructure(['token']);
+
+        $start = $this->postJson('/api/v1/auth/reset', ['phone' => '88001122']);
+        $uuid = $start->json('verification.uuid');
+
+        $this->getJson("/api/v1/auth/verifications/{$uuid}");
+
         $this->postJson('/api/v1/auth/reset/confirm', [
             'verification_uuid' => $uuid,
-            'password' => 'anotherpass123',
+            'password' => 'newpass123',
+        ])->assertOk()->assertJsonStructure(['token']);
+
+        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'newpass123'])->assertOk();
+
+        // Давхар ашиглалт хориотой
+        $this->postJson('/api/v1/auth/reset/confirm', [
+            'verification_uuid' => $uuid,
+            'password' => 'again12345',
         ])->assertStatus(422);
     }
 }

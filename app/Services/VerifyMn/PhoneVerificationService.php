@@ -2,15 +2,21 @@
 
 namespace App\Services\VerifyMn;
 
+use App\Models\Branch;
 use App\Models\PhoneVerification;
+use App\Models\User;
 use Illuminate\Support\Str;
 
 /**
- * Orchestrates phone verification sessions backed by verify.mn.
+ * verify.mn (MO SMS) баталгаажуулалтын оркестрация.
  *
- * When verify.mn is disabled (local development without an API key) the
- * verification is marked verified immediately so the rest of the flow can be
- * exercised without real SMS traffic.
+ * Purposes:
+ *  - register       → амжилттай болмогц хэрэглэгчийн phone_verified_at тавигдана
+ *  - login          → амжилттай болмогц нэг удаагийн token олгох боломж нээгдэнэ
+ *  - reset_password → амжилттай болмогц шинэ нууц үг тохируулна
+ *  - branch_phone   → бизнесийн салбарын утас баталгаажина
+ *
+ * verify.mn түлхүүргүй орчинд (local dev) шууд verified болгоно.
  */
 class PhoneVerificationService
 {
@@ -18,16 +24,8 @@ class PhoneVerificationService
     {
     }
 
-    /**
-     * Start a verification for a phone number. Returns the local record whose
-     * uuid/sms_uri/display_instruction the frontend needs.
-     *
-     * @param  array<string, mixed>  $meta  purpose-specific payload (e.g. pending registration data)
-     */
     public function start(string $phone, string $purpose, array $meta = []): PhoneVerification
     {
-        // Invalidate previous pending attempts for the same phone+purpose so
-        // only one session can complete.
         PhoneVerification::where('phone', $phone)
             ->where('purpose', $purpose)
             ->where('status', 'pending')
@@ -45,12 +43,7 @@ class PhoneVerificationService
         ]);
 
         if (! $this->client->enabled()) {
-            // Dev mode: no real SMS round-trip available.
-            $verification->update([
-                'status' => 'verified',
-                'verified_at' => now(),
-                'display_instruction' => 'DEV горим: баталгаажуулалт автоматаар амжилттай боллоо',
-            ]);
+            $this->markVerified($verification);
 
             return $verification->refresh();
         }
@@ -73,8 +66,8 @@ class PhoneVerificationService
     }
 
     /**
-     * Check the authoritative status on verify.mn and sync the local record.
-     * Polling is throttled to the provider's minimum interval (3 seconds).
+     * Албан ёсны төлвийг verify.mn-ээс шалгаж локал бичлэгийг sync хийнэ.
+     * Polling нь провайдерын доод хязгаараар (3с) хязгаарлагдана.
      */
     public function check(PhoneVerification $verification): PhoneVerification
     {
@@ -94,7 +87,6 @@ class PhoneVerificationService
             return $verification;
         }
 
-        // verify.mn rate-limits session polling: never hit it faster than every 3s.
         if ($verification->last_checked_at !== null && $verification->last_checked_at->diffInSeconds(now()) < 3) {
             return $verification;
         }
@@ -104,12 +96,27 @@ class PhoneVerificationService
         $session = $this->client->getSession($verification->session_id);
 
         if (($session['sessionStatus'] ?? null) === 'VERIFIED') {
-            $verification->update([
-                'status' => 'verified',
-                'verified_at' => isset($session['verifiedAt']) ? now()->parse($session['verifiedAt']) : now(),
-            ]);
+            $this->markVerified($verification, $session['verifiedAt'] ?? null);
         }
 
         return $verification->refresh();
+    }
+
+    protected function markVerified(PhoneVerification $verification, ?string $verifiedAt = null): void
+    {
+        $verification->update([
+            'status' => 'verified',
+            'verified_at' => $verifiedAt ? now()->parse($verifiedAt) : now(),
+        ]);
+
+        // Purpose-оос хамаарсан side effect-үүд (idempotent)
+        match ($verification->purpose) {
+            'register' => User::where('phone', $verification->phone)
+                ->whereNull('phone_verified_at')
+                ->update(['phone_verified_at' => now()]),
+            'branch_phone' => Branch::where('id', $verification->meta['branch_id'] ?? 0)
+                ->update(['phone_verified' => true]),
+            default => null,
+        };
     }
 }

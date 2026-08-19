@@ -36,9 +36,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function listings(): HasMany
+    public function organizations(): HasMany
     {
-        return $this->hasMany(Listing::class);
+        return $this->hasMany(Organization::class, 'owner_id');
     }
 
     public function reviews(): HasMany
@@ -51,13 +51,34 @@ class User extends Authenticatable
         return $this->hasMany(Favorite::class);
     }
 
-    public function payments(): HasMany
+    public function orders(): HasMany
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(Order::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
     }
 
     public function hasVerifiedPhone(): bool
     {
         return $this->phone_verified_at !== null;
+    }
+
+    /**
+     * Тоймчийн зэрэглэл (Lv) — бичсэн сэтгэгдлийн тооноос.
+     */
+    public function reviewerLevel(): array
+    {
+        $count = $this->reviews()->count();
+
+        return match (true) {
+            $count >= 40 => ['level' => 5, 'name' => 'Хотын домог'],
+            $count >= 20 => ['level' => 4, 'name' => 'Хотын мэргэжилтэн'],
+            $count >= 10 => ['level' => 3, 'name' => 'Тэргүүн тоймч'],
+            $count >= 3 => ['level' => 2, 'name' => 'Идэвхтэй тоймч'],
+            default => ['level' => 1, 'name' => 'Шинэ гишүүн'],
+        };
     }
 }

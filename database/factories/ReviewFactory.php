@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Listing;
+use App\Models\Branch;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -15,10 +15,11 @@ class ReviewFactory extends Factory
     public function definition(): array
     {
         return [
-            'listing_id' => Listing::factory(),
+            'branch_id' => Branch::factory(),
             'user_id' => User::factory(),
             'rating' => fake()->numberBetween(3, 5),
-            'comment' => fake()->sentence(10),
+            'comment' => fake()->sentence(12),
+            'status' => 'active',
         ];
     }
 }

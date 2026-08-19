@@ -1,0 +1,149 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Branch;
+use App\Models\Business;
+use App\Models\Category;
+use App\Models\Message;
+use App\Models\Organization;
+use App\Models\Review;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class ConsoleTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_wizard_creates_organization_business_and_branch(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/v1/console/organizations', [
+            'organization_name' => 'Тест ХХК',
+            'registration_number' => '1234567',
+            'business_name' => 'Тест Сервис',
+            'category_id' => $category->id,
+            'price_level' => '₮₮',
+        ]);
+
+        $response->assertCreated();
+        $businessId = $response->json('business.id');
+
+        $branch = $this->actingAs($user)->postJson("/api/v1/console/businesses/{$businessId}/branches", [
+            'name' => 'Баянгол салбар',
+            'district' => 'Баянгол',
+            'address' => 'Тестийн гудамж 1',
+            'phone' => '99881122',
+        ]);
+
+        // Шинэ салбар редакцын хяналтад орно
+        $branch->assertCreated()->assertJsonPath('data.status', 'pending');
+        $this->assertTrue((bool) $branch->json('data.is_main'));
+    }
+
+    public function test_free_plan_blocks_second_branch(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create(['owner_id' => $user->id, 'plan' => 'free']);
+        $business = Business::factory()->create(['organization_id' => $organization->id]);
+        Branch::factory()->create(['business_id' => $business->id]);
+
+        $this->actingAs($user)->postJson("/api/v1/console/businesses/{$business->id}/branches", [
+            'name' => 'Хоёр дахь',
+            'district' => 'Сүхбаатар',
+            'address' => 'X',
+            'phone' => '99881123',
+        ])->assertStatus(422);
+    }
+
+    public function test_standard_plan_allows_many_branches(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->onPlan('standard')->create(['owner_id' => $user->id]);
+        $business = Business::factory()->create(['organization_id' => $organization->id]);
+        Branch::factory()->count(3)->create(['business_id' => $business->id]);
+
+        $this->actingAs($user)->postJson("/api/v1/console/businesses/{$business->id}/branches", [
+            'name' => 'Дөрөв дэх',
+            'district' => 'Сүхбаатар',
+            'address' => 'X',
+            'phone' => '99881123',
+        ])->assertCreated();
+    }
+
+    public function test_address_change_sends_branch_back_to_review(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create(['owner_id' => $user->id]);
+        $business = Business::factory()->create(['organization_id' => $organization->id]);
+        $branch = Branch::factory()->create(['business_id' => $business->id, 'status' => 'active']);
+
+        $this->actingAs($user)->putJson("/api/v1/console/branches/{$branch->id}", [
+            'address' => 'Шинэ хаяг 99',
+        ])->assertOk()->assertJsonPath('data.status', 'pending');
+    }
+
+    public function test_stranger_cannot_manage_branch(): void
+    {
+        $branch = Branch::factory()->create();
+        $stranger = User::factory()->create();
+
+        $this->actingAs($stranger)->putJson("/api/v1/console/branches/{$branch->id}", ['address' => 'X'])->assertForbidden();
+        $this->actingAs($stranger)->deleteJson("/api/v1/console/branches/{$branch->id}")->assertForbidden();
+    }
+
+    public function test_owner_replies_to_review(): void
+    {
+        $branch = Branch::factory()->create();
+        $owner = $branch->business->organization->owner;
+        $review = Review::factory()->create(['branch_id' => $branch->id]);
+
+        $this->actingAs($owner)->postJson("/api/v1/console/reviews/{$review->id}/reply", ['reply' => 'Баярлалаа!'])
+            ->assertOk()
+            ->assertJsonPath('data.reply', 'Баярлалаа!');
+    }
+
+    public function test_message_thread_flow(): void
+    {
+        $branch = Branch::factory()->create();
+        $business = $branch->business;
+        $owner = $business->organization->owner;
+        $customer = User::factory()->create();
+
+        // Хэрэглэгч зурвас илгээнэ
+        $this->actingAs($customer)->postJson("/api/v1/businesses/{$business->id}/messages", ['body' => 'Сайн байна уу?'])
+            ->assertCreated();
+
+        // Эзэн inbox-доо харна, хариулна
+        $threads = $this->actingAs($owner)->getJson("/api/v1/console/businesses/{$business->id}/messages");
+        $threads->assertOk();
+        $this->assertCount(1, $threads->json('data'));
+        $this->assertSame(1, $threads->json('data.0.unread'));
+
+        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$customer->id}", ['body' => 'Сайн байна уу! Тавтай морил.'])
+            ->assertCreated();
+
+        // Хэрэглэгч харилцан яриагаа харна
+        $conversation = $this->actingAs($customer)->getJson("/api/v1/businesses/{$business->id}/messages");
+        $this->assertCount(2, $conversation->json('data'));
+    }
+
+    public function test_admin_moderation_flow(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $regular = User::factory()->create();
+        $branch = Branch::factory()->pending()->create();
+
+        $this->actingAs($regular)->getJson('/api/v1/admin/moderation')->assertForbidden();
+
+        $this->actingAs($admin)->getJson('/api/v1/admin/moderation')
+            ->assertOk()
+            ->assertJsonPath('kpis.pending', 1);
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/branches/{$branch->id}/approve")->assertOk();
+        $this->assertSame('active', $branch->refresh()->status);
+    }
+}

@@ -4,23 +4,24 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReviewResource;
-use App\Models\Listing;
+use App\Models\Branch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
 
 class ReviewController extends Controller
 {
     /**
-     * Create or update the authenticated user's review on a listing.
+     * Сэтгэгдэл бичих/шинэчлэх — салбар тус бүрт (өөрийн үйлчлүүлсэн салбарт).
      */
-    public function store(Request $request, Listing $listing): ReviewResource
+    public function store(Request $request, Branch $branch): ReviewResource
     {
-        abort_unless($listing->status === 'active', 404);
+        abort_unless($branch->status === 'active', 404);
 
-        if ($listing->user_id === $request->user()->id) {
+        if ($branch->business->organization->owner_id === $request->user()->id) {
             throw ValidationException::withMessages([
-                'rating' => 'Өөрийн байгууллагад үнэлгээ өгөх боломжгүй.',
+                'rating' => 'Өөрийн бизнест үнэлгээ өгөх боломжгүй.',
             ]);
         }
 
@@ -29,7 +30,7 @@ class ReviewController extends Controller
             'comment' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $review = $listing->reviews()->updateOrCreate(
+        $review = $branch->reviews()->updateOrCreate(
             ['user_id' => $request->user()->id],
             $data,
         );
@@ -37,11 +38,24 @@ class ReviewController extends Controller
         return new ReviewResource($review->load('user'));
     }
 
-    public function destroy(Request $request, Listing $listing): JsonResponse
+    public function destroy(Request $request, Branch $branch): JsonResponse
     {
-        $review = $listing->reviews()->where('user_id', $request->user()->id)->firstOrFail();
+        $review = $branch->reviews()->where('user_id', $request->user()->id)->firstOrFail();
         $review->delete();
 
-        return response()->json(['message' => 'Үнэлгээ устгагдлаа.']);
+        return response()->json(['message' => 'Сэтгэгдэл устгагдлаа.']);
+    }
+
+    /**
+     * Миний бичсэн сэтгэгдлүүд (хэрэглэгчийн дашбоард).
+     */
+    public function mine(Request $request): AnonymousResourceCollection
+    {
+        $reviews = $request->user()->reviews()
+            ->with(['branch.business'])
+            ->latest()
+            ->paginate(20);
+
+        return ReviewResource::collection($reviews);
     }
 }

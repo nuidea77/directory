@@ -8,15 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Сэтгэгдэл салбар тус бүрт бичигдэнэ — аль салбарын үйлчилгээ
+        // сул байгаа нь ил харагдана.
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('listing_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('rating'); // 1..5
             $table->text('comment')->nullable();
+            $table->text('reply')->nullable(); // бизнесийн хариу
+            $table->timestamp('replied_at')->nullable();
+            $table->string('status', 20)->default('active'); // active | flagged | hidden
+            $table->unsignedInteger('helpful_count')->default(0);
             $table->timestamps();
 
-            $table->unique(['listing_id', 'user_id']);
+            $table->unique(['branch_id', 'user_id']);
         });
     }
 

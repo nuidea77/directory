@@ -18,7 +18,6 @@ class CategoryFactory extends Factory
         return [
             'name' => Str::title($name),
             'slug' => Str::slug($name),
-            'icon' => '📁',
             'sort_order' => 0,
         ];
     }

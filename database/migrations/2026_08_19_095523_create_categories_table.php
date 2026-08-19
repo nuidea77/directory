@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->string('icon', 16)->nullable();
+            $table->text('description')->nullable();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
