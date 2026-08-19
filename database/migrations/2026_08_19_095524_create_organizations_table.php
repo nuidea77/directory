@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('plan_started_at')->nullable();
             $table->timestamp('plan_expires_at')->nullable();
             $table->boolean('auto_renew')->default(false);
+            $table->unsignedInteger('extra_branches')->default(0); // худалдаж авсан нэмэлт салбарын эрх
             $table->timestamps();
         });
     }

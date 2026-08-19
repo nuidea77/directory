@@ -90,6 +90,7 @@ class BylClient
         return Http::baseUrl(config('services.byl.base_url'))
             ->withToken(config('services.byl.token'))
             ->acceptJson()
-            ->timeout(20);
+            ->timeout(20)
+            ->retry(2, 300, throw: false); // түр зуурын 5xx/timeout-д дахин оролдоно
     }
 }

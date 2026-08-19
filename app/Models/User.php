@@ -18,7 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'avatar_path',
-        'phone_verified_at',
+        // phone_verified_at санаатайгаар байхгүй — зөвхөн forceFill/query builder-ээр
     ];
 
     protected $hidden = [

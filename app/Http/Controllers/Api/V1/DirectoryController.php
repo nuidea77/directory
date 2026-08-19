@@ -125,13 +125,17 @@ class DirectoryController extends Controller
             $query->whereHas('business', fn ($q) => $q->whereIn('category_id', $ids));
         }
 
-        if ($term = trim((string) $request->query('q'))) {
-            $query->where(function (Builder $q) use ($term) {
-                $q->whereHas('business', fn ($b) => $b->where('name', 'like', "%{$term}%")
-                    ->orWhere('description', 'like', "%{$term}%")
-                    ->orWhere('subcategory', 'like', "%{$term}%"))
-                    ->orWhere('address', 'like', "%{$term}%")
-                    ->orWhere('name', 'like', "%{$term}%");
+        $term = trim((string) $request->query('q'));
+
+        if ($term !== '') {
+            // LIKE-ийн % _ тэмдэгтүүдийг escape хийнэ
+            $like = '%'.addcslashes($term, '%_\\').'%';
+            $query->where(function (Builder $q) use ($like) {
+                $q->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhere('subcategory', 'like', $like))
+                    ->orWhere('address', 'like', $like)
+                    ->orWhere('name', 'like', $like);
             });
         }
 
@@ -161,11 +165,16 @@ class DirectoryController extends Controller
 
         if ($lat !== null && $lng !== null) {
             $radius = (float) $request->query('radius', 5);
-            $haversine = '(6371 * acos(min(1.0, cos(radians(?)) * cos(radians(lat)) * cos(radians(lng) - radians(?)) + sin(radians(?)) * sin(radians(lat)))))';
+            // MySQL + SQLite хоёуланд ажиллах хэлбэр: min()/LEAST-ийн оронд CASE,
+            // параметрийн тоон харьцуулалтад "? + 0.0" (string bind-ийг тоо болгоно)
+            $inner = 'cos(radians(?)) * cos(radians(lat)) * cos(radians(lng) - radians(?)) + sin(radians(?)) * sin(radians(lat))';
+            $clamped = "CASE WHEN {$inner} > 1.0 THEN 1.0 WHEN {$inner} < -1.0 THEN -1.0 ELSE {$inner} END";
+            $haversine = "(6371 * acos({$clamped}))";
+            $bind = [$lat, $lng, $lat, $lat, $lng, $lat, $lat, $lng, $lat];
+
             $query->whereNotNull('lat')
-                ->selectRaw("branches.*, {$haversine} as distance_km", [$lat, $lng, $lat])
-                // CAST — SQLite тоо ба текстийг шууд харьцуулахад төрлөөр эрэмбэлдэг
-                ->whereRaw("{$haversine} <= CAST(? AS REAL)", [$lat, $lng, $lat, $radius]);
+                ->selectRaw("branches.*, {$haversine} as distance_km", $bind)
+                ->whereRaw("{$haversine} <= (? + 0.0)", [...$bind, $radius]);
         }
 
         // Онцлох бизнесүүд дээр гарна
@@ -206,14 +215,22 @@ class DirectoryController extends Controller
             default => $query->orderByDesc('rating_avg')->orderByDesc('reviews_count'),
         };
 
-        $branches = $query->paginate($request->integer('per_page', 20))->withQueryString();
+        $perPage = $request->integer('per_page', 20);
 
-        $openNow = $request->boolean('open_now');
-
-        if ($openNow) {
-            // Цагийн шүүлтүүрийг PHP талд (жижиг хуудсан дээр)
-            $filtered = $branches->getCollection()->filter(fn (Branch $b) => $b->openState()['open'])->values();
-            $branches->setCollection($filtered);
+        if ($request->boolean('open_now')) {
+            // Цагийн шүүлтүүрийг pagination-аас ӨМНӨ тавьж meta-г зөв гаргана
+            $all = $query->limit(500)->get()
+                ->filter(fn (Branch $b) => $b->openState()['open'])
+                ->values();
+            $page = max(1, $request->integer('page', 1));
+            $branches = new \Illuminate\Pagination\LengthAwarePaginator(
+                $all->forPage($page, $perPage)->values(),
+                $all->count(),
+                $perPage,
+                $page,
+            );
+        } else {
+            $branches = $query->paginate($perPage)->withQueryString();
         }
 
         $branches->getCollection()->each(function (Branch $b) use ($featuredBusinessIds) {
@@ -239,7 +256,8 @@ class DirectoryController extends Controller
         $business = Business::where('slug', $slug)
             ->with([
                 'category',
-                'branches' => fn ($q) => $q->where('status', 'active')->with(['images', 'reviews.user']),
+                'branches' => fn ($q) => $q->where('status', 'active')
+                    ->with(['images', 'reviews' => fn ($r) => $r->where('status', 'active')->with('user')]),
             ])
             ->firstOrFail();
 
@@ -271,7 +289,10 @@ class DirectoryController extends Controller
             'source' => ['nullable', 'in:category,search,map,direct'],
         ]);
 
-        $branch->recordEvent($data['type'], $data['source'] ?? null);
+        // Зөвхөн идэвхтэй салбарын статистикийг тоолно (fraud/noise бууруулна)
+        if ($branch->status === 'active') {
+            $branch->recordEvent($data['type'], $data['source'] ?? null);
+        }
 
         return response()->json(['ok' => true]);
     }

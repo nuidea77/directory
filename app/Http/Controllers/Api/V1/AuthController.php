@@ -11,6 +11,8 @@ use App\Services\VerifyMn\PhoneVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -32,7 +34,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
             'email' => ['nullable', 'email', 'max:190', 'unique:users,email,'.($existing?->id ?? 'NULL')],
-            'password' => ['required', 'string', 'min:8', 'max:100'],
+            'password' => ['required', 'string', Password::defaults(), 'max:100'],
         ], [
             'phone.regex' => 'Утасны дугаар 8 оронтой тоо байх ёстой.',
         ]);
@@ -122,16 +124,31 @@ class AuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:100'],
         ]);
 
+        // Brute-force хамгаалалт: аккаунт+IP тутамд 3 удаа буруу бол 15 минут түгжинэ
+        $throttleKey = 'login:'.mb_strtolower($data['phone']).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($throttleKey) / 60);
+
+            throw ValidationException::withMessages([
+                'password' => "Хэт олон буруу оролдлого. {$minutes} минутын дараа дахин оролдоно уу.",
+            ]);
+        }
+
         // Утас эсвэл и-мэйлээр
         $user = User::where('phone', $data['phone'])
             ->orWhere('email', $data['phone'])
             ->first();
 
         if ($user === null || ! Hash::check($data['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 900);
+
             throw ValidationException::withMessages([
                 'password' => 'Нууц үг таарсангүй. 3 удаа буруу оруулбал 15 минут хаагдана.',
             ]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         return response()->json([
             'token' => $user->createToken($data['device_name'] ?? 'auth')->plainTextToken,
@@ -162,6 +179,16 @@ class AuthController extends Controller
         return response()->json(['message' => 'Системээс гарлаа.']);
     }
 
+    /**
+     * Бүх төхөөрөмжөөс гарах.
+     */
+    public function logoutAll(Request $request): JsonResponse
+    {
+        $request->user()->tokens()->delete();
+
+        return response()->json(['message' => 'Бүх төхөөрөмжөөс гарлаа.']);
+    }
+
     public function me(Request $request): UserResource
     {
         return new UserResource($request->user());
@@ -183,7 +210,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'max:100'],
+            'password' => ['required', 'string', Password::defaults(), 'max:100'],
         ]);
 
         if (! Hash::check($data['current_password'], $request->user()->password)) {
@@ -193,6 +220,11 @@ class AuthController extends Controller
         }
 
         $request->user()->update(['password' => $data['password']]);
+
+        // Бусад төхөөрөмжийн токенуудыг хүчингүй болгоно (одоогийнхоос бусад)
+        $request->user()->tokens()
+            ->where('id', '!=', $request->user()->currentAccessToken()->id)
+            ->delete();
 
         return response()->json(['message' => 'Нууц үг солигдлоо.']);
     }
@@ -220,7 +252,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'verification_uuid' => ['required', 'uuid'],
-            'password' => ['required', 'string', 'min:8', 'max:100'],
+            'password' => ['required', 'string', Password::defaults(), 'max:100'],
         ]);
 
         $verification = PhoneVerification::where('uuid', $data['verification_uuid'])

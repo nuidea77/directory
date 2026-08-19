@@ -124,7 +124,15 @@ class BillingTest extends TestCase
             ]],
         ])->json('data');
 
-        $body = json_encode(['type' => 'checkout.completed', 'data' => ['object' => ['id' => 777, 'status' => 'complete']]]);
+        // Буруу дүнтэй webhook idempotent-оор алгасагдана
+        $wrongBody = json_encode(['type' => 'checkout.completed', 'data' => ['object' => ['id' => 777, 'status' => 'complete', 'amount_total' => 1000]]]);
+        $this->call('POST', '/webhooks/byl', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_BYL_SIGNATURE' => hash_hmac('sha256', $wrongBody, 'whsec_test'),
+        ], $wrongBody)->assertOk();
+        $this->assertSame('pending', Order::find($order['id'])->status);
+
+        $body = json_encode(['type' => 'checkout.completed', 'data' => ['object' => ['id' => 777, 'status' => 'complete', 'amount_total' => $order['total']]]]);
         $signature = hash_hmac('sha256', $body, 'whsec_test');
 
         $this->call('POST', '/webhooks/byl', [], [], [], [
@@ -172,6 +180,31 @@ class BillingTest extends TestCase
 
         $response->assertCreated()->assertJsonPath('data.status', 'paid');
         $this->assertSame('standard', $this->organization->refresh()->plan);
+    }
+
+    public function test_branch_addon_raises_branch_limit(): void
+    {
+        // Үнэгүй эрх: 1 салбар (setUp-д аль хэдийн үүссэн) — хоёр дахь нь багтахгүй
+        $this->actingAs($this->owner)->postJson("/api/v1/console/businesses/{$this->business->id}/branches", [
+            'name' => 'Хоёр дахь', 'district' => 'Сүхбаатар', 'address' => 'X', 'phone' => '99881123',
+        ])->assertStatus(422);
+
+        // 1 нэмэлт салбар худалдаж авна (dev горим — шууд төлөгдөнө)
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'extra_branches' => 1,
+        ])->assertCreated()->assertJsonPath('data.status', 'paid');
+
+        $this->assertSame(1, $this->organization->refresh()->extra_branches);
+
+        // Одоо хоёр дахь салбар багтана, гурав дахь нь багтахгүй
+        $this->actingAs($this->owner)->postJson("/api/v1/console/businesses/{$this->business->id}/branches", [
+            'name' => 'Хоёр дахь', 'district' => 'Сүхбаатар', 'address' => 'X', 'phone' => '99881123',
+        ])->assertCreated();
+
+        $this->actingAs($this->owner)->postJson("/api/v1/console/businesses/{$this->business->id}/branches", [
+            'name' => 'Гурав дахь', 'district' => 'Баянгол', 'address' => 'Y', 'phone' => '99881124',
+        ])->assertStatus(422);
     }
 
     public function test_category_featured_slots_fill_then_queue(): void

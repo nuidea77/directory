@@ -36,6 +36,19 @@ class BylWebhookController extends Controller
                 return response()->json(['ok' => true]);
             }
 
+            // Төлсөн дүн захиалгын дүнтэй таарч байгааг шалгана
+            $paidAmount = (int) ($object['amount_total'] ?? -1);
+
+            if ($paidAmount !== (int) $order->total) {
+                Log::warning('byl.mn webhook: төлсөн дүн зөрүүтэй', [
+                    'order' => $order->number,
+                    'expected' => (int) $order->total,
+                    'received' => $paidAmount,
+                ]);
+
+                return response()->json(['ok' => true]);
+            }
+
             $billing->markPaid($order, $object);
         }
 

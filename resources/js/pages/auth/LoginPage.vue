@@ -18,7 +18,9 @@ const error = ref('');
 const busy = ref(false);
 
 function done() {
-    router.push(route.query.redirect || { name: 'home' });
+    // redirect query-г шалгаж (нээлттэй redirect-ээс сэргийлнэ) зөвхөн дотоод зам зөвшөөрнө
+    const target = Array.isArray(route.query.redirect) ? route.query.redirect[0] : route.query.redirect;
+    router.push(target && target.startsWith('/') && !target.startsWith('//') ? target : { name: 'home' });
 }
 
 async function login() {
@@ -61,6 +63,13 @@ async function loginBySms() {
 async function onVerified(data) {
     if (data.token) {
         auth.setSession(data.token, data.user.data ?? data.user);
+
+        // Мессежээр нэвтэрсэн ч мөн адил баталгаажилтын шаардлага үйлчилнэ
+        if (!auth.user?.phone_verified) {
+            router.push({ name: 'verify' });
+            return;
+        }
+
         done();
     }
 }

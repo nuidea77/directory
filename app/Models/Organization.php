@@ -71,6 +71,13 @@ class Organization extends Model
 
     public function planLimit(string $key): int
     {
-        return (int) ($this->planConfig()['limits'][$key] ?? 0);
+        $limit = (int) ($this->planConfig()['limits'][$key] ?? 0);
+
+        // Худалдаж авсан нэмэлт салбарын эрх (0 = хязгааргүй тул нэмэх шаардлагагүй)
+        if ($key === 'branches' && $limit > 0) {
+            $limit += (int) $this->extra_branches;
+        }
+
+        return $limit;
     }
 }

@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Byl\BylClient;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -131,7 +133,7 @@ class BillingService
             throw ValidationException::withMessages(['total' => 'Захиалга хоосон байна.']);
         }
 
-        return DB::transaction(function () use ($user, $organization, $items, $pendingCampaigns, $total) {
+        $order = DB::transaction(function () use ($user, $organization, $items, $pendingCampaigns, $total) {
             $order = Order::create([
                 'number' => Order::generateNumber(),
                 'user_id' => $user->id,
@@ -153,14 +155,29 @@ class BillingService
                 ]);
             }
 
-            if (! $this->byl->enabled()) {
-                // Dev горим: төлбөрийг шууд батална.
-                $this->markPaid($order->fresh(), ['dev' => true]);
+            return $order;
+        });
 
-                return $order->refresh();
+        if (! $this->byl->enabled()) {
+            // Fail-open хориотой: авто-төлөлт зөвхөн local/testing орчинд.
+            if (! app()->environment('local', 'testing')) {
+                Log::error('byl.mn: токен тохируулаагүй байхад захиалга үүсгэх оролдлого', ['order' => $order->number]);
+                $this->voidOrder($order);
+
+                throw ValidationException::withMessages([
+                    'total' => 'Төлбөрийн систем түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
+                ]);
             }
 
-            // Checkout API: төлбөрийн дараа byl.mn хэрэглэгчийг сайт руу буцаана
+            // Dev горим: төлбөрийг шууд батална.
+            $this->markPaid($order->fresh(), ['dev' => true]);
+
+            return $order->refresh();
+        }
+
+        // Checkout API-г transaction-ий ГАДНА дуудна (түгжээ барихгүй,
+        // rollback үед byl талд эзэнгүй checkout үлдэхгүй)
+        try {
             $checkout = $this->byl->createCheckout(
                 $total,
                 sprintf('%s — %s', $order->number, $organization->name),
@@ -168,15 +185,22 @@ class BillingService
                 url("/orders/{$order->id}/pay?return=success"),
                 url("/orders/{$order->id}/pay?return=cancel"),
             );
+        } catch (RequestException $e) {
+            Log::error('byl.mn: checkout үүсгэж чадсангүй', ['order' => $order->number, 'status' => $e->response?->status()]);
+            $this->voidOrder($order);
 
-            $order->update([
-                'byl_checkout_id' => $checkout['id'] ?? null,
-                'invoice_url' => $checkout['url'] ?? null,
-                'provider_payload' => $checkout,
+            throw ValidationException::withMessages([
+                'total' => 'Төлбөрийн систем түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
             ]);
+        }
 
-            return $order->refresh();
-        });
+        $order->update([
+            'byl_checkout_id' => $checkout['id'] ?? null,
+            'invoice_url' => $checkout['url'] ?? null,
+            'provider_payload' => $checkout,
+        ]);
+
+        return $order->refresh();
     }
 
     /**
@@ -254,7 +278,16 @@ class BillingService
                 }
             }
 
-            // 2. Онцлох байршил идэвхжүүлэх / дараалалд оруулах
+            // 2. Салбарын нэмэлт — байгууллагын лимитийг бодитоор нэмнэ
+            foreach ($order->items()->where('type', 'branch_addon')->get() as $item) {
+                $count = (int) ($item->payload['count'] ?? 0);
+
+                if ($count > 0) {
+                    $order->organization->increment('extra_branches', $count);
+                }
+            }
+
+            // 3. Онцлох байршил идэвхжүүлэх / дараалалд оруулах
             foreach ($order->campaigns()->where('status', 'pending_payment')->get() as $campaign) {
                 $this->campaigns->activateOrQueue($campaign);
             }

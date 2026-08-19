@@ -61,11 +61,10 @@ class CreateAdmin extends Command
                 'name' => $this->option('name') ?: 'Админ',
                 'phone' => $phone,
                 'password' => $password,
-                // CLI-ээр үүсгэсэн админд SMS баталгаажуулалт шаардахгүй
-                'phone_verified_at' => now(),
             ]);
 
-            $user->forceFill(['is_admin' => true])->save();
+            // CLI-ээр үүсгэсэн админд SMS баталгаажуулалт шаардахгүй
+            $user->forceFill(['is_admin' => true, 'phone_verified_at' => now()])->save();
 
             $this->info("Шинэ админ үүслээ: {$user->name} ({$phone})");
 

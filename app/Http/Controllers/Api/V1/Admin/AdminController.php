@@ -168,7 +168,7 @@ class AdminController extends Controller
             ->withCount([
                 'campaigns as pending_ads_count' => fn ($q) => $q->whereIn('status', ['pending_payment', 'queued']),
             ])
-            ->when($filters['q'] ?? null, fn ($q, $term) => $q->where('name', 'like', "%{$term}%"))
+            ->when($filters['q'] ?? null, fn ($q, $term) => $q->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'))
             ->when($filters['category_id'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
             ->when($filters['city'] ?? null, fn ($q, $city) => $q->whereHas('branches', fn ($b) => $b->where('city', $city)))
             ->when($filters['district'] ?? null, fn ($q, $d) => $q->whereHas('branches', fn ($b) => $b->where('district', $d)))

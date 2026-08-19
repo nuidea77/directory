@@ -1,8 +1,19 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useConsoleStore } from '../../stores/console';
 
 const store = useConsoleStore();
+const router = useRouter();
+
+// Дугаар баталгаажаагүй бол баталгаажуулах хуудас руу
+watch(
+    () => store.error,
+    (err) => {
+        if (err === 'phone_unverified') router.replace({ name: 'verify' });
+    },
+    { immediate: true },
+);
 
 const nav = [
     { name: 'Салбарууд', route: 'console' },
@@ -70,7 +81,12 @@ onMounted(() => store.load());
                 <router-link v-for="item in nav" :key="item.route" :to="{ name: item.route }" class="whitespace-nowrap" :class="{ 'text-brand': $route.name === item.route }">{{ item.name }}</router-link>
             </div>
 
-            <div v-if="store.loaded && !store.organization" class="p-10 text-center">
+            <div v-if="store.error === 'failed'" class="p-10 text-center">
+                <p class="text-[15px] font-bold text-ink">Ачаалахад алдаа гарлаа</p>
+                <p class="mt-1.5 text-[13px] text-mute">Интернэт холболтоо шалгаад дахин оролдоно уу.</p>
+                <button class="btn-primary mt-5" :disabled="store.loading" @click="store.load(true)">{{ store.loading ? 'Ачаалж байна…' : 'Дахин оролдох' }}</button>
+            </div>
+            <div v-else-if="store.loaded && !store.organization" class="p-10 text-center">
                 <p class="text-[15px] font-bold text-ink">Танд бүртгэлтэй бизнес алга</p>
                 <p class="mt-1.5 text-[13px] text-mute">Эхний бизнесээ бүртгүүлээд хэрэглэгчдэд хүрээрэй.</p>
                 <router-link :to="{ name: 'add-business' }" class="btn-primary mt-5">Бизнес нэмэх</router-link>

@@ -44,6 +44,16 @@ class PhoneVerificationService
         ]);
 
         if (! $this->client->enabled()) {
+            // Fail-open хориотой: авто-баталгаажуулалт зөвхөн local/testing орчинд.
+            // Production дээр түлхүүр дутуу бол нээлттэй орхихын оронд алдаа өгнө.
+            if (! app()->environment('local', 'testing')) {
+                Log::error('verify.mn: API түлхүүр тохируулаагүй байхад баталгаажуулалт эхлүүлэх оролдлого');
+
+                throw ValidationException::withMessages([
+                    'phone' => 'Баталгаажуулалтын үйлчилгээ түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
+                ]);
+            }
+
             $this->markVerified($verification);
 
             return $verification->refresh();

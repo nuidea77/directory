@@ -211,6 +211,20 @@ class AuthFlowTest extends TestCase
         $this->assertSame('verified', $verification->refresh()->status);
     }
 
+    public function test_login_locks_after_three_failed_attempts(): void
+    {
+        User::factory()->create(['phone' => '88001122', 'password' => 'correct123']);
+
+        foreach (range(1, 3) as $i) {
+            $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'wrong'.$i])->assertStatus(422);
+        }
+
+        // 4 дэх оролдлого — зөв нууц үгтэй ч түгжигдсэн байна
+        $this->postJson('/api/v1/auth/login', ['phone' => '88001122', 'password' => 'correct123'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['password']);
+    }
+
     public function test_password_login_and_reset_flow(): void
     {
         $this->fakeVerifyMn('VERIFIED');

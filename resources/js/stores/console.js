@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 
 // Бизнес зөвлөлийн нийтлэг төлөв: байгууллагууд + сонгосон байгууллага
 export const useConsoleStore = defineStore('console', {
@@ -8,6 +8,7 @@ export const useConsoleStore = defineStore('console', {
         selectedId: null,
         loaded: false,
         loading: false,
+        error: '', // '' | 'phone_unverified' | 'failed'
     }),
 
     getters: {
@@ -24,6 +25,7 @@ export const useConsoleStore = defineStore('console', {
         async load(force = false) {
             if (this.loaded && !force) return;
             this.loading = true;
+            this.error = '';
             try {
                 const data = await api.get('/console/organizations');
                 this.organizations = data.data;
@@ -31,6 +33,9 @@ export const useConsoleStore = defineStore('console', {
                     this.selectedId = this.organizations[0].id;
                 }
                 this.loaded = true;
+            } catch (e) {
+                // 403 phone_unverified → баталгаажуулах хуудас руу, бусад → retry
+                this.error = e instanceof ApiError && e.data?.code === 'phone_unverified' ? 'phone_unverified' : 'failed';
             } finally {
                 this.loading = false;
             }

@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function () {
     // ---- Нэвтэрсэн хэрэглэгч ------------------------------------------------
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::post('auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('auth/verify/start', [AuthController::class, 'startVerification'])->middleware('throttle:10,1');
         Route::get('me', [AuthController::class, 'me']);
         Route::put('me', [AuthController::class, 'updateProfile']);
@@ -62,13 +63,13 @@ Route::prefix('v1')->group(function () {
 
         // Утас баталгаажсан хэрэглэгчийн үйлдлүүд
         Route::middleware('phone.verified')->group(function () {
-            Route::post('branches/{branch}/reviews', [ReviewController::class, 'store']);
+            Route::post('branches/{branch}/reviews', [ReviewController::class, 'store'])->middleware('throttle:writes');
             Route::delete('branches/{branch}/reviews', [ReviewController::class, 'destroy']);
 
             // Зурвас (хэрэглэгч тал)
             Route::get('my/messages', [MessageController::class, 'threads']);
             Route::get('businesses/{business}/messages', [MessageController::class, 'show']);
-            Route::post('businesses/{business}/messages', [MessageController::class, 'store']);
+            Route::post('businesses/{business}/messages', [MessageController::class, 'store'])->middleware('throttle:writes');
 
             // ---- Бизнес зөвлөл ------------------------------------------
             Route::get('console/organizations', [OrganizationController::class, 'index']);
@@ -81,7 +82,7 @@ Route::prefix('v1')->group(function () {
             Route::get('console/branches/{branch}', [BranchController::class, 'show']);
             Route::put('console/branches/{branch}', [BranchController::class, 'update']);
             Route::delete('console/branches/{branch}', [BranchController::class, 'destroy']);
-            Route::post('console/branches/{branch}/images', [BranchController::class, 'addImages']);
+            Route::post('console/branches/{branch}/images', [BranchController::class, 'addImages'])->middleware('throttle:writes');
             Route::delete('console/branches/{branch}/images/{image}', [BranchController::class, 'deleteImage']);
 
             Route::get('console/organizations/{organization}/stats', [StatsController::class, 'show']);
@@ -94,7 +95,7 @@ Route::prefix('v1')->group(function () {
 
             // ---- Төлбөр, сурталчилгаа --------------------------------------
             Route::get('orders', [CheckoutController::class, 'index']);
-            Route::post('checkout', [CheckoutController::class, 'store']);
+            Route::post('checkout', [CheckoutController::class, 'store'])->middleware('throttle:writes');
             Route::get('orders/{order}', [CheckoutController::class, 'show']);
             Route::delete('orders/{order}', [CheckoutController::class, 'cancel']);
             Route::get('slots', [CheckoutController::class, 'slots']);

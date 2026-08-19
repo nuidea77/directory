@@ -50,7 +50,11 @@ async function request(method, url, { params, body, formData } = {}) {
     const data = response.status === 204 ? null : await response.json().catch(() => null);
 
     if (!response.ok) {
-        if (response.status === 401) setToken(null);
+        if (response.status === 401) {
+            setToken(null);
+            // App.vue сонсоод session-ийг цэвэрлэж login руу чиглүүлнэ
+            window.dispatchEvent(new CustomEvent('auth:expired'));
+        }
         throw new ApiError(response.status, data);
     }
 
