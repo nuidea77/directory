@@ -13,6 +13,7 @@ const categories = ref([]);
 const branches = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const loading = ref(true);
+const loadError = ref('');
 
 // Байршил, үйлчилгээний жагсаалт API-аас
 const locations = ref([]);
@@ -75,6 +76,7 @@ async function fetchCategory() {
 
 async function fetchResults() {
     loading.value = true;
+    loadError.value = '';
     try {
         const data = await api.get('/search', {
             q: filters.value.q,
@@ -91,6 +93,8 @@ async function fetchResults() {
         });
         branches.value = data.data;
         meta.value = data.meta;
+    } catch {
+        loadError.value = 'Илэрц ачаалахад алдаа гарлаа.';
     } finally {
         loading.value = false;
     }
@@ -131,18 +135,27 @@ function trackView(branch) {
     api.post(`/branches/${branch.id}/event`, { type: 'view', source: isCategory.value ? 'category' : 'search' }).catch(() => {});
 }
 
+async function loadAll() {
+    // Ангилал/байршлын жагсаалт унавал ч илэрцээ харуулна — хуудас бүхэлдээ унахгүй
+    try {
+        const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
+        categories.value = cats.data;
+        locations.value = locs.data;
+        amenityOptions.value = locs.amenities || [];
+    } catch {
+        /* шүүлтүүрийн жагсаалтгүйгээр үргэлжилнэ */
+    }
+    await Promise.all([fetchCategory().catch(() => {}), fetchResults()]);
+}
+
 watch(() => route.fullPath, async () => {
     syncFromRoute();
-    await Promise.all([fetchCategory(), fetchResults()]);
+    await Promise.all([fetchCategory().catch(() => {}), fetchResults()]);
 });
 
 onMounted(async () => {
     syncFromRoute();
-    const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
-    categories.value = cats.data;
-    locations.value = locs.data;
-    amenityOptions.value = locs.amenities || [];
-    await Promise.all([fetchCategory(), fetchResults()]);
+    await loadAll();
 });
 </script>
 
@@ -276,6 +289,11 @@ onMounted(async () => {
 
                 <div v-if="loading" class="mt-4 space-y-3">
                     <div v-for="i in 5" :key="i" class="card h-36 animate-pulse bg-panel"></div>
+                </div>
+
+                <div v-else-if="loadError" class="card mt-4 p-16 text-center">
+                    <p class="text-[15px] font-bold text-red">{{ loadError }}</p>
+                    <button class="btn-primary mt-4" @click="loadAll">Дахин оролдох</button>
                 </div>
 
                 <div v-else-if="branches.length" class="mt-4 flex flex-col gap-3">

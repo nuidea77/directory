@@ -310,7 +310,7 @@ class AdminController extends Controller
             'sort_order' => $data['sort_order'] ?? ((int) \App\Models\Category::max('sort_order') + 1),
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget('categories:index');
+        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
 
         return response()->json(['message' => 'Ангилал үүслээ.', 'data' => $category], 201);
     }
@@ -324,7 +324,7 @@ class AdminController extends Controller
         ]);
 
         $category->update(array_filter($data, fn ($v) => $v !== null));
-        \Illuminate\Support\Facades\Cache::forget('categories:index');
+        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
 
         return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $category->refresh()]);
     }
@@ -341,7 +341,7 @@ class AdminController extends Controller
 
         $category->children()->delete();
         $category->delete();
-        \Illuminate\Support\Facades\Cache::forget('categories:index');
+        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
 
         return response()->json(['message' => 'Ангилал устгагдлаа.']);
     }

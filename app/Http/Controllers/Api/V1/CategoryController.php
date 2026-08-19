@@ -12,14 +12,27 @@ class CategoryController extends Controller
 {
     public function index(): JsonResponse
     {
-        // Ангиллын мод бараг өөрчлөгддөггүй — 10 минут cache
-        $categories = \Illuminate\Support\Facades\Cache::remember('categories:index', 600, fn () => Category::whereNull('parent_id')
+        // Ангиллын мод бараг өөрчлөгддөггүй — 10 минут cache.
+        // Cache-д зөвхөн ЦЭВЭР массив хадгална: Eloquent/Resource объект
+        // хадгалбал unserialize эвдэрч (__PHP_Incomplete_Class) 500 өгдөг.
+        $toRow = fn (Category $c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'slug' => $c->slug,
+            'description' => $c->description,
+            'parent_id' => $c->parent_id,
+            'businesses_count' => (int) $c->businesses_count,
+        ];
+
+        $payload = \Illuminate\Support\Facades\Cache::remember('categories:index:v2', 600, fn () => Category::whereNull('parent_id')
             ->withCount('businesses')
             ->with(['children' => fn ($q) => $q->withCount('businesses')])
             ->orderBy('sort_order')
-            ->get());
+            ->get()
+            ->map(fn (Category $c) => $toRow($c) + ['children' => $c->children->map($toRow)->all()])
+            ->all());
 
-        return response()->json(['data' => CategoryResource::collection($categories)]);
+        return response()->json(['data' => $payload]);
     }
 
     public function show(string $slug): JsonResponse

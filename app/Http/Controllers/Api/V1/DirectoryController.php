@@ -120,6 +120,15 @@ class DirectoryController extends Controller
             ? Category::where('slug', $request->query('category'))->first()
             : null;
 
+        // Байхгүй ангилал дуудвал шүүлтүүр чимээгүй алгасагдаж БҮХ бизнес
+        // буцаадаг байсан — одоо хоосон илэрц буцаана
+        if ($request->query('category') && $category === null) {
+            return response()->json([
+                'data' => [],
+                'meta' => ['current_page' => 1, 'last_page' => 1, 'total' => 0, 'per_page' => $request->integer('per_page', 20)],
+            ]);
+        }
+
         $query = Branch::query()->active()
             ->with(['business.category', 'images'])
             ->whereHas('business');

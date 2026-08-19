@@ -35,6 +35,37 @@ class DirectoryTest extends TestCase
         $this->getJson('/api/v1/search?category=food&district='.urlencode('Сүхбаатар'))->assertJsonPath('meta.total', 1);
     }
 
+    public function test_search_with_unknown_category_returns_no_results(): void
+    {
+        Branch::factory()->count(3)->create();
+
+        // Байхгүй ангилал → бүх бизнесийг буцаахгүй, хоосон илэрц
+        $this->getJson('/api/v1/search?category=ogt-baihgui-angilal')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 0)
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_categories_endpoint_survives_a_serializing_cache_store(): void
+    {
+        // Production-д CACHE_STORE=database/file — cache-д Eloquent объект
+        // хадгалбал unserialize эвдэрч 500 өгдөг байсан (regression)
+        config(['cache.default' => 'file']);
+        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
+
+        $category = Category::factory()->create(['slug' => 'food']);
+        Business::factory()->create(['category_id' => $category->id]);
+
+        // 1-рт cache бөглөнө, 2-рт cache-ээс уншина — хоёулаа 200 байх ёстой
+        $this->getJson('/api/v1/categories')->assertOk()->assertJsonPath('data.0.slug', 'food');
+        $this->getJson('/api/v1/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', 'food')
+            ->assertJsonPath('data.0.businesses_count', 1);
+
+        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
+    }
+
     public function test_featured_campaign_pins_business_to_top(): void
     {
         $category = Category::factory()->create(['slug' => 'auto']);
