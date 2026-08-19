@@ -25,6 +25,19 @@ class DirectoryController extends Controller
     }
 
     /**
+     * Засаг захиргааны нэгжүүд: нийслэл + 21 аймаг, дүүрэг/сумдтайгаа
+     * (шүүлтүүр, хаягийн сонголтод ашиглана).
+     */
+    public function locations(): JsonResponse
+    {
+        return response()->json([
+            'data' => collect(config('locations'))
+                ->map(fn (array $districts, string $city) => ['city' => $city, 'districts' => $districts])
+                ->values(),
+        ]);
+    }
+
+    /**
      * Нүүр хуудасны багц өгөгдөл.
      */
     public function home(Request $request): JsonResponse

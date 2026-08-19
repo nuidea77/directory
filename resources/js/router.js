@@ -51,6 +51,7 @@ const routes = [
         children: [
             { path: '', name: 'admin', component: () => import('./pages/admin/ModerationTab.vue') },
             { path: 'revenue', name: 'admin-revenue', component: () => import('./pages/admin/RevenueTab.vue') },
+            { path: 'businesses', name: 'admin-businesses', component: () => import('./pages/admin/BusinessesTab.vue') },
         ],
     },
 

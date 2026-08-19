@@ -145,17 +145,78 @@ class AdminController extends Controller
     }
 
     /**
-     * Бүх бизнесүүд (админ жагсаалт).
+     * Бүх бизнесүүд (админ жагсаалт): эрхийн төрөл, хүлээгдэж буй
+     * төлбөр/сурталчилгаа/модерац, ангилал, байршлаар (аймаг·сум/дүүрэг) шүүнэ.
      */
     public function businesses(Request $request): JsonResponse
     {
-        $businesses = Business::with(['category', 'organization', 'branches'])
-            ->when($request->query('q'), fn ($q, $term) => $q->where('name', 'like', "%{$term}%"))
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'plan' => ['nullable', 'in:free,standard,business'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'city' => ['nullable', 'string', 'max:80'],
+            'district' => ['nullable', 'string', 'max:80'],
+            'pending' => ['nullable', 'in:plan_order,ad,moderation'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $businesses = Business::with([
+            'category:id,name',
+            'organization:id,name,plan,plan_expires_at',
+            'branches:id,business_id,city,district,status',
+        ])
+            ->withCount([
+                'campaigns as pending_ads_count' => fn ($q) => $q->whereIn('status', ['pending_payment', 'queued']),
+            ])
+            ->when($filters['q'] ?? null, fn ($q, $term) => $q->where('name', 'like', "%{$term}%"))
+            ->when($filters['category_id'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
+            ->when($filters['city'] ?? null, fn ($q, $city) => $q->whereHas('branches', fn ($b) => $b->where('city', $city)))
+            ->when($filters['district'] ?? null, fn ($q, $d) => $q->whereHas('branches', fn ($b) => $b->where('district', $d)))
+            ->when($filters['plan'] ?? null, fn ($q, $plan) => $q->whereHas('organization', fn ($org) => $plan === 'free'
+                ? $org->where(fn ($o) => $o->where('plan', 'free')->orWhereNull('plan_expires_at')->orWhere('plan_expires_at', '<=', now()))
+                : $org->where('plan', $plan)->where('plan_expires_at', '>', now())))
+            ->when($filters['pending'] ?? null, fn ($q, $pending) => match ($pending) {
+                'plan_order' => $q->whereHas('organization.orders', fn ($o) => $o->where('status', 'pending')),
+                'ad' => $q->whereHas('campaigns', fn ($c) => $c->whereIn('status', ['pending_payment', 'queued'])),
+                'moderation' => $q->whereHas('branches', fn ($b) => $b->where('status', 'pending')),
+            })
             ->latest()
             ->paginate(20);
 
+        // Байгууллага бүрийн хүлээгдэж буй захиалгын тоо — нэг query
+        $pendingOrders = Order::where('status', 'pending')
+            ->whereIn('organization_id', $businesses->getCollection()->pluck('organization_id')->unique())
+            ->selectRaw('organization_id, count(*) as cnt')
+            ->groupBy('organization_id')
+            ->pluck('cnt', 'organization_id');
+
+        $rows = $businesses->getCollection()->map(function (Business $b) use ($pendingOrders) {
+            $org = $b->organization;
+            $plan = $org?->effectivePlan() ?? 'free';
+
+            return [
+                'id' => $b->id,
+                'name' => $b->name,
+                'slug' => $b->slug,
+                'is_verified' => $b->is_verified,
+                'category' => $b->category?->name,
+                'organization' => $org?->name,
+                'plan' => $plan,
+                'plan_name' => config("billing.plans.{$plan}.name"),
+                'plan_expires_at' => $plan !== 'free' ? $org?->plan_expires_at : null,
+                'branches_count' => $b->branches->count(),
+                'pending_branches_count' => $b->branches->where('status', 'pending')->count(),
+                'pending_ads_count' => $b->pending_ads_count,
+                'pending_orders_count' => (int) ($pendingOrders[$b->organization_id] ?? 0),
+                'locations' => $b->branches
+                    ->map(fn ($br) => implode(' · ', array_filter([$br->city, $br->district])))
+                    ->filter()->unique()->values(),
+                'created_at' => $b->created_at,
+            ];
+        });
+
         return response()->json([
-            'data' => \App\Http\Resources\BusinessResource::collection($businesses->getCollection()),
+            'data' => $rows,
             'meta' => ['total' => $businesses->total(), 'current_page' => $businesses->currentPage(), 'last_page' => $businesses->lastPage()],
         ]);
     }

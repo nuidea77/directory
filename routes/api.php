@@ -38,6 +38,7 @@ Route::prefix('v1')->group(function () {
     // ---- Нийтийн лавлах ---------------------------------------------------
     Route::get('home', [DirectoryController::class, 'home']);
     Route::get('search', [DirectoryController::class, 'search']);
+    Route::get('locations', [DirectoryController::class, 'locations']);
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
     Route::get('businesses/{slug}', [DirectoryController::class, 'business']);

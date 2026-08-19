@@ -131,6 +131,57 @@ class ConsoleTest extends TestCase
         $this->assertCount(2, $conversation->json('data'));
     }
 
+    public function test_admin_businesses_list_filters_by_plan_pending_and_location(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        // Бизнес эрхтэй, Хөвсгөл·Мөрөнд салбартай, сурталчилгаа дараалалд
+        $orgPaid = Organization::factory()->create(['plan' => 'business', 'plan_expires_at' => now()->addYear()]);
+        $paid = Business::factory()->create(['organization_id' => $orgPaid->id, 'name' => 'Хөвсгөл тур']);
+        Branch::factory()->create(['business_id' => $paid->id, 'city' => 'Хөвсгөл', 'district' => 'Мөрөн', 'status' => 'active']);
+        \App\Models\Campaign::factory()->create(['organization_id' => $orgPaid->id, 'business_id' => $paid->id, 'status' => 'queued']);
+
+        // Үнэгүй эрхтэй, УБ·Баянзүрхэд модерац хүлээж буй салбартай, эрхийн төлбөр хүлээж буй
+        $orgFree = Organization::factory()->create(['plan' => 'free']);
+        $free = Business::factory()->create(['organization_id' => $orgFree->id, 'name' => 'УБ дэлгүүр']);
+        Branch::factory()->create(['business_id' => $free->id, 'city' => 'Улаанбаатар', 'district' => 'Баянзүрх', 'status' => 'pending']);
+        \App\Models\Order::factory()->create(['organization_id' => $orgFree->id, 'status' => 'pending']);
+
+        $get = fn (string $query) => $this->actingAs($admin)->getJson('/api/v1/admin/businesses?'.$query)->assertOk();
+
+        // Эрхийн төрлөөр
+        $get('plan=business')->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Хөвсгөл тур')->assertJsonPath('data.0.plan', 'business');
+        $get('plan=free')->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'УБ дэлгүүр');
+
+        // Хүлээгдэж буй: сурталчилгаа / эрхийн төлбөр / модерац
+        $get('pending=ad')->assertJsonCount(1, 'data')->assertJsonPath('data.0.pending_ads_count', 1);
+        $get('pending=plan_order')->assertJsonCount(1, 'data')->assertJsonPath('data.0.pending_orders_count', 1);
+        $get('pending=moderation')->assertJsonCount(1, 'data')->assertJsonPath('data.0.pending_branches_count', 1);
+
+        // Байршлаар: аймаг + сум / нийслэл
+        $get('city='.urlencode('Хөвсгөл').'&district='.urlencode('Мөрөн'))
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.locations.0', 'Хөвсгөл · Мөрөн');
+        $get('city='.urlencode('Улаанбаатар'))->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'УБ дэлгүүр');
+
+        // Ангиллаар
+        $get('category_id='.$paid->category_id)->assertJsonPath('data.0.name', 'Хөвсгөл тур');
+    }
+
+    public function test_locations_endpoint_lists_cities_and_districts(): void
+    {
+        $this->getJson('/api/v1/locations')
+            ->assertOk()
+            ->assertJsonPath('data.0.city', 'Улаанбаатар')
+            ->assertJsonCount(22, 'data');
+
+        $districts = collect($this->getJson('/api/v1/locations')->json('data'))
+            ->firstWhere('city', 'Улаанбаатар')['districts'];
+
+        $this->assertContains('Баянзүрх', $districts);
+        $this->assertCount(9, $districts);
+    }
+
     public function test_admin_moderation_flow(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

@@ -2,6 +2,7 @@
 // Админ layout (4a/9b): хар sidebar
 const nav = [
     { name: 'Модерац', route: 'admin' },
+    { name: 'Бизнесүүд', route: 'admin-businesses' },
     { name: 'Эрх, орлого', route: 'admin-revenue' },
 ];
 </script>
