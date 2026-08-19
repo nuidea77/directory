@@ -15,7 +15,7 @@ Laravel + Vue 3 + Tailwind CSS + MySQL.
 **Бизнес эзэн («Бизнес зөвлөл»)**
 - Байгууллага → бизнес → салбар бүтэц: нэр/лого/ангилал байгууллагад, хаяг/утас/цаг/зураг/сэтгэгдэл салбарт
 - 3 шаттай бүртгэл: мэдээлэл → салбарууд (цагийн хуваарийн editor) → verify.mn баталгаажуулалт
-- Дашбоард: салбаруудын KPI, статистик (хандалт/залгалт график, «хэрхэн олсон»), зурвасын inbox, сэтгэгдэлд хариулах, нэхэмжлэх, тохиргоо
+- Дашбоард: салбаруудын KPI, статистик (хандалт/залгалт график, «хэрхэн олсон»), сэтгэгдэлд хариулах, нэхэмжлэх, тохиргоо
 - Салбар засах editor: бүрэн байдлын checklist, зураг (эрхийн хязгаартай), хаяг өөрчлөлт → редакцын хяналт
 
 **Эрхийн бичиг ба сурталчилгаа**
@@ -103,8 +103,8 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 |---|---|
 | Auth | `POST auth/register`, `auth/login`, `auth/login-sms`, `auth/reset`, `auth/reset/confirm`, `GET auth/verifications/{uuid}`, `POST auth/verify/start`, `auth/logout`, `GET/PUT me`, `PUT me/password` |
 | Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, verified, amenity, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `pricing`, `POST branches/{id}/event` |
-| Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections`, `GET my/messages`, `GET/POST businesses/{id}/messages`, `GET locations` |
-| Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply`, зурвасын inbox |
+| Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections`, `GET locations` |
+| Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply` |
 | Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
 | Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve|reject`, `GET admin/revenue`, `admin/businesses` (plan/pending/байршлын шүүлтүүр), `admin/reviews` + `moderate`, `admin/corrections` + `moderate` |
 

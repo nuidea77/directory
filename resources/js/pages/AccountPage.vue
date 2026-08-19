@@ -5,46 +5,14 @@ import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
 
-// Хэрэглэгчийн дашбоард (4c): хадгалсан, миний сэтгэгдэл, зурвас, тохиргоо
+// Хэрэглэгчийн дашбоард (4c): хадгалсан, миний сэтгэгдэл, тохиргоо
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
 // Таб URL-д хадгалагдана (refresh/back-д алдагдахгүй)
-const tab = ref(['saved', 'reviews', 'messages', 'settings'].includes(route.query.tab) ? route.query.tab : 'saved');
+const tab = ref(['saved', 'reviews', 'settings'].includes(route.query.tab) ? route.query.tab : 'saved');
 watch(tab, (t) => router.replace({ query: { ...route.query, tab: t === 'saved' ? undefined : t } }));
-
-// Нээлттэй харилцан яриа
-const openBusiness = ref(null);
-const conversation = ref([]);
-const replyText = ref('');
-const sending = ref(false);
-
-async function openThread(t) {
-    openBusiness.value = t.business;
-    conversation.value = [];
-    try {
-        const data = await api.get(`/businesses/${t.business.id}/messages`);
-        conversation.value = data.data;
-        t.unread = 0;
-    } catch {
-        openBusiness.value = null;
-    }
-}
-
-async function sendReply() {
-    if (!replyText.value.trim()) return;
-    sending.value = true;
-    try {
-        await api.post(`/businesses/${openBusiness.value.id}/messages`, { body: replyText.value });
-        conversation.value.push({ id: Date.now(), sender: 'user', body: replyText.value, created_at: new Date().toISOString() });
-        replyText.value = '';
-    } catch {
-        alert('Илгээхэд алдаа гарлаа.');
-    } finally {
-        sending.value = false;
-    }
-}
 
 async function removeFavorite(b) {
     try {
@@ -66,7 +34,6 @@ async function deleteReview(r) {
 }
 const favorites = ref([]);
 const reviews = ref([]);
-const threads = ref([]);
 const loading = ref(true);
 
 const profileForm = ref({ name: auth.user?.name || '', email: auth.user?.email || '' });
@@ -77,7 +44,6 @@ const msg = ref({ type: '', text: '' });
 const nav = [
     ['saved', 'Хадгалсан'],
     ['reviews', 'Миний сэтгэгдэл'],
-    ['messages', 'Зурвас'],
     ['settings', 'Тохиргоо'],
 ];
 
@@ -96,10 +62,6 @@ async function fetchAll() {
         favorites.value = f.data;
         reviews.value = r.data;
 
-        if (auth.user?.phone_verified) {
-            const m = await api.get('/my/messages');
-            threads.value = m.data;
-        }
     } finally {
         loading.value = false;
     }
@@ -154,7 +116,7 @@ onMounted(fetchAll);
 
                 <div v-if="!auth.user?.phone_verified" class="mt-3 rounded-[9px] border border-amberline bg-ambertint p-3">
                     <div class="text-[12px] font-bold text-ink">Дугаар баталгаажаагүй</div>
-                    <div class="mt-1 text-[11.5px] leading-normal text-ambertext">Сэтгэгдэл, зурвас бичихэд шаардлагатай.</div>
+                    <div class="mt-1 text-[11.5px] leading-normal text-ambertext">Сэтгэгдэл бичих, бизнес нэмэхэд шаардлагатай.</div>
                     <router-link :to="{ name: 'verify' }" class="mt-2 block rounded-[7px] bg-brand py-1.5 text-center text-[11.5px] font-bold text-white">Баталгаажуулах</router-link>
                 </div>
 
@@ -168,7 +130,7 @@ onMounted(fetchAll);
                     >
                         <span class="h-4 w-4 rounded-[5px]" :class="tab === key ? 'bg-brand' : 'bg-searchline'"></span>
                         {{ label }}
-                        <span class="ml-auto font-mono text-[11px] font-medium text-mute">{{ key === 'saved' ? favorites.length || '' : key === 'reviews' ? reviews.length || '' : key === 'messages' ? threads.length || '' : '' }}</span>
+                        <span class="ml-auto font-mono text-[11px] font-medium text-mute">{{ key === 'saved' ? favorites.length || '' : key === 'reviews' ? reviews.length || '' : '' }}</span>
                     </button>
                 </nav>
 
@@ -234,45 +196,6 @@ onMounted(fetchAll);
                         </div>
                     </div>
                     <div v-else class="card mt-5 max-w-2xl p-14 text-center text-[13px] text-mute">Сэтгэгдэл бичээгүй байна</div>
-                </template>
-
-                <!-- Зурвас -->
-                <template v-else-if="tab === 'messages'">
-                    <div v-if="!auth.user?.phone_verified" class="card mt-5 max-w-2xl p-10 text-center">
-                        <p class="text-[14px] font-bold text-ink">Зурвас бичихэд дугаараа баталгаажуулна</p>
-                        <router-link :to="{ name: 'verify' }" class="btn-primary mt-4">Баталгаажуулах</router-link>
-                    </div>
-
-                    <!-- Харилцан яриа нээлттэй -->
-                    <div v-else-if="openBusiness" class="card mt-5 max-w-2xl overflow-hidden">
-                        <div class="flex items-center gap-3 border-b border-divider px-4 py-3">
-                            <button class="cursor-pointer text-lg text-mute" @click="openBusiness = null">←</button>
-                            <span class="text-[13.5px] font-bold text-ink">{{ openBusiness.name }}</span>
-                            <router-link :to="{ name: 'business', params: { slug: openBusiness.slug } }" class="ml-auto text-[11.5px] font-semibold text-brand">Хуудас үзэх →</router-link>
-                        </div>
-                        <div class="flex max-h-[420px] flex-col gap-2 overflow-y-auto bg-panel p-4">
-                            <div v-for="m in conversation" :key="m.id" class="max-w-[78%] rounded-[11px] px-3 py-2 text-[12.5px] leading-relaxed" :class="m.sender === 'user' ? 'self-end bg-brand text-white' : 'self-start border border-line bg-white text-body'">
-                                {{ m.body }}
-                            </div>
-                            <div v-if="!conversation.length" class="py-8 text-center text-[12px] text-mute">Яриа эхлээгүй байна</div>
-                        </div>
-                        <form class="flex gap-2 border-t border-divider p-3" @submit.prevent="sendReply">
-                            <input v-model="replyText" type="text" placeholder="Зурвас бичих…" class="input !py-2.5" maxlength="2000" />
-                            <button type="submit" class="btn-primary !px-4 !py-2.5 !text-[12.5px]" :disabled="sending">Илгээх</button>
-                        </form>
-                    </div>
-
-                    <div v-else-if="threads.length" class="card mt-5 max-w-2xl overflow-hidden">
-                        <button v-for="t in threads" :key="t.business.id" class="flex w-full cursor-pointer items-center gap-3 border-b border-hairline px-4 py-3.5 text-left last:border-0 hover:bg-panel" @click="openThread(t)">
-                            <span class="flex h-9 w-9 items-center justify-center rounded-[9px] bg-ink text-[14px] font-extrabold text-white">{{ t.business.name?.charAt(0) }}</span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-[13px] font-bold text-ink">{{ t.business.name }}</span>
-                                <span class="mt-0.5 block truncate text-[12px] text-mute">{{ t.last_message }}</span>
-                            </span>
-                            <span v-if="t.unread" class="rounded-full bg-amberbadge px-2 py-0.5 font-mono text-[10.5px] font-bold text-amber">{{ t.unread }}</span>
-                        </button>
-                    </div>
-                    <div v-else class="card mt-5 max-w-2xl p-14 text-center text-[13px] text-mute">Зурвас алга</div>
                 </template>
 
                 <!-- Тохиргоо -->

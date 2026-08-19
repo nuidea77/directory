@@ -22,11 +22,6 @@ const reviewError = ref('');
 const reviewBusy = ref(false);
 const favoriteBusy = ref(false);
 
-const messageOpen = ref(false);
-const messageBody = ref('');
-const messageSent = ref(false);
-const messageError = ref('');
-
 const correctionOpen = ref(false);
 const correctionText = ref('');
 const correctionMsg = ref('');
@@ -144,21 +139,6 @@ async function submitReview() {
     }
 }
 
-async function sendMessage() {
-    if (!auth.isLoggedIn) return router.push({ name: 'login', query: { redirect: route.fullPath } });
-    messageError.value = '';
-    try {
-        await api.post(`/businesses/${business.value.id}/messages`, { body: messageBody.value });
-        messageBody.value = '';
-        messageSent.value = true;
-    } catch (e) {
-        if (e instanceof ApiError && e.data?.code === 'phone_unverified') {
-            router.push({ name: 'verify' });
-            return;
-        }
-        messageError.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
-    }
-}
 
 function stars(n) {
     return '★ ' + Number(n).toFixed(1);
@@ -230,7 +210,6 @@ onMounted(fetchBusiness);
                             <button class="btn-outline !px-3.5 !py-2.5" :class="{ '!border-redline !bg-redtint !text-red': business.is_favorited }" :disabled="favoriteBusy" @click="toggleFavorite">
                                 {{ business.is_favorited ? '♥ Хадгалсан' : 'Хадгалах' }}
                             </button>
-                            <button class="btn-outline !px-3.5 !py-2.5" @click="messageOpen = !messageOpen">Зурвас</button>
                         </div>
                     </div>
 
@@ -354,19 +333,6 @@ onMounted(fetchBusiness);
                         <a :href="`tel:${branch?.phone}`" class="block rounded-[9px] bg-brand py-3 text-center text-[13.5px] font-bold text-white hover:bg-brand-dark" @click="track('call')">
                             Залгах · {{ branch?.phone }}
                         </a>
-                        <button class="mt-2.5 w-full cursor-pointer rounded-[9px] border border-inputline bg-white py-3 text-[13.5px] font-bold text-ink hover:bg-panel" @click="messageOpen = true">Зурвас бичих</button>
-
-                        <div v-if="messageOpen" class="mt-3 rounded-[10px] border border-blueline bg-bluecard p-3">
-                            <div v-if="messageSent" class="text-[12.5px] font-semibold text-green">
-                                Зурвас илгээгдлээ. Хариуг <router-link :to="{ name: 'account', query: { tab: 'messages' } }" class="underline">Миний булангаас</router-link> харна.
-                                <button class="mt-1.5 block cursor-pointer font-semibold text-brand" @click="messageSent = false">Дахин бичих</button>
-                            </div>
-                            <template v-else>
-                                <textarea v-model="messageBody" rows="3" placeholder="Асуултаа бичнэ үү..." class="input resize-none !bg-white"></textarea>
-                                <p v-if="messageError" class="mt-1.5 text-[12px] text-red">{{ messageError }}</p>
-                                <button class="btn-primary mt-2 w-full !py-2" :disabled="!messageBody.trim()" @click="sendMessage">Илгээх</button>
-                            </template>
-                        </div>
 
                         <div class="my-[18px] h-px bg-divider"></div>
                         <div class="flex flex-col gap-3.5 text-[13.5px]">

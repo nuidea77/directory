@@ -46,7 +46,7 @@ onMounted(() => {
         <div class="card mx-auto max-w-[460px] bg-white p-8">
             <h1 class="text-[25px] font-extrabold leading-tight tracking-[-.025em] text-ink">Дугаараа баталгаажуулна уу</h1>
             <p class="mt-2 text-[13px] leading-[1.65] text-soft">
-                Сэтгэгдэл бичих, зурвас илгээх, бизнес нэмэхэд утасны дугаар баталгаажсан байх шаардлагатай.
+                Сэтгэгдэл бичих, бизнес нэмэхэд утасны дугаар баталгаажсан байх шаардлагатай.
             </p>
             <p v-if="error" class="mt-3 rounded-lg bg-redtint px-3 py-2 text-[12.5px] font-medium text-red">{{ error }}</p>
             <div v-if="verification" class="mt-4">

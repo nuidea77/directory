@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { api } from '../api';
 
 /**
@@ -16,8 +16,16 @@ const emit = defineEmits(['verified', 'expired']);
 const secondsLeft = ref(0);
 let pollTimer = null;
 let countdownTimer = null;
+let deadline = null;
 
-const expiresAt = computed(() => (props.verification.expires_at ? new Date(props.verification.expires_at) : null));
+// Серверийн өгсөн үлдсэн секундээс deadline тооцно — хэрэглэгчийн
+// компьютерийн цаг зөрүүтэй байсан ч countdown зөв явна
+function computeDeadline() {
+    if (props.verification.expires_in !== null && props.verification.expires_in !== undefined) {
+        return Date.now() + props.verification.expires_in * 1000;
+    }
+    return props.verification.expires_at ? new Date(props.verification.expires_at).getTime() : null;
+}
 
 // smsUri: "sms:144773?body=482916" → дугаар ба текст задлах
 const smsParts = computed(() => {
@@ -27,8 +35,14 @@ const smsParts = computed(() => {
 });
 
 function updateCountdown() {
-    if (!expiresAt.value) return;
-    secondsLeft.value = Math.max(0, Math.floor((expiresAt.value - Date.now()) / 1000));
+    if (deadline === null) return;
+    secondsLeft.value = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+
+    // 00:00 болмогц серверээс төлөв асууж, дуусвал expired event өгнө
+    if (secondsLeft.value === 0) {
+        clearInterval(countdownTimer);
+        poll();
+    }
 }
 
 const countdown = computed(() => {
@@ -63,12 +77,19 @@ function copyText() {
     if (smsParts.value) navigator.clipboard?.writeText(smsParts.value.text);
 }
 
-onMounted(() => {
+function startTimers() {
+    stop();
+    deadline = computeDeadline();
     updateCountdown();
     countdownTimer = setInterval(updateCountdown, 1000);
     pollTimer = setInterval(poll, 3000); // verify.mn доод хязгаар 3с
     poll();
-});
+}
+
+// «Шинэ код авах» гэх мэтээр шинэ verification ирэхэд таймерууд шинээр эхэлнэ
+watch(() => props.verification.uuid, startTimers);
+
+onMounted(startTimers);
 
 onBeforeUnmount(stop);
 </script>

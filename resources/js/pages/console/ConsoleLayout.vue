@@ -18,7 +18,6 @@ watch(
 const nav = [
     { name: 'Салбарууд', route: 'console' },
     { name: 'Статистик', route: 'console-stats' },
-    { name: 'Зурвас', route: 'console-messages' },
     { name: 'Сэтгэгдэл', route: 'console-reviews' },
     { name: 'Эрх ба сурталчилгаа', route: 'console-plan' },
     { name: 'Нэхэмжлэх', route: 'console-invoices' },

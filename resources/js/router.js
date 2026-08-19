@@ -36,7 +36,6 @@ const routes = [
         children: [
             { path: '', name: 'console', component: () => import('./pages/console/BranchesTab.vue') },
             { path: 'stats', name: 'console-stats', component: () => import('./pages/console/StatsTab.vue') },
-            { path: 'messages', name: 'console-messages', component: () => import('./pages/console/MessagesTab.vue') },
             { path: 'reviews', name: 'console-reviews', component: () => import('./pages/console/ReviewsTab.vue') },
             { path: 'plan', name: 'console-plan', component: () => import('./pages/console/PlanTab.vue') },
             { path: 'invoices', name: 'console-invoices', component: () => import('./pages/console/InvoicesTab.vue') },

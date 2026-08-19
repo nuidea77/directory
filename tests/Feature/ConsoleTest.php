@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Category;
-use App\Models\Message;
 use App\Models\Organization;
 use App\Models\Review;
 use App\Models\User;
@@ -104,31 +103,6 @@ class ConsoleTest extends TestCase
         $this->actingAs($owner)->postJson("/api/v1/console/reviews/{$review->id}/reply", ['reply' => 'Баярлалаа!'])
             ->assertOk()
             ->assertJsonPath('data.reply', 'Баярлалаа!');
-    }
-
-    public function test_message_thread_flow(): void
-    {
-        $branch = Branch::factory()->create();
-        $business = $branch->business;
-        $owner = $business->organization->owner;
-        $customer = User::factory()->create();
-
-        // Хэрэглэгч зурвас илгээнэ
-        $this->actingAs($customer)->postJson("/api/v1/businesses/{$business->id}/messages", ['body' => 'Сайн байна уу?'])
-            ->assertCreated();
-
-        // Эзэн inbox-доо харна, хариулна
-        $threads = $this->actingAs($owner)->getJson("/api/v1/console/businesses/{$business->id}/messages");
-        $threads->assertOk();
-        $this->assertCount(1, $threads->json('data'));
-        $this->assertSame(1, $threads->json('data.0.unread'));
-
-        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$customer->id}", ['body' => 'Сайн байна уу! Тавтай морил.'])
-            ->assertCreated();
-
-        // Хэрэглэгч харилцан яриагаа харна
-        $conversation = $this->actingAs($customer)->getJson("/api/v1/businesses/{$business->id}/messages");
-        $this->assertCount(2, $conversation->json('data'));
     }
 
     public function test_admin_businesses_list_filters_by_plan_pending_and_location(): void
@@ -233,7 +207,7 @@ class ConsoleTest extends TestCase
         $this->assertSame('active', $branch->refresh()->status);
     }
 
-    public function test_notifications_sent_for_moderation_review_and_message(): void
+    public function test_notifications_sent_for_moderation_and_review(): void
     {
         \Illuminate\Support\Facades\Notification::fake();
 
@@ -254,17 +228,6 @@ class ConsoleTest extends TestCase
         $this->actingAs($visitor)->postJson("/api/v1/branches/{$branch->id}/reviews", ['rating' => 5])->assertCreated();
         \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\NewReview::class);
 
-        // Зурвас: хэрэглэгч → эзэн, эзэн → хэрэглэгч
-        $business = $branch->business;
-        $this->actingAs($visitor)->postJson("/api/v1/businesses/{$business->id}/messages", ['body' => 'Сайн уу'])->assertCreated();
-        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\NewMessage::class);
-
-        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$visitor->id}", ['body' => 'Тавтай морил'])->assertCreated();
-        \Illuminate\Support\Facades\Notification::assertSentTo($visitor, \App\Notifications\NewMessage::class);
-
-        // Огт бичээгүй хэрэглэгч рүү хариулж болохгүй
-        $stranger = User::factory()->create();
-        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$stranger->id}", ['body' => 'x'])->assertNotFound();
     }
 
     public function test_rejection_reason_saved_and_visible_to_owner(): void

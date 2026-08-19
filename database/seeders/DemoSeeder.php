@@ -6,7 +6,6 @@ use App\Models\Branch;
 use App\Models\BranchStat;
 use App\Models\Campaign;
 use App\Models\Category;
-use App\Models\Message;
 use App\Models\Organization;
 use App\Models\Review;
 use App\Models\User;
@@ -232,20 +231,6 @@ class DemoSeeder extends Seeder
             ],
         );
 
-        // Демо зурвасууд
-        $bzd = Branch::where('slug', 'hangai-auto-bayanzurh')->first() ?? $hangai->branches()->first();
-
-        foreach ([
-            ['user' => $reviewers[3], 'body' => 'Маргааш 10 цагт хөдөлгүүрийн диагностик хийх боломжтой уу? Toyota Prius 30.'],
-            ['user' => $reviewers[4], 'body' => 'Гэрээт даатгалын жагсаалтад Практикал даатгал байгаа юу?'],
-        ] as $m) {
-            Message::firstOrCreate([
-                'business_id' => $hangai->id,
-                'user_id' => $m['user']->id,
-                'sender' => 'user',
-                'body' => $m['body'],
-            ]);
-        }
     }
 
     protected function seedReviews(Branch $branch, $reviewers, int $count): void

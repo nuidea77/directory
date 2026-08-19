@@ -6,13 +6,11 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
 use App\Http\Controllers\Api\V1\CorrectionController;
 use App\Http\Controllers\Api\V1\Console\BranchController;
-use App\Http\Controllers\Api\V1\Console\ConsoleMessageController;
 use App\Http\Controllers\Api\V1\Console\ConsoleReviewController;
 use App\Http\Controllers\Api\V1\Console\OrganizationController;
 use App\Http\Controllers\Api\V1\Console\StatsController;
 use App\Http\Controllers\Api\V1\DirectoryController;
 use App\Http\Controllers\Api\V1\FavoriteController;
-use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\PricingController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use Illuminate\Support\Facades\Route;
@@ -70,11 +68,6 @@ Route::prefix('v1')->group(function () {
             Route::post('reviews/{review}/helpful', [ReviewController::class, 'helpful'])->middleware('throttle:writes');
             Route::post('branches/{branch}/corrections', [CorrectionController::class, 'store'])->middleware('throttle:writes');
 
-            // Зурвас (хэрэглэгч тал)
-            Route::get('my/messages', [MessageController::class, 'threads']);
-            Route::get('businesses/{business}/messages', [MessageController::class, 'show']);
-            Route::post('businesses/{business}/messages', [MessageController::class, 'store'])->middleware('throttle:writes');
-
             // ---- Бизнес зөвлөл ------------------------------------------
             Route::get('console/organizations', [OrganizationController::class, 'index']);
             Route::post('console/organizations', [OrganizationController::class, 'store']);
@@ -93,10 +86,6 @@ Route::prefix('v1')->group(function () {
             Route::get('console/organizations/{organization}/stats', [StatsController::class, 'show']);
             Route::get('console/organizations/{organization}/reviews', [ConsoleReviewController::class, 'index']);
             Route::post('console/reviews/{review}/reply', [ConsoleReviewController::class, 'reply']);
-
-            Route::get('console/businesses/{business}/messages', [ConsoleMessageController::class, 'threads']);
-            Route::get('console/businesses/{business}/messages/{user}', [ConsoleMessageController::class, 'show']);
-            Route::post('console/businesses/{business}/messages/{user}', [ConsoleMessageController::class, 'reply']);
 
             // ---- Төлбөр, сурталчилгаа --------------------------------------
             Route::get('orders', [CheckoutController::class, 'index']);

@@ -18,21 +18,6 @@ return new class extends Migration
             $table->unique(['user_id', 'business_id']);
         });
 
-        // Хэрэглэгч ↔ бизнесийн зурвас (нэг бизнес+хэрэглэгч = нэг thread)
-        Schema::create('messages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('business_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('sender', 10); // user | business
-            $table->text('body');
-            $table->timestamp('read_at')->nullable();
-            $table->timestamps();
-
-            $table->index(['business_id', 'user_id']);
-            $table->index(['user_id', 'created_at']);
-            $table->index(['business_id', 'created_at']);
-        });
-
         // Хэрэглэгчийн залруулга ("Орох хаалга барилгын хажуу талд" гэх мэт)
         Schema::create('corrections', function (Blueprint $table) {
             $table->id();
@@ -48,7 +33,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('corrections');
-        Schema::dropIfExists('messages');
         Schema::dropIfExists('favorites');
     }
 };
