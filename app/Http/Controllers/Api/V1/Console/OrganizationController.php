@@ -65,6 +65,8 @@ class OrganizationController extends Controller
             'facebook' => $data['facebook'] ?? null,
             'instagram' => $data['instagram'] ?? null,
             'price_level' => $data['price_level'] ?? null,
+            // Бизнес эрх идэвхтэй байгууллагын шинэ бизнес шууд ✓ тэмдэгтэй
+            'is_verified' => ! empty($organization->planConfig()['verified_badge']),
         ]);
 
         if ($request->hasFile('logo')) {

@@ -307,6 +307,49 @@ class BillingTest extends TestCase
         $this->actingAs($this->owner)->deleteJson("/api/v1/orders/{$paid->id}")->assertStatus(422);
     }
 
+    public function test_stale_pending_orders_expire_via_command(): void
+    {
+        $order = Order::factory()->create([
+            'user_id' => $this->owner->id,
+            'organization_id' => $this->organization->id,
+            'status' => 'pending',
+            'created_at' => now()->subDays(2),
+        ]);
+        $fresh = Order::factory()->create([
+            'user_id' => $this->owner->id,
+            'organization_id' => $this->organization->id,
+            'status' => 'pending',
+        ]);
+        Campaign::factory()->create([
+            'organization_id' => $this->organization->id,
+            'business_id' => $this->business->id,
+            'order_id' => $order->id,
+            'status' => 'pending_payment',
+        ]);
+
+        $this->artisan('orders:expire')->assertSuccessful();
+
+        $this->assertSame('expired', $order->refresh()->status);
+        $this->assertSame('pending', $fresh->refresh()->status);
+        $this->assertSame('canceled', Campaign::first()->status);
+    }
+
+    public function test_expired_plan_loses_verified_badge(): void
+    {
+        $this->organization->update(['plan' => 'business', 'plan_expires_at' => now()->subDay()]);
+        $this->business->update(['is_verified' => true]);
+
+        $this->artisan('plans:sync')->assertSuccessful();
+
+        $this->assertFalse($this->business->refresh()->is_verified);
+
+        // Идэвхтэй эрхтэй байгууллагад нөлөөлөхгүй
+        $this->organization->update(['plan_expires_at' => now()->addYear()]);
+        $this->business->update(['is_verified' => true]);
+        $this->artisan('plans:sync')->assertSuccessful();
+        $this->assertTrue($this->business->refresh()->is_verified);
+    }
+
     public function test_only_owner_can_checkout_for_organization(): void
     {
         $stranger = User::factory()->create();

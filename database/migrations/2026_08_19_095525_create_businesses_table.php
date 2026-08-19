@@ -47,6 +47,7 @@ return new class extends Migration
             $table->json('hours')->nullable(); // {mon: {from, to, closed}, ...}
             $table->json('amenities')->nullable(); // ["Зогсоол", "Картаар", ...]
             $table->string('status', 20)->default('pending'); // draft | pending | active | hidden | rejected
+            $table->string('rejection_reason', 500)->nullable(); // татгалзсан шалтгаан (эзэнд харагдана)
             $table->unsignedBigInteger('views_count')->default(0);
             $table->unsignedBigInteger('calls_count')->default(0);
             $table->unsignedBigInteger('directions_count')->default(0);

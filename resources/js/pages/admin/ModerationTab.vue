@@ -11,10 +11,20 @@ async function fetchData() {
 }
 
 async function decide(branch, action) {
+    let reason;
+
+    if (action === 'reject') {
+        // Шалтгаан эзэнд харагдана
+        reason = prompt('Татгалзах шалтгаан (эзэнд харагдана):');
+        if (reason === null) return;
+    }
+
     busyId.value = branch.id;
     try {
-        await api.post(`/admin/branches/${branch.id}/${action}`);
+        await api.post(`/admin/branches/${branch.id}/${action}`, reason ? { reason } : undefined);
         await fetchData();
+    } catch {
+        alert('Алдаа гарлаа, дахин оролдоно уу.');
     } finally {
         busyId.value = null;
     }

@@ -124,6 +124,10 @@ onMounted(fetchBranch);
 
                 <p v-if="msg.text" class="mt-3.5 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
+                <p v-if="branch.status === 'rejected' && branch.rejection_reason" class="mt-3.5 rounded-lg bg-redtint px-4 py-2.5 text-[13px] font-medium text-red">
+                    Татгалзсан шалтгаан: {{ branch.rejection_reason }} — засаад дахин хяналтад илгээнэ үү.
+                </p>
+
                 <!-- Хаяг ба байршил -->
                 <div class="card mt-4 p-5">
                     <div class="text-[15px] font-bold text-ink">Хаяг ба байршил</div>

@@ -223,9 +223,9 @@ class BillingService
         return $order->refresh();
     }
 
-    public function voidOrder(Order $order, array $payload = []): void
+    public function voidOrder(Order $order, array $payload = [], string $status = 'void'): void
     {
-        $order->update(['status' => 'void', 'provider_payload' => $payload ?: $order->provider_payload]);
+        $order->update(['status' => $status, 'provider_payload' => $payload ?: $order->provider_payload]);
         $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
     }
 

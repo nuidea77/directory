@@ -197,4 +197,27 @@ class ConsoleTest extends TestCase
         $this->actingAs($admin)->postJson("/api/v1/admin/branches/{$branch->id}/approve")->assertOk();
         $this->assertSame('active', $branch->refresh()->status);
     }
+
+    public function test_rejection_reason_saved_and_visible_to_owner(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $branch = Branch::factory()->pending()->create();
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/branches/{$branch->id}/reject", [
+            'reason' => 'Хаяг тодорхойгүй байна',
+        ])->assertOk();
+
+        $this->assertSame('rejected', $branch->refresh()->status);
+        $this->assertSame('Хаяг тодорхойгүй байна', $branch->rejection_reason);
+
+        // Эзэн нь шалтгааныг харна
+        $owner = $branch->business->organization->owner;
+        $this->actingAs($owner)->getJson("/api/v1/console/branches/{$branch->id}")
+            ->assertOk()
+            ->assertJsonPath('data.rejection_reason', 'Хаяг тодорхойгүй байна');
+
+        // Дахин батлахад шалтгаан арилна
+        $this->actingAs($admin)->postJson("/api/v1/admin/branches/{$branch->id}/approve")->assertOk();
+        $this->assertNull($branch->refresh()->rejection_reason);
+    }
 }

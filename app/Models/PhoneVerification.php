@@ -2,12 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 
 class PhoneVerification extends Model
 {
-    use HasFactory;
+    use HasFactory, Prunable;
+
+    /**
+     * 7 хоногоос хуучин бичлэгүүдийг model:prune устгана (код, callback token агуулдаг).
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', now()->subDays(7));
+    }
 
     protected $fillable = [
         'uuid',

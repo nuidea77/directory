@@ -103,7 +103,6 @@ onMounted(fetchData);
 
                 <div class="mt-4 flex flex-wrap items-center gap-2 text-[12.5px] font-semibold">
                     <router-link :to="{ name: 'pricing' }" class="btn-outline !px-3.5 !py-2.5 !text-[12.5px]">{{ org?.effective_plan === 'free' ? 'Эрх авах' : 'Эрх сунгах' }}</router-link>
-                    <span v-if="org?.plan !== 'free'" class="btn-outline pointer-events-none !px-3.5 !py-2.5 !text-[12.5px]">Автомат сунгалт: {{ org?.auto_renew ? 'ON' : 'OFF' }}</span>
                 </div>
             </div>
 

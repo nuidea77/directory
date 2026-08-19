@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'phone.verified' => \App\Http\Middleware\EnsurePhoneVerified::class,
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Cron: * * * * * php artisan schedule:run (README-д баримтжсан)
+        $schedule->command('campaigns:sync')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('orders:expire')->hourly();
+        $schedule->command('plans:sync')->daily();
+        $schedule->command('model:prune')->daily();
+        $schedule->command('sanctum:prune-expired --hours=24')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

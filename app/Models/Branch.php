@@ -31,6 +31,7 @@ class Branch extends Model
         'hours',
         'amenities',
         'status',
+        'rejection_reason',
     ];
 
     protected function casts(): array

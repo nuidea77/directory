@@ -53,16 +53,16 @@ class AdminController extends Controller
 
     public function approveBranch(Request $request, Branch $branch): JsonResponse
     {
-        $branch->update(['status' => 'active']);
+        $branch->update(['status' => 'active', 'rejection_reason' => null]);
 
         return response()->json(['message' => 'Батлагдлаа.', 'data' => new BranchResource($branch)]);
     }
 
     public function rejectBranch(Request $request, Branch $branch): JsonResponse
     {
-        $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
 
-        $branch->update(['status' => 'rejected']);
+        $branch->update(['status' => 'rejected', 'rejection_reason' => $data['reason'] ?? null]);
 
         return response()->json(['message' => 'Татгалзлаа.', 'data' => new BranchResource($branch)]);
     }

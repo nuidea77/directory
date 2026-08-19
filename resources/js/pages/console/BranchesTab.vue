@@ -55,6 +55,7 @@ const totals = computed(() => ({
                         <span class="rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold" :class="statusLabel[branch.status]?.[1]">{{ statusLabel[branch.status]?.[0] }}</span>
                     </div>
                     <div class="mt-1 truncate text-[11.5px] text-mute">{{ branch.address }}</div>
+                    <div v-if="branch.status === 'rejected' && branch.rejection_reason" class="mt-1 text-[11.5px] font-medium text-red">Шалтгаан: {{ branch.rejection_reason }}</div>
                 </div>
                 <div class="w-20"><div class="text-[10.5px] font-semibold text-mute">ҮЗСЭН</div><div class="mt-1 text-[15px] font-bold text-ink">{{ (branch.views_count || 0).toLocaleString() }}</div></div>
                 <div class="w-20"><div class="text-[10.5px] font-semibold text-mute">ЗАЛГАСАН</div><div class="mt-1 text-[15px] font-bold text-ink">{{ (branch.calls_count || 0).toLocaleString() }}</div></div>
