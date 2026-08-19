@@ -67,6 +67,7 @@ async function fetchCategory() {
         const data = await api.get(`/categories/${route.params.slug}`);
         category.value = data.data;
         catStats.value = data.stats;
+        document.title = `${category.value.name} | Хаана.mn`;
     }
 }
 

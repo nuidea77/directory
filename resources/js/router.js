@@ -68,6 +68,26 @@ export const router = createRouter({
     scrollBehavior: () => ({ top: 0 }),
 });
 
+const routeTitles = {
+    home: 'Хаана.mn — Монголын бизнес лавлах',
+    categories: 'Бүх ангилал | Хаана.mn',
+    search: 'Хайлт | Хаана.mn',
+    nearby: 'Миний ойролцоо | Хаана.mn',
+    pricing: 'Бизнест — үнэ, эрхийн бичиг | Хаана.mn',
+    terms: 'Үйлчилгээний нөхцөл | Хаана.mn',
+    privacy: 'Нууцлалын журам | Хаана.mn',
+    login: 'Нэвтрэх | Хаана.mn',
+    register: 'Бүртгүүлэх | Хаана.mn',
+    account: 'Миний булан | Хаана.mn',
+    console: 'Бизнес зөвлөл | Хаана.mn',
+    admin: 'Админ | Хаана.mn',
+};
+
+router.afterEach((to) => {
+    // Динамик хуудсууд (business/category) title-аа өөрөө тавина
+    if (routeTitles[to.name]) document.title = routeTitles[to.name];
+});
+
 router.beforeEach(async (to) => {
     const auth = useAuthStore();
     await auth.load();

@@ -1,2 +1,12 @@
 User-agent: *
-Disallow:
+Disallow: /console
+Disallow: /admin
+Disallow: /account
+Disallow: /orders
+Disallow: /add-business
+Disallow: /onboarding
+Disallow: /verify
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://khaana.mn/sitemap.xml

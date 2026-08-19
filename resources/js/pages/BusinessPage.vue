@@ -93,6 +93,7 @@ async function fetchBusiness() {
         const data = await api.get(`/businesses/${route.params.slug}`);
         business.value = data.data;
         similar.value = data.similar;
+        document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Хаана.mn`;
         selectedBranchId.value = business.value.branches?.[0]?.id || null;
 
         if (branch.value) {
