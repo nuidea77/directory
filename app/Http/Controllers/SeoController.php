@@ -25,7 +25,10 @@ class SeoController extends Controller
 
     public function spa(): Response
     {
-        return response()->view('app', ['meta' => $this->default + ['canonical' => url('/')]]);
+        // $default дотор canonical => null байдаг ба массивын + үйлдэлд ЗҮҮН
+        // талын түлхүүр давамгайлдаг тул урьд нь canonical хэзээ ч бичигддэггүй
+        // байсан (бүх query хувилбар тусдаа индекслэгдэнэ)
+        return response()->view('app', ['meta' => ['canonical' => url('/')] + $this->default]);
     }
 
     public function business(string $slug): Response

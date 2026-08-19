@@ -66,6 +66,79 @@ class DirectoryTest extends TestCase
         \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
     }
 
+    public function test_overnight_hours_are_reported_open(): void
+    {
+        // 18:00–02:00 гэх мэт шөнө дамжсан цагийг «хаалттай» гэж үздэг байсан
+        $hours = collect(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+            ->mapWithKeys(fn ($d) => [$d => ['from' => '18:00', 'to' => '02:00']])->all();
+
+        $branch = Branch::factory()->create(['hours' => $hours]);
+
+        $this->travelTo(now()->setTime(20, 0));
+        $this->assertTrue($branch->openState()['open'], '20:00 цагт нээлттэй байх ёстой');
+
+        $this->travelTo(now()->setTime(23, 30));
+        $this->assertTrue($branch->openState()['open'], '23:30 цагт нээлттэй байх ёстой');
+
+        $this->travelTo(now()->addDay()->setTime(1, 0));
+        $this->assertTrue($branch->openState()['open'], 'шөнийн 01:00 цагт нээлттэй байх ёстой');
+
+        $this->travelTo(now()->setTime(10, 0));
+        $this->assertFalse($branch->openState()['open'], '10:00 цагт хаалттай байх ёстой');
+
+        $this->travelBack();
+    }
+
+    public function test_rejection_reason_is_not_exposed_publicly(): void
+    {
+        $branch = Branch::factory()->create([
+            'status' => 'active',
+            'rejection_reason' => 'ДОТООД ТЭМДЭГЛЭЛ — хуурамч хаяг',
+        ]);
+
+        $response = $this->getJson('/api/v1/search');
+
+        $response->assertOk();
+        $this->assertStringNotContainsString('ДОТООД ТЭМДЭГЛЭЛ', $response->getContent());
+        $this->assertStringNotContainsString('rejection_reason', $response->getContent());
+
+        // Бизнесийн дэлгэрэнгүйд ч мөн адил
+        $detail = $this->getJson('/api/v1/businesses/'.$branch->business->slug);
+        $this->assertStringNotContainsString('ДОТООД ТЭМДЭГЛЭЛ', $detail->getContent());
+    }
+
+    public function test_non_active_branches_are_not_returned_on_home(): void
+    {
+        $business = Business::factory()->create();
+        Branch::factory()->create(['business_id' => $business->id, 'status' => 'active']);
+        Branch::factory()->create([
+            'business_id' => $business->id,
+            'status' => 'rejected',
+            'name' => 'ТАТГАЛЗСАН САЛБАР',
+        ]);
+
+        $response = $this->getJson('/api/v1/home');
+
+        $response->assertOk();
+        $this->assertStringNotContainsString('ТАТГАЛЗСАН САЛБАР', $response->getContent());
+    }
+
+    public function test_category_stats_include_subcategory_businesses(): void
+    {
+        $parent = Category::factory()->create(['slug' => 'food']);
+        $child = Category::factory()->create(['slug' => 'food-cafe', 'parent_id' => $parent->id]);
+
+        Branch::factory()->create(['business_id' => Business::factory()->create(['category_id' => $parent->id])->id]);
+        Branch::factory()->create(['business_id' => Business::factory()->create(['category_id' => $child->id])->id]);
+
+        // Статистик ба илэрцийн тоо зөрөхгүй байх ёстой
+        $stats = $this->getJson('/api/v1/categories/food')->assertOk()->json('stats.total');
+        $results = $this->getJson('/api/v1/search?category=food')->assertOk()->json('meta.total');
+
+        $this->assertSame(2, $stats);
+        $this->assertSame($results, $stats);
+    }
+
     public function test_featured_campaign_pins_business_to_top(): void
     {
         $category = Category::factory()->create(['slug' => 'auto']);

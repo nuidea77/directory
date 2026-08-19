@@ -104,6 +104,145 @@ class BillingTest extends TestCase
         $this->assertSame('standard', $this->organization->refresh()->plan);
     }
 
+    public function test_one_order_cannot_claim_more_slots_than_exist(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response(['data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/x']]),
+        ]);
+
+        $campaign = [
+            'type' => 'category_featured',
+            'business_id' => $this->business->id,
+            'category_id' => $this->category->id,
+            'district' => 'Баянзүрх',
+            'days' => 30,
+        ];
+
+        // Нэг захиалгад 4 ижил зар — 3 зайнаас хэтэрсэн тул бүхэлдээ татгалзана
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'campaigns' => array_fill(0, 4, $campaign),
+        ])->assertStatus(422)->assertJsonValidationErrors('campaigns');
+
+        $this->assertSame(0, Campaign::count());
+    }
+
+    public function test_pending_payment_campaigns_hold_their_slot(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/checkouts' => Http::sequence()
+                ->push(['data' => ['id' => 701, 'status' => 'open', 'url' => 'https://byl.mn/x']])
+                ->push(['data' => ['id' => 702, 'status' => 'open', 'url' => 'https://byl.mn/x']])
+                ->push(['data' => ['id' => 703, 'status' => 'open', 'url' => 'https://byl.mn/x']])
+                ->push(['data' => ['id' => 704, 'status' => 'open', 'url' => 'https://byl.mn/x']]),
+        ]);
+
+        $campaign = [
+            'type' => 'category_featured',
+            'business_id' => $this->business->id,
+            'category_id' => $this->category->id,
+            'district' => 'Баянзүрх',
+            'days' => 30,
+        ];
+
+        // 3 тусдаа төлөгдөөгүй захиалга зайг барина
+        for ($i = 0; $i < 3; $i++) {
+            $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+                'organization_id' => $this->organization->id,
+                'campaigns' => [$campaign],
+            ])->assertCreated();
+        }
+
+        // 4 дэх нь зай үлдээгүй тул татгалзана
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'campaigns' => [$campaign],
+        ])->assertStatus(422);
+    }
+
+    public function test_polling_rejects_payment_with_wrong_amount(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/checkouts/777' => Http::response(['data' => ['id' => 777, 'status' => 'complete', 'amount_total' => 1, 'url' => 'https://byl.mn/x']]),
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response(['data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/x']]),
+        ]);
+
+        $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'business',
+        ])->json('data');
+
+        // ₮1 төлөөд бүтэн эрх авах ёсгүй
+        $this->actingAs($this->owner)->getJson("/api/v1/orders/{$order['id']}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending');
+
+        $this->assertSame('free', $this->organization->refresh()->plan);
+    }
+
+    public function test_void_order_cannot_overwrite_a_paid_order(): void
+    {
+        $order = Order::create([
+            'number' => Order::generateNumber(),
+            'user_id' => $this->owner->id,
+            'organization_id' => $this->organization->id,
+            'total' => 120000,
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        app(\App\Services\Billing\BillingService::class)->voidOrder($order, status: 'expired');
+
+        $this->assertSame('paid', $order->refresh()->status);
+    }
+
+    public function test_campaign_slots_reuse_freed_middle_slot(): void
+    {
+        $campaigns = new \App\Services\Billing\CampaignService;
+
+        $make = fn (int $slot, string $status = 'active') => Campaign::factory()->create([
+            'organization_id' => $this->organization->id,
+            'business_id' => $this->business->id,
+            'type' => 'category_featured',
+            'category_id' => $this->category->id,
+            'district' => 'Баянзүрх',
+            'city' => null,
+            'keyword' => null,
+            'slot' => $slot,
+            'status' => $status,
+            'starts_at' => now(),
+            'ends_at' => now()->addDays(30),
+        ]);
+
+        $make(1);
+        $make(3);
+
+        $new = $make(0, 'pending_payment');
+        $campaigns->activateOrQueue($new->refresh());
+
+        // Сул үлдсэн 2-р зайг авах ёстой (өмнө нь 3-ыг давхардуулж өгдөг байсан)
+        $this->assertSame(2, $new->refresh()->slot);
+    }
+
+    public function test_downgrading_while_a_higher_plan_is_active_is_rejected(): void
+    {
+        $this->enableByl();
+        $this->organization->update(['plan' => 'business', 'plan_expires_at' => now()->addYears(2)]);
+
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+        ])->assertStatus(422)->assertJsonValidationErrors('plan');
+
+        $this->assertSame('business', $this->organization->refresh()->plan);
+    }
+
     public function test_monthly_plan_purchase_charges_monthly_price_and_extends_one_month(): void
     {
         $this->enableByl();

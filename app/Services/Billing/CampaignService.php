@@ -40,30 +40,33 @@ class CampaignService
                 $slots = (int) config("billing.ads.{$first->type}.slots", 3);
 
                 foreach ($queue as $campaign) {
-                    $occupied = Campaign::occupiedSlots(
+                    $free = Campaign::firstFreeSlot(
                         $campaign->type,
+                        $slots,
                         $campaign->category_id,
                         $campaign->district,
                         $campaign->city,
                         $campaign->keyword,
                     );
 
-                    if ($occupied >= $slots) {
+                    if ($free === null) {
                         break;
                     }
 
-                    $this->activate($campaign, $occupied + 1);
+                    $this->activate($campaign, $free);
                 }
             });
     }
 
     public function activate(Campaign $campaign, ?int $slot = null): void
     {
+        $slots = (int) config("billing.ads.{$campaign->type}.slots", 3);
+
         $campaign->update([
             'status' => 'active',
-            'slot' => $slot ?? ($campaign->slot ?: Campaign::occupiedSlots(
-                $campaign->type, $campaign->category_id, $campaign->district, $campaign->city, $campaign->keyword,
-            ) + 1),
+            'slot' => $slot ?? Campaign::firstFreeSlot(
+                $campaign->type, $slots, $campaign->category_id, $campaign->district, $campaign->city, $campaign->keyword,
+            ) ?? $campaign->slot ?? 1,
             'starts_at' => now(),
             'ends_at' => now()->addDays($campaign->days),
         ]);
@@ -71,51 +74,64 @@ class CampaignService
 
     /**
      * Төлбөр батлагдсаны дараа: зай сул бол шууд идэвхжүүлнэ, дүүрсэн бол дараалалд.
+     * Зэрэг орж ирсэн төлбөрүүд нэг зайг хоёуланг нь эзлэхгүйн тулд түгжээтэй.
      */
     public function activateOrQueue(Campaign $campaign): void
     {
         $slots = (int) config("billing.ads.{$campaign->type}.slots", 3);
-        $occupied = Campaign::occupiedSlots(
-            $campaign->type, $campaign->category_id, $campaign->district, $campaign->city, $campaign->keyword,
-        );
 
-        if ($occupied < $slots) {
-            $this->activate($campaign, $occupied + 1);
-        } else {
-            $campaign->update(['status' => 'queued']);
-        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($campaign, $slots) {
+            // Тухайн орон зайн мөрүүдийг түгжиж байж дугаар хуваарилна
+            Campaign::query()
+                ->inSlotSpace($campaign->type, $campaign->category_id, $campaign->district, $campaign->city, $campaign->keyword)
+                ->holdingSlot()
+                ->lockForUpdate()
+                ->get(['id']);
+
+            $free = Campaign::firstFreeSlot(
+                $campaign->type, $slots, $campaign->category_id, $campaign->district, $campaign->city, $campaign->keyword,
+            );
+
+            if ($free !== null) {
+                $this->activate($campaign, $free);
+            } else {
+                $campaign->update(['status' => 'queued']);
+            }
+        });
     }
 
     /**
-     * Зайн төлөв: [нийт, эзэлсэн, дараалалд].
+     * Зайн төлөв: [нийт, эзэлсэн, дараалалд, төлбөр хүлээж буй].
+     * $ignoreCampaignId — өөрийнхөө мөрийг тоолохгүй (дахин шалгах үед).
      */
     public function slotState(string $type, ?int $categoryId = null, ?string $district = null, ?string $city = null, ?string $keyword = null): array
     {
         $this->sync();
 
         $slots = (int) config("billing.ads.{$type}.slots", 3);
+
         $running = Campaign::query()->running()
-            ->where('type', $type)
-            ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
-            ->when($district, fn ($q) => $q->where('district', $district))
-            ->when($city, fn ($q) => $q->where('city', $city))
-            ->when($keyword, fn ($q) => $q->where('keyword', $keyword))
+            ->inSlotSpace($type, $categoryId, $district, $city, $keyword)
             ->orderBy('slot')
             ->get(['id', 'slot', 'ends_at', 'business_id']);
 
         $queued = Campaign::query()
             ->where('status', 'queued')
-            ->where('type', $type)
-            ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
-            ->when($district, fn ($q) => $q->where('district', $district))
-            ->when($city, fn ($q) => $q->where('city', $city))
-            ->when($keyword, fn ($q) => $q->where('keyword', $keyword))
+            ->inSlotSpace($type, $categoryId, $district, $city, $keyword)
+            ->count();
+
+        // Төлбөр хүлээж буй нь зайг түр барина — эс бөгөөс нэг зайг олон
+        // хүнд зэрэг зарж, дараа нь бүгд дараалалд гацдаг
+        $pending = Campaign::query()
+            ->where('status', 'pending_payment')
+            ->inSlotSpace($type, $categoryId, $district, $city, $keyword)
             ->count();
 
         return [
             'total' => $slots,
             'occupied' => $running->count(),
             'queued' => $queued,
+            'pending' => $pending,
             'running' => $running,
         ];
     }

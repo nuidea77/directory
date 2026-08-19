@@ -58,19 +58,28 @@ class DirectoryController extends Controller
             ->orderBy('slot')
             ->pluck('business_id');
 
-        $featured = Business::with(['category', 'branches.images'])
+        // Нийтэд зөвхөн ИДЭВХТЭЙ салбарыг үзүүлнэ (хүлээгдэж буй/татгалзсан
+        // салбар нийтийн хариултад орж байсан)
+        $publicBranches = ['category', 'branches' => fn ($q) => $q->where('status', 'active'), 'branches.images'];
+
+        $featured = Business::with($publicBranches)
             ->whereIn('id', $featuredIds)
+            ->whereHas('branches', fn ($q) => $q->where('status', 'active'))
             ->get()
             ->sortBy(fn ($b) => $featuredIds->search($b->id))
             ->values();
 
         if ($featured->count() < 6) {
-            $fill = Business::with(['category', 'branches.images'])
+            // Бүх бизнесийг PHP рүү татахгүй — эрэмбийг SQL дээр хийнэ
+            $fill = Business::with($publicBranches)
                 ->whereNotIn('id', $featuredIds)
                 ->whereHas('branches', fn ($q) => $q->where('status', 'active'))
-                ->get()
-                ->sortByDesc(fn (Business $b) => $b->ratingAvg() * 1000 + $b->reviewsTotal())
-                ->take(6 - $featured->count());
+                ->withAvg(['branches as rating_avg_all' => fn ($q) => $q->where('status', 'active')], 'rating_avg')
+                ->withSum(['branches as reviews_total' => fn ($q) => $q->where('status', 'active')], 'reviews_count')
+                ->orderByDesc('rating_avg_all')
+                ->orderByDesc('reviews_total')
+                ->limit(6 - $featured->count())
+                ->get();
 
             $featured = $featured->concat($fill)->values();
         }
@@ -85,7 +94,8 @@ class DirectoryController extends Controller
             'categories' => CategoryResource::collection($categories),
             'featured' => BusinessResource::collection($featured),
             'stats' => [
-                'businesses' => Business::count(),
+                // Идэвхтэй салбартай, өөрөөр хэлбэл хайлтад олдох бизнесүүд
+                'businesses' => Business::whereHas('branches', fn ($q) => $q->where('status', 'active'))->count(),
                 'branches' => Branch::where('status', 'active')->count(),
             ],
         ]);
@@ -219,11 +229,19 @@ class DirectoryController extends Controller
         $featuredBusinessIds = collect();
 
         if ($category !== null) {
+            $district = $request->query('district');
+
             $featuredBusinessIds = $featuredBusinessIds->merge(
                 Campaign::query()->running()
                     ->where('type', 'category_featured')
                     ->where('category_id', $category->id)
-                    ->when($request->query('district'), fn ($q, $d) => $q->where('district', $d))
+                    // Дүүрэг сонгосон бол тухайн дүүргийн БОЛОН улс даяарын
+                    // (district=null) зар хоёулаа онцлогдоно. Дүүрэг сонгоогүй
+                    // үед зөвхөн улс даяарынх — эс бөгөөс нэг дүүргийн зар
+                    // бүх дүүрэгт дээгүүр гарна.
+                    ->where(fn ($q) => $district
+                        ? $q->where('district', $district)->orWhereNull('district')
+                        : $q->whereNull('district'))
                     ->orderBy('slot')
                     ->pluck('business_id'),
             );
@@ -249,7 +267,9 @@ class DirectoryController extends Controller
         match ($request->query('sort', 'rating')) {
             'newest' => $query->latest('branches.created_at'),
             'reviews' => $query->orderByDesc('reviews_count'),
-            'distance' => $lat !== null ? $query->orderBy('distance_km') : $query->orderByDesc('rating_avg'),
+            // distance_km багана зөвхөн lat БА lng хоёул ирсэн үед л SELECT-д
+            // нэмэгддэг — зөвхөн lat-аар эрэмбэлэх гэвэл MySQL дээр 500 өгдөг
+            'distance' => ($lat !== null && $lng !== null) ? $query->orderBy('distance_km') : $query->orderByDesc('rating_avg'),
             default => $query->orderByDesc('rating_avg')->orderByDesc('reviews_count'),
         };
 
@@ -303,10 +323,14 @@ class DirectoryController extends Controller
 
         $this->markFavorites($request, collect([$business]));
 
-        // Ижил төрлийн бизнесүүд
+        // Ижил төрлийн бизнесүүд — зөвхөн идэвхтэй салбар, зурагтайгаа
+        // (images-гүй ачаалбал cover_url хоосон гарч, N+1 үүсдэг)
         $similar = Business::where('category_id', $business->category_id)
             ->where('id', '!=', $business->id)
-            ->with(['category', 'branches'])
+            ->with([
+                'category',
+                'branches' => fn ($q) => $q->where('status', 'active')->with('images'),
+            ])
             ->whereHas('branches', fn ($q) => $q->where('status', 'active'))
             ->limit(3)
             ->get();

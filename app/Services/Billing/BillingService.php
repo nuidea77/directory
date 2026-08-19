@@ -49,6 +49,26 @@ class BillingService
                 throw ValidationException::withMessages(['plan' => 'Буруу эрхийн бичиг сонгосон байна.']);
             }
 
+            if (! ($planConfig['is_active'] ?? true)) {
+                throw ValidationException::withMessages(['plan' => 'Энэ эрхийн бичиг одоогоор зарагдахгүй байна.']);
+            }
+
+            // Идэвхтэй, илүү өндөр эрхийг доогуур эрхээр дарж үлдсэн хугацааг
+            // устгахаас сэргийлнэ (доошлуулах бол эхлээд дуусгах ёстой)
+            $currentPlan = $organization->effectivePlan();
+
+            if ($currentPlan !== 'free' && $currentPlan !== $plan) {
+                $currentPrice = (int) (config("billing.plans.{$currentPlan}.price") ?? 0);
+
+                if ($currentPrice > (int) $planConfig['price']) {
+                    throw ValidationException::withMessages([
+                        'plan' => 'Танд илүү өндөр эрх идэвхтэй байна ('
+                            .(config("billing.plans.{$currentPlan}.name") ?? $currentPlan)
+                            .'). Хугацаа нь дуусахаар доогуур эрх рүү шилжих боломжтой.',
+                    ]);
+                }
+            }
+
             // Сарын эсвэл жилийн үнэ — сарын үнэгүй эрхийг сараар зарахгүй
             if ($planPeriod === 'monthly' && empty($planConfig['price_monthly'])) {
                 throw ValidationException::withMessages(['plan' => 'Энэ эрх зөвхөн жилээр зарагдана.']);
@@ -88,6 +108,7 @@ class BillingService
         // --- Онцлох байршил ---------------------------------------------------
         $effectivePlan = $plan !== null && $plan !== 'free' ? $plan : $organization->effectivePlan();
         $pendingCampaigns = [];
+        $claimedInThisOrder = [];
 
         foreach ($payload['campaigns'] ?? [] as $c) {
             $adConfig = config("billing.ads.{$c['type']}");
@@ -109,15 +130,23 @@ class BillingService
             }
 
             // Зай дүүрсэн targeting-д худалдахгүй — «нэг ангилалд ихдээ 3 зар» хатуу лимит
+            $keyword = ! empty($c['keyword']) ? mb_strtolower(trim($c['keyword'])) : null;
+            $spaceKey = implode('|', [$c['type'], $c['category_id'] ?? '', $c['district'] ?? '', $c['city'] ?? '', $keyword ?? '']);
+
             $slotState = $this->campaigns->slotState(
                 $c['type'],
                 $c['category_id'] ?? null,
                 $c['district'] ?? null,
                 $c['city'] ?? null,
-                ! empty($c['keyword']) ? mb_strtolower(trim($c['keyword'])) : null,
+                $keyword,
             );
 
-            if ($slotState['occupied'] + $slotState['queued'] >= $slotState['total']) {
+            // Мөн ЭНЭ захиалгын өмнөх мөрүүд аль хэдийн эзэлсэн зайг тооцно —
+            // эс бөгөөс нэг захиалгад 5 ижил зар оруулаад бүгдийг нь худалдаж болдог
+            $claimedHere = $claimedInThisOrder[$spaceKey] ?? 0;
+            $taken = $slotState['occupied'] + $slotState['queued'] + $slotState['pending'] + $claimedHere;
+
+            if ($taken >= $slotState['total']) {
                 $freesAt = $slotState['running']->min('ends_at');
 
                 throw ValidationException::withMessages([
@@ -126,6 +155,8 @@ class BillingService
                         .($freesAt ? ' Ойрын зай '.$freesAt->format('Y-m-d').'-нд суларна.' : ''),
                 ]);
             }
+
+            $claimedInThisOrder[$spaceKey] = $claimedHere + 1;
 
             $total += $price - $discount;
 
@@ -253,14 +284,31 @@ class BillingService
         return $order->refresh();
     }
 
+    /**
+     * Захиалгыг цуцлах. Зөвхөн хүлээгдэж буй захиалгад — эс бөгөөс webhook
+     * ба хугацаа дуусгагч зэрэг ажиллахад төлөгдсөн захиалга цуцлагдаж болно.
+     */
     public function voidOrder(Order $order, array $payload = [], string $status = 'void'): void
     {
-        $order->update(['status' => $status, 'provider_payload' => $payload ?: $order->provider_payload]);
-        $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
+        DB::transaction(function () use ($order, $payload, $status) {
+            $fresh = Order::lockForUpdate()->find($order->id);
+
+            if ($fresh === null || $fresh->status !== 'pending') {
+                return;
+            }
+
+            $fresh->update(['status' => $status, 'provider_payload' => $payload ?: $fresh->provider_payload]);
+            $fresh->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
+        });
+
+        $order->refresh();
     }
 
     /**
      * Идэвхжүүлэлт — давхар webhook-д idempotent.
+     * Зөвхөн хүлээгдэж буй захиалгыг төлөгдсөн болгоно: цуцлагдсан/хугацаа
+     * дууссан захиалгын зарууд аль хэдийн canceled болсон тул сэргээвэл
+     * төлбөр авчихаад зараа өгөхгүй байх эрсдэлтэй.
      */
     public function markPaid(Order $order, array $payload = []): void
     {
@@ -268,6 +316,29 @@ class BillingService
             $order = Order::lockForUpdate()->find($order->id);
 
             if ($order === null || $order->status === 'paid') {
+                return;
+            }
+
+            if ($order->status !== 'pending') {
+                Log::error('byl.mn: хүлээгдээгүй захиалгад төлбөр ирлээ — гараар шалгана уу', [
+                    'order' => $order->number,
+                    'status' => $order->status,
+                ]);
+
+                return;
+            }
+
+            // Дүн таарч байгаа эсэх — webhook-д шалгадаг байсныг polling-д ч
+            // мөн адил (эс бөгөөс 1₮ төлөөд бүрэн эрх авч болдог)
+            $paidAmount = $payload['amount_total'] ?? null;
+
+            if ($paidAmount !== null && (int) $paidAmount !== (int) $order->total) {
+                Log::error('byl.mn: төлсөн дүн захиалгын дүнтэй таарахгүй', [
+                    'order' => $order->number,
+                    'expected' => $order->total,
+                    'paid' => $paidAmount,
+                ]);
+
                 return;
             }
 
@@ -298,7 +369,8 @@ class BillingService
 
                 $organization->update([
                     'plan' => $plan,
-                    'plan_term_years' => $planConfig['term_years'],
+                    // Сараар авсан бол «жилийн хугацаа» гэж бичихгүй (0 = сарын эрх)
+                    'plan_term_years' => $period === 'monthly' ? 0 : $planConfig['term_years'],
                     'plan_period' => $period,
                     'plan_started_at' => $organization->plan === $plan ? $organization->plan_started_at ?? now() : now(),
                     // Сараар бол 1 сар, жилээр бол term_years жилээр сунгана

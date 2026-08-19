@@ -24,7 +24,7 @@ class SyncPlans extends Command
         Organization::where('plan', '!=', 'free')
             ->where('plan_expires_at', '<=', now())
             ->whereHas('businesses', fn ($q) => $q->where('is_verified', true))
-            ->each(function (Organization $organization) use (&$revoked) {
+            ->eachById(function (Organization $organization) use (&$revoked) {
                 $revoked += $organization->businesses()->where('is_verified', true)->update(['is_verified' => false]);
             });
 
@@ -34,7 +34,7 @@ class SyncPlans extends Command
         Organization::where('plan', '!=', 'free')
             ->whereBetween('plan_expires_at', [now()->addDays(6), now()->addDays(7)])
             ->with('owner')
-            ->each(fn (Organization $organization) => $organization->owner?->notify(new PlanExpiring($organization)));
+            ->eachById(fn (Organization $organization) => $organization->owner?->notify(new PlanExpiring($organization)));
 
         return self::SUCCESS;
     }

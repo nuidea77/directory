@@ -72,13 +72,30 @@ class Organization extends Model
 
     public function planLimit(string $key): int
     {
-        $limit = (int) ($this->planConfig()['limits'][$key] ?? 0);
+        return (int) ($this->planConfig()['limits'][$key] ?? 0);
+    }
 
-        // Худалдаж авсан нэмэлт салбарын эрх (0 = хязгааргүй тул нэмэх шаардлагагүй)
-        if ($key === 'branches' && $limit > 0) {
-            $limit += (int) $this->extra_branches;
+    /**
+     * Байгууллагын нийт салбарын лимит (0 = хязгааргүй).
+     * Нэмэлт салбарын эрх нь БАЙГУУЛЛАГЫН хэмжээнд худалдагддаг тул
+     * бизнес тус бүрд давхардуулж тоолохгүй.
+     */
+    public function branchLimit(): int
+    {
+        $perBusiness = $this->planLimit('branches');
+
+        if ($perBusiness === 0) {
+            return 0;
         }
 
-        return $limit;
+        return $perBusiness * max(1, $this->planLimit('businesses')) + (int) $this->extra_branches;
+    }
+
+    /**
+     * Байгууллагын бүх бизнесийн салбарын нийт тоо.
+     */
+    public function branchCount(): int
+    {
+        return Branch::whereIn('business_id', $this->businesses()->select('id'))->count();
     }
 }

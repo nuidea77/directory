@@ -12,7 +12,11 @@ class PricingController extends Controller
      */
     public function index(): JsonResponse
     {
-        $plans = collect(config('billing.plans'))->map(fn (array $plan, string $key) => [
+        // Идэвхгүй болгосон эрхийг зарлахгүй — эс бөгөөс худалдаж авах гэхэд
+        // checkout 422 буцаадаг «үзүүлээд зарахгүй» байдал үүсдэг
+        $plans = collect(config('billing.plans'))
+            ->filter(fn (array $plan) => $plan['is_active'] ?? true)
+            ->map(fn (array $plan, string $key) => [
             'key' => $key,
             'name' => $plan['name'],
             'price' => $plan['price'],

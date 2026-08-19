@@ -42,9 +42,13 @@ class CategoryController extends Controller
             ->with(['children' => fn ($q) => $q->withCount('businesses')])
             ->firstOrFail();
 
-        // Ангиллын статистик: нийт, баталгаажсан, одоо нээлттэй
+        // Ангиллын статистик: нийт, баталгаажсан, одоо нээлттэй.
+        // Дэд ангиллуудыг мөн оруулна — жагсаалт (search) тэднийг харуулдаг
+        // тул статистик нь илэрцийн тоотой зөрдөг байсан.
+        $categoryIds = [$category->id, ...$category->children->pluck('id')->all()];
+
         $branchIds = Branch::query()->active()
-            ->whereHas('business', fn ($q) => $q->where('category_id', $category->id))
+            ->whereHas('business', fn ($q) => $q->whereIn('category_id', $categoryIds))
             ->pluck('id');
 
         $verified = Branch::whereIn('id', $branchIds)

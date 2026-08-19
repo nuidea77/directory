@@ -20,9 +20,11 @@ class ExpireOrders extends Command
     {
         $count = 0;
 
+        // eachById — each() нь offset-ээр хуудаслах бөгөөд callback нь шүүж
+        // буй баганаа өөрчилдөг тул 2 дахь хуудаснаас цааш алгасагддаг
         Order::where('status', 'pending')
             ->where('created_at', '<', now()->subHours((int) $this->option('hours')))
-            ->each(function (Order $order) use ($billing, &$count) {
+            ->eachById(function (Order $order) use ($billing, &$count) {
                 // Сүүлийн мөчид төлөгдсөн байж болзошгүй — эхлээд byl-тэй тулгана
                 $order = $billing->sync($order);
 

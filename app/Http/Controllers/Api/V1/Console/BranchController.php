@@ -20,9 +20,11 @@ class BranchController extends Controller
         $this->authorizeOwner($request, $business);
 
         $organization = $business->organization;
-        $branchLimit = $organization->planLimit('branches'); // 0 = хязгааргүй
+        // Лимит нь байгууллагын хэмжээнд бодогдоно — нэмэлт салбарын эрхийг
+        // бизнес тус бүрд давхардуулж тоолвол лимит утгаа алддаг
+        $branchLimit = $organization->branchLimit(); // 0 = хязгааргүй
 
-        if ($branchLimit > 0 && $business->branches()->count() >= $branchLimit) {
+        if ($branchLimit > 0 && $organization->branchCount() >= $branchLimit) {
             throw ValidationException::withMessages([
                 'name' => 'Үнэгүй эрхэд салбар нэмэх боломжгүй. Стандарт эсвэл Бизнес эрх авна уу.',
             ]);

@@ -13,6 +13,11 @@ class BranchResource extends JsonResource
         $disk = Storage::disk('public');
         $open = $this->openState();
 
+        // rejection_reason нь редакцын дотоод тэмдэглэл — зөвхөн эзний зөвлөл
+        // болон админы хариултад. Өмнө нь нийтийн хайлтад ч орж байсан.
+        $private = $request->user() !== null
+            && ($request->is('api/v1/console/*') || $request->is('api/v1/admin/*'));
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -30,7 +35,7 @@ class BranchResource extends JsonResource
             'hours' => $this->hours,
             'amenities' => $this->amenities,
             'status' => $this->status,
-            'rejection_reason' => $this->rejection_reason,
+            'rejection_reason' => $this->when($private, fn () => $this->rejection_reason),
             'is_open' => $open['open'],
             'open_label' => $open['label'],
             'rating_avg' => (float) $this->rating_avg,

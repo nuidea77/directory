@@ -89,16 +89,39 @@ class Branch extends Model
     public function openState(): array
     {
         $hours = $this->hours ?? [];
-        $key = self::WEEKDAYS[now()->dayOfWeekIso - 1];
-        $today = $hours[$key] ?? null;
+        $time = now()->format('H:i');
 
-        if ($today === null || ! empty($today['closed']) || empty($today['from']) || empty($today['to'])) {
+        $dayAt = function (int $isoDay) use ($hours): ?array {
+            $slot = $hours[self::WEEKDAYS[$isoDay - 1]] ?? null;
+
+            if ($slot === null || ! empty($slot['closed']) || empty($slot['from']) || empty($slot['to'])) {
+                return null;
+            }
+
+            return $slot;
+        };
+
+        // Шөнө дамжсан цаг: to <= from (ж: 18:00–02:00). Өмнөх өдрийн
+        // цонх өнөө өглөө хүртэл үргэлжилж байгаа эсэхийг эхлээд шалгана.
+        $yesterday = $dayAt(now()->subDay()->dayOfWeekIso);
+
+        if ($yesterday !== null && $yesterday['to'] <= $yesterday['from'] && $time < $yesterday['to']) {
+            return ['open' => true, 'label' => 'Нээлттэй · '.$yesterday['to'].' хүртэл'];
+        }
+
+        $today = $dayAt(now()->dayOfWeekIso);
+
+        if ($today === null) {
             return ['open' => false, 'label' => 'Хаагдсан'];
         }
 
-        $time = now()->format('H:i');
+        $overnight = $today['to'] <= $today['from'];
 
-        if ($time >= $today['from'] && $time < $today['to']) {
+        $isOpen = $overnight
+            ? ($time >= $today['from'] || $time < $today['to'])
+            : ($time >= $today['from'] && $time < $today['to']);
+
+        if ($isOpen) {
             return ['open' => true, 'label' => 'Нээлттэй · '.$today['to'].' хүртэл'];
         }
 
