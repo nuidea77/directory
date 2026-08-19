@@ -96,6 +96,7 @@ Route::prefix('v1')->group(function () {
             Route::get('orders', [CheckoutController::class, 'index']);
             Route::post('checkout', [CheckoutController::class, 'store']);
             Route::get('orders/{order}', [CheckoutController::class, 'show']);
+            Route::delete('orders/{order}', [CheckoutController::class, 'cancel']);
             Route::get('slots', [CheckoutController::class, 'slots']);
             Route::get('console/organizations/{organization}/campaigns', [CheckoutController::class, 'campaigns']);
         });

@@ -70,6 +70,39 @@ class CheckoutController extends Controller
     }
 
     /**
+     * Хүлээгдэж буй захиалгыг цуцлах: byl нэхэмжлэхийг void болгож,
+     * төлбөр хүлээж байсан кампанит ажлуудыг цуцална.
+     */
+    public function cancel(Request $request, Order $order): JsonResponse
+    {
+        abort_unless($order->user_id === $request->user()->id, 403);
+
+        if ($order->status !== 'pending') {
+            return response()->json(['message' => 'Зөвхөн хүлээгдэж буй захиалгыг цуцлах боломжтой.'], 422);
+        }
+
+        if ($order->byl_invoice_id !== null) {
+            try {
+                app(\App\Services\Byl\BylClient::class)->voidInvoice($order->byl_invoice_id);
+            } catch (\Throwable) {
+                // byl талд аль хэдийн цуцлагдсан/төлөгдсөн байж болно — доорх sync шийднэ
+            }
+        }
+
+        $order = $this->billing->sync($order);
+
+        if ($order->status === 'pending') {
+            $order->update(['status' => 'void']);
+        }
+
+        if ($order->status === 'void') {
+            $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
+        }
+
+        return response()->json(['data' => new OrderResource($order->refresh()->load('items'))]);
+    }
+
+    /**
      * Нэхэмжлэхийн түүх.
      */
     public function index(Request $request): AnonymousResourceCollection

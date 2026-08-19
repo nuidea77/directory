@@ -217,6 +217,38 @@ class BillingTest extends TestCase
         $this->assertNotNull($queued->ends_at);
     }
 
+    public function test_pending_order_can_be_canceled(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/invoices' => Http::response(['data' => ['id' => 777, 'url' => 'https://byl.mn/x', 'status' => 'open']]),
+            'byl.mn/api/v1/projects/42/invoices/777/void' => Http::response(['data' => ['id' => 777, 'status' => 'void']]),
+            'byl.mn/api/v1/projects/42/invoices/777' => Http::response(['data' => ['id' => 777, 'status' => 'void']]),
+        ]);
+
+        $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'campaigns' => [[
+                'type' => 'category_featured',
+                'business_id' => $this->business->id,
+                'category_id' => $this->category->id,
+                'district' => 'Баянзүрх',
+                'days' => 7,
+            ]],
+        ])->json('data');
+
+        $this->actingAs($this->owner)->deleteJson("/api/v1/orders/{$order['id']}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'void');
+
+        $this->assertSame('canceled', Campaign::first()->status);
+
+        // Төлөгдсөн захиалгыг цуцлах боломжгүй
+        $paid = Order::factory()->create(['user_id' => $this->owner->id, 'status' => 'paid']);
+        $this->actingAs($this->owner)->deleteJson("/api/v1/orders/{$paid->id}")->assertStatus(422);
+    }
+
     public function test_only_owner_can_checkout_for_organization(): void
     {
         $stranger = User::factory()->create();
