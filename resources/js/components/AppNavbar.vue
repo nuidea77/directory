@@ -32,7 +32,6 @@ async function logout() {
             </div>
 
             <div class="hidden items-center gap-3 md:flex">
-                <span class="text-[13px] font-medium text-chiptext">MN / EN</span>
 
                 <template v-if="auth.isLoggedIn">
                     <router-link :to="{ name: 'add-business' }" class="btn-primary !px-4 !py-2.5 !text-[13px]">Бизнес нэмэх</router-link>
@@ -80,6 +79,7 @@ async function logout() {
                 <template v-if="auth.isLoggedIn">
                     <router-link :to="{ name: 'account' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний булан</router-link>
                     <router-link :to="{ name: 'console' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бизнес зөвлөл</router-link>
+                    <router-link v-if="auth.user.is_admin" :to="{ name: 'admin' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Админ</router-link>
                     <router-link :to="{ name: 'add-business' }" class="rounded-lg px-3 py-2.5 font-bold text-brand hover:bg-bluetint">Бизнес нэмэх</router-link>
                     <button class="cursor-pointer rounded-lg px-3 py-2.5 text-left text-red hover:bg-redtint" @click="logout">Гарах</button>
                 </template>

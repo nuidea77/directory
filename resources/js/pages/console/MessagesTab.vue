@@ -12,20 +12,31 @@ const activeUser = ref(null);
 const messages = ref([]);
 const reply = ref('');
 const busy = ref(false);
+const loadError = ref('');
 
 const business = computed(() => store.businesses.find((b) => b.id === selectedBusinessId.value) || store.businesses[0]);
 
 async function fetchThreads() {
     if (!business.value) return;
-    const data = await api.get(`/console/businesses/${business.value.id}/messages`);
-    threads.value = data.data;
+    loadError.value = '';
+    try {
+        const data = await api.get(`/console/businesses/${business.value.id}/messages`);
+        threads.value = data.data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function openThread(thread) {
     activeUser.value = thread.user;
-    const data = await api.get(`/console/businesses/${business.value.id}/messages/${thread.user.id}`);
-    messages.value = data.data;
-    thread.unread = 0;
+    try {
+        const data = await api.get(`/console/businesses/${business.value.id}/messages/${thread.user.id}`);
+        messages.value = data.data;
+        thread.unread = 0;
+    } catch {
+        activeUser.value = null;
+        alert('Ачаалахад алдаа гарлаа.');
+    }
 }
 
 async function send() {
@@ -35,6 +46,8 @@ async function send() {
         const data = await api.post(`/console/businesses/${business.value.id}/messages/${activeUser.value.id}`, { body: reply.value });
         messages.value.push(data.data);
         reply.value = '';
+    } catch {
+        alert('Илгээхэд алдаа гарлаа.');
     } finally {
         busy.value = false;
     }
@@ -53,7 +66,12 @@ onMounted(fetchThreads);
             </select>
         </div>
 
-        <div class="card mt-4 grid min-h-[440px] grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr]">
+        <div v-if="loadError" class="card mt-4 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchThreads">Дахин оролдох</button>
+        </div>
+
+        <div v-else class="card mt-4 grid min-h-[440px] grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr]">
             <!-- Thread жагсаалт -->
             <div class="border-line md:border-r">
                 <div v-if="!threads.length" class="p-8 text-center text-[13px] text-mute">Одоогоор зурвас алга</div>

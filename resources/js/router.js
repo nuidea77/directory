@@ -20,9 +20,9 @@ const routes = [
     { path: '/verify', name: 'verify', component: () => import('./pages/auth/VerifyPage.vue'), meta: { auth: true } },
 
     // Бизнес нэмэх + onboarding
-    { path: '/add-business', name: 'add-business', component: () => import('./pages/onboarding/BusinessWizardPage.vue'), meta: { auth: true, verified: true } },
+    { path: '/add-business', name: 'add-business', component: () => import('./pages/onboarding/BusinessWizardPage.vue'), meta: { auth: true, verified: true, chrome: false } },
     { path: '/onboarding/:orgId/plan', name: 'plan-select', component: () => import('./pages/onboarding/PlanSelectPage.vue'), meta: { auth: true } },
-    { path: '/orders/:id/pay', name: 'order-pay', component: () => import('./pages/onboarding/PaymentPage.vue'), meta: { auth: true } },
+    { path: '/orders/:id/pay', name: 'order-pay', component: () => import('./pages/onboarding/PaymentPage.vue'), meta: { auth: true, chrome: false } },
     { path: '/orders/:id/success', name: 'order-success', component: () => import('./pages/onboarding/SuccessPage.vue'), meta: { auth: true } },
 
     // Хэрэглэгчийн дашбоард
@@ -43,8 +43,8 @@ const routes = [
             { path: 'settings', name: 'console-settings', component: () => import('./pages/console/SettingsTab.vue') },
         ],
     },
-    { path: '/console/branches/:id', name: 'branch-edit', component: () => import('./pages/console/BranchEditPage.vue'), meta: { auth: true, verified: true } },
-    { path: '/console/ads/new', name: 'ad-purchase', component: () => import('./pages/console/AdPurchasePage.vue'), meta: { auth: true, verified: true } },
+    { path: '/console/branches/:id', name: 'branch-edit', component: () => import('./pages/console/BranchEditPage.vue'), meta: { auth: true, verified: true, chrome: false } },
+    { path: '/console/ads/new', name: 'ad-purchase', component: () => import('./pages/console/AdPurchasePage.vue'), meta: { auth: true, verified: true, chrome: false } },
 
     // Админ
     {

@@ -20,10 +20,12 @@ function update(key, patch) {
 }
 
 function copyWeekdays() {
+    // Даваагийн цагийг бусад өдөрт хуулна — амарч буй өдрийн төлөв хэвээр
     const monday = dayValue('mon');
     const next = { ...props.modelValue };
     for (const [key] of days) {
-        next[key] = { ...monday, closed: false };
+        const closed = key === 'mon' ? false : (dayValue(key).closed ?? false);
+        next[key] = { ...monday, closed };
     }
     emit('update:modelValue', next);
 }

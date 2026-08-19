@@ -48,12 +48,17 @@ const statusLabel = {
 
 async function fetchData() {
     if (!org.value) return;
-    const [c, o] = await Promise.all([
-        api.get(`/console/organizations/${org.value.id}/campaigns`),
-        api.get('/orders'),
-    ]);
-    campaigns.value = c.data;
-    orders.value = o.data.slice(0, 4);
+    loadError.value = '';
+    try {
+        const [c, o] = await Promise.all([
+            api.get(`/console/organizations/${org.value.id}/campaigns`),
+            api.get('/orders'),
+        ]);
+        campaigns.value = c.data;
+        orders.value = o.data.slice(0, 4);
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 watch(() => store.organization?.id, fetchData);

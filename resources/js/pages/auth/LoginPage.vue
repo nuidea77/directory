@@ -12,7 +12,6 @@ const route = useRoute();
 const mode = ref('password'); // password | sms
 const form = ref({ phone: '', password: '' });
 const showPassword = ref(false);
-const remember = ref(true);
 const verification = ref(null);
 const error = ref('');
 const busy = ref(false);
@@ -108,10 +107,6 @@ async function onVerified(data) {
                     </div>
                     <p v-if="error" class="mt-1.5 text-[11.5px] font-medium text-red">{{ error }}</p>
                 </div>
-                <label class="flex cursor-pointer items-center gap-2.5">
-                    <span class="flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold" :class="remember ? 'bg-brand text-white' : 'border-[1.5px] border-inputline'" @click.prevent="remember = !remember">{{ remember ? '✓' : '' }}</span>
-                    <span class="text-[12.5px] text-soft">Намайг сануул (30 хоног)</span>
-                </label>
                 <button type="submit" class="btn-primary w-full !rounded-[10px] !py-3.5" :disabled="busy">{{ busy ? 'Нэвтэрч байна…' : 'Нэвтрэх' }}</button>
             </form>
 

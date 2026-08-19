@@ -131,7 +131,7 @@ async function onVerified(data) {
 
             <!-- Хар баганын танилцуулга -->
             <div class="hidden bg-dark px-8 py-9 md:block">
-                <div class="text-[10.5px] font-semibold tracking-[.12em] text-bluelight">42,180 БИЗНЕС · 21 АЙМАГ</div>
+                <div class="text-[10.5px] font-semibold tracking-[.12em] text-bluelight">МОНГОЛЫН БИЗНЕС ЛАВЛАХ · 21 АЙМАГ</div>
                 <div class="mt-3.5 text-[22px] font-extrabold leading-snug text-white">Хаана аккаунт танд юу өгөх вэ</div>
                 <div class="mt-5 flex flex-col gap-4">
                     <div v-for="p in perks" :key="p.n" class="flex gap-3">

@@ -5,14 +5,13 @@ import { api } from '../api';
 const plans = ref([]);
 const ads = ref([]);
 const branchAddon = ref(5000);
-const term = ref(2);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
 const faq = [
-    { q: 'Үнэгүй бүртгэл хугацаа хязгаартай юу?', a: 'Үгүй. Үнэгүй бүртгэл байнга ажиллана, хайлтад бүрэн харагдана.' },
+    { q: 'Үнэгүй бүртгэл хугацаа хязгаартай юу?', a: 'Үнэгүй бүртгэл 1 жилийн хугацаатай — дуусахад мэдээлэл устахгүй, хайлтад үлдэнэ. Нэмэлт боломжууд Стандарт/Бизнес эрхээс нээгдэнэ.' },
     { q: 'Онцлох байршил үнэлгээг өсгөх үү?', a: 'Үгүй. Зөвхөн эрэмбийг өөрчилнө, сэтгэгдэл, үнэлгээ бүрэн бодитой хэвээр.' },
-    { q: 'Салбарын нэмэлт төлбөр хэрхэн бодогдох вэ?', a: 'Стандарт ба Бизнес эрхэд салбар хязгааргүй, салбар тутамд эрхийн хугацаанд +₮5,000 нэмэгдэнэ.' },
+    { q: 'Салбарын нэмэлт төлбөр хэрхэн бодогдох вэ?', a: 'Стандарт ба Бизнес эрхэд салбар хязгааргүй. Үнэгүй эрх дээр нэмэлт салбарын эрхийг тус бүрд нь худалдан авч болно.' },
     { q: 'Хугацаа дуусахад юу болох вэ?', a: 'Бүртгэл үнэгүй эрх болж хувирна — 1 зураг, салбаргүй, аналитикгүй. Мэдээлэл устахгүй.' },
 ];
 
@@ -20,7 +19,7 @@ const planCards = computed(() => plans.value.map((p) => ({
     ...p,
     tag: p.key === 'free' ? '1 ЖИЛ' : p.key === 'standard' ? 'ХАМГИЙН ЭРЭЛТТЭЙ' : '5 БИЗНЕС ХҮРТЭЛ',
     for: p.key === 'free' ? 'Нэг хаягтай жижиг бизнес, шинээр нээсэн газар.' : p.key === 'standard' ? 'Нэг брэнд, хэд хэдэн салбартай бизнес.' : 'Хэд хэдэн брэнд, сүлжээ, франчайз эзэмшигч.',
-    note: p.key === 'free' ? 'Картын мэдээлэл шаардахгүй' : p.key === 'standard' ? 'Салбар бүрд +₮5,000' : 'Салбар бүрд +₮5,000 · жилд ~₮145,000',
+    note: p.key === 'free' ? 'Картын мэдээлэл шаардахгүй' : 'Салбар хязгааргүй',
     cta: p.key === 'free' ? 'Бизнес нэмэх' : p.name + ' авах',
     features: [
         { text: p.limits.businesses > 1 ? `${p.limits.businesses} бизнес хүртэл` : '1 бизнес', on: true },
@@ -52,10 +51,6 @@ onMounted(async () => {
                 Бизнесүүдийн дийлэнх нь үнэгүй бүртгэлээр ажилладаг. Төлбөртэй эрх нь статистик, олон салбар, редакцын дэмжлэг нэмнэ. Онцлох байршил нь нэмэлт бүтээгдэхүүн.
             </p>
             <div class="mt-5 inline-flex gap-1.5 rounded-[10px] border border-searchline bg-white p-1.5">
-                <button class="cursor-pointer rounded-[7px] px-4 py-2 text-[12.5px] font-semibold" :class="term === 1 ? 'bg-brand text-white' : 'text-soft'" @click="term = 1">1 жил</button>
-                <button class="flex cursor-pointer items-center gap-2 rounded-[7px] px-4 py-2 text-[12.5px] font-semibold" :class="term === 2 ? 'bg-brand text-white' : 'text-soft'" @click="term = 2">
-                    2 жил <span class="rounded-full bg-[#e5f3ea] px-1.5 py-0.5 text-[10.5px] font-semibold text-ink">жилд ₮145,000</span>
-                </button>
             </div>
         </div>
 
@@ -99,7 +94,7 @@ onMounted(async () => {
                 </div>
                 <div class="w-[230px] rounded-[11px] border border-line p-4">
                     <div class="text-[10.5px] font-semibold tracking-[.08em] text-mute">ЖИШЭЭ ҮР ДҮН</div>
-                    <div class="mt-2 flex items-baseline gap-1.5"><span class="text-2xl font-extrabold text-ink">3.4×</span><span class="text-[12px] font-medium text-soft">илүү залгалт</span></div>
+                    <div class="mt-2 flex items-baseline gap-1.5"><span class="text-2xl font-extrabold text-ink">ТОП 3</span><span class="text-[12px] font-medium text-soft">байрлалд гарна</span></div>
                     <div class="mt-1.5 text-[11.5px] leading-normal text-mute">Авто засвар ангилалд 30 хоногийн дундаж</div>
                 </div>
             </div>

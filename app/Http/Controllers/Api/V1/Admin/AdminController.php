@@ -237,7 +237,10 @@ class AdminController extends Controller
             ->latest()
             ->paginate(20);
 
-        return response()->json(['data' => \App\Http\Resources\ReviewResource::collection($reviews->getCollection())]);
+        return response()->json([
+            'data' => \App\Http\Resources\ReviewResource::collection($reviews->getCollection()),
+            'meta' => ['total' => $reviews->total(), 'current_page' => $reviews->currentPage(), 'last_page' => $reviews->lastPage(), 'per_page' => $reviews->perPage()],
+        ]);
     }
 
     /**

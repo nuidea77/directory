@@ -143,7 +143,7 @@ onMounted(() => {
                     <div class="flex w-full flex-col overflow-y-auto border-r border-line sm:w-[266px]">
                         <div class="flex items-baseline justify-between border-b border-divider px-3.5 py-3">
                             <span class="text-[12.5px] font-bold text-ink">{{ total }} бизнес · {{ radius >= 30 ? 'бүх хот' : radius + ' км' }}</span>
-                            <span class="text-[11.5px] font-medium text-soft">Зайгаар ▾</span>
+                            <span class="text-[11.5px] font-medium text-soft">Ойрхноос холуур эрэмбэлэв</span>
                         </div>
                         <router-link
                             v-for="(b, i) in branches"

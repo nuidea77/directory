@@ -7,11 +7,17 @@ import { useConsoleStore } from '../../stores/console';
 const store = useConsoleStore();
 const stats = ref(null);
 const days = ref(30);
+const loadError = ref('');
 
 async function fetchStats() {
     if (!store.organization) return;
-    const data = await api.get(`/console/organizations/${store.organization.id}/stats`, { days: days.value });
-    stats.value = data;
+    loadError.value = '';
+    try {
+        const data = await api.get(`/console/organizations/${store.organization.id}/stats`, { days: days.value });
+        stats.value = data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 // 3 хоногийн bucket-ууд болгож нэгтгэнэ (график)
@@ -48,7 +54,12 @@ onMounted(fetchStats);
             </select>
         </div>
 
-        <div v-if="!stats" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-5 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchStats">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!stats" class="card mt-5 h-64 animate-pulse"></div>
 
         <template v-else>
             <div v-if="!stats.analytics_enabled" class="mt-4 flex items-center gap-3 rounded-xl border border-blueline bg-bluetint px-4 py-3">
@@ -78,7 +89,8 @@ onMounted(fetchStats);
                             <span class="flex items-center gap-1.5"><span class="h-[9px] w-[9px] rounded-[3px] bg-[#bfd4ea]"></span>Залгасан</span>
                         </div>
                     </div>
-                    <div class="mt-5 flex h-[170px] items-end gap-2.5">
+                    <div v-if="!buckets.length" class="mt-5 flex h-[170px] items-center justify-center text-[13px] text-mute">Өгөгдөл хараахан алга</div>
+                    <div v-else class="mt-5 flex h-[170px] items-end gap-2.5">
                         <div v-for="b in buckets" :key="b.label" class="flex flex-1 flex-col items-center gap-2">
                             <div class="flex h-[150px] w-full flex-col justify-end gap-[3px]">
                                 <div class="rounded-t-[5px] bg-brand" :style="{ height: b.h1 + 'px' }" :title="`Үзсэн: ${b.views}`"></div>

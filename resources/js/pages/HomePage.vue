@@ -58,7 +58,7 @@ function filteredFeatured() {
             <div class="mx-auto max-w-7xl px-5 py-12 sm:px-10 sm:py-14">
                 <div class="max-w-[720px]">
                     <h1 class="text-[32px] font-extrabold leading-[1.15] tracking-[-.025em] text-ink sm:text-[40px]">
-                        Монгол дахь {{ stats.businesses > 100 ? stats.businesses.toLocaleString() : '42,000' }} бизнесийг нэг дороос
+                        Монгол дахь {{ stats.businesses.toLocaleString() }} бизнесийг нэг дороос
                     </h1>
                     <p class="mt-3 text-[15px] leading-relaxed text-soft">
                         Ресторан, эмнэлэг, авто засвар, хууль зүйн үйлчилгээ — хаяг, цагийн хуваарь, үнэлгээ бүхий баталгаажсан лавлах.
@@ -124,9 +124,10 @@ function filteredFeatured() {
             <div v-if="loading" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="i in 6" :key="i" class="card h-72 animate-pulse bg-panel"></div>
             </div>
-            <div v-else class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-else-if="filteredFeatured().length" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <BusinessCard v-for="business in filteredFeatured()" :key="business.id" :business="business" />
             </div>
+            <div v-else class="card mt-4 p-10 text-center text-[13px] text-mute">Энэ шүүлтүүрт тохирох бизнес алга</div>
         </section>
     </div>
 </template>

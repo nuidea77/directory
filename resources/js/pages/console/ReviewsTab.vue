@@ -10,13 +10,23 @@ const unrepliedOnly = ref(false);
 const replyingId = ref(null);
 const replyText = ref('');
 const busy = ref(false);
+const loading = ref(true);
+const loadError = ref('');
 
 async function fetchReviews() {
     if (!store.organization) return;
-    const data = await api.get(`/console/organizations/${store.organization.id}/reviews`, {
-        unreplied: unrepliedOnly.value ? 1 : undefined,
-    });
-    reviews.value = data.data;
+    loading.value = true;
+    loadError.value = '';
+    try {
+        const data = await api.get(`/console/organizations/${store.organization.id}/reviews`, {
+            unreplied: unrepliedOnly.value ? 1 : undefined,
+        });
+        reviews.value = data.data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    } finally {
+        loading.value = false;
+    }
 }
 
 async function submitReply(review) {
@@ -42,7 +52,14 @@ onMounted(fetchReviews);
             <button class="chip" :class="{ 'chip-active': unrepliedOnly }" @click="unrepliedOnly = !unrepliedOnly; fetchReviews()">Хариугүй</button>
         </div>
 
-        <div class="mt-4 flex flex-col gap-2.5">
+        <div v-if="loadError" class="card mt-4 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchReviews">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="loading" class="card mt-4 h-40 animate-pulse"></div>
+
+        <div v-else class="mt-4 flex flex-col gap-2.5">
             <div v-for="review in reviews" :key="review.id" class="rounded-[11px] border p-4" :class="review.reply ? 'border-line bg-white' : 'border-blueline bg-bluepale'">
                 <div class="flex items-center gap-2.5">
                     <span class="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-blueline bg-bluetint text-[12px] font-bold text-brand">{{ review.user?.name?.charAt(0) }}</span>

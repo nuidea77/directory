@@ -22,10 +22,11 @@ onBeforeUnmount(() => window.removeEventListener('auth:expired', onAuthExpired))
 
 <template>
     <div class="flex min-h-screen flex-col">
-        <AppNavbar />
+        <!-- Өөрийн толгойтой хуудсуудад (wizard, төлбөр, салбарын засвар) давхарлахгүй -->
+        <AppNavbar v-if="$route.meta.chrome !== false" />
         <main class="flex-1">
             <router-view />
         </main>
-        <AppFooter />
+        <AppFooter v-if="$route.meta.chrome !== false" />
     </div>
 </template>

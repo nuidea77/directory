@@ -101,7 +101,7 @@ async function confirm() {
                         <label class="field-label">Шинэ нууц үг</label>
                         <div class="flex items-center rounded-[9px] border border-inputline px-3.5 py-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-bluetint">
                             <input v-model="password" :type="showPassword ? 'text' : 'password'" class="w-full bg-transparent text-[13px] font-medium tracking-widest text-ink outline-none" required minlength="8" />
-                            <button type="button" class="cursor-pointer text-[12px] font-semibold text-brand" @click="showPassword = !showPassword">Харах</button>
+                            <button type="button" class="cursor-pointer text-[12px] font-semibold text-brand" @click="showPassword = !showPassword">{{ showPassword ? 'Нуух' : 'Харах' }}</button>
                         </div>
                     </div>
                     <div>

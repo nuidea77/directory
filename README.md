@@ -103,17 +103,41 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 |---|---|
 | Auth | `POST auth/register`, `auth/login`, `auth/login-sms`, `auth/reset`, `auth/reset/confirm`, `GET auth/verifications/{uuid}`, `POST auth/verify/start`, `auth/logout`, `GET/PUT me`, `PUT me/password` |
 | Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, verified, amenity, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `pricing`, `POST branches/{id}/event` |
-| Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `GET my/messages`, `GET/POST businesses/{id}/messages` |
+| Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections`, `GET my/messages`, `GET/POST businesses/{id}/messages`, `GET locations` |
 | Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply`, зурвасын inbox |
 | Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
-| Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve|reject`, `GET admin/revenue`, `admin/businesses`, `admin/reviews` |
+| Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve|reject`, `GET admin/revenue`, `admin/businesses` (plan/pending/байршлын шүүлтүүр), `admin/reviews` + `moderate`, `admin/corrections` + `moderate` |
 
 ## Тест
 
 ```bash
-php artisan test   # 37 тест: verify.mn урсгал (mock), byl webhook + идэвхжүүлэлт,
-                   # зайн дараалал/promote, хайлт + онцлох эрэмбэ, эрхийн хязгаар, модерац
+php artisan test   # 48 тест: verify.mn урсгал (mock, expired/401), byl checkout + webhook,
+                   # brute-force түгжээ, салбарын нэмэлт, зайн дараалал/promote, хайлт,
+                   # report/helpful/залруулга, зургийн thumbnail, scheduler командууд
 ```
+
+## Production deploy
+
+```bash
+composer deploy          # install --no-dev, migrate, storage:link, optimize, queue:restart
+npm ci && npm run build
+```
+
+Заавал тохируулах зүйлс:
+
+1. **Cron** — scheduler-гүйгээр зарын дуусгалт/сунгалт, захиалгын цэвэрлэгээ ажиллахгүй:
+   ```
+   * * * * * cd /path && php artisan schedule:run >> /dev/null 2>&1
+   ```
+2. **Queue worker** — мэдэгдлүүд (и-мэйл) queue-гээр илгээгддэг:
+   ```
+   php artisan queue:work --tries=3   # supervisor/systemd-ээр байнга ажиллуулна
+   ```
+3. **byl.mn dashboard** — webhook URL: `https://тань-домэйн/webhooks/byl`, event: `checkout.completed`
+4. `.env`: `APP_ENV=production`, `APP_DEBUG=false`, `APP_TIMEZONE=Asia/Ulaanbaatar`, `APP_LOCALE=mn`,
+   `VERIFY_MN_API_KEY`, `BYL_API_TOKEN/PROJECT_ID/WEBHOOK_SECRET`, `CORS_ALLOWED_ORIGINS`
+   — verify.mn/byl түлхүүр дутуу бол production дээр бүртгэл/төлбөр АЖИЛЛАХГҮЙ (fail-closed, dev шиг авто-баталгаажуулахгүй)
+5. И-мэйл мэдэгдэлд `MAIL_*` тохиргоо (одоо log driver)
 
 ## Тэмдэглэл
 

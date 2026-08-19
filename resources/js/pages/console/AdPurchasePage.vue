@@ -63,7 +63,7 @@ async function fetchSlots() {
     slots.value = data;
 }
 
-async function checkout(queue = false) {
+async function checkout() {
     error.value = '';
     busy.value = true;
     try {
@@ -234,7 +234,7 @@ onMounted(async () => {
 
                 <div class="mt-5 flex max-w-[620px] flex-wrap items-center gap-2.5">
                     <button v-if="slotsFree > 0" class="btn-primary !px-6" :disabled="busy || !total" @click="checkout()">Төлбөр рүү</button>
-                    <button v-else class="btn-outline !px-5" :disabled="busy || !total" @click="checkout(true)">Дараалалд бүртгүүлэх</button>
+                    <button v-else class="btn-outline !px-5" :disabled="busy || !total" @click="checkout()">Дараалалд бүртгүүлэх (зай суларвал автоматаар идэвхжинэ)</button>
                     <span class="ml-auto text-[12px] font-medium text-mute">Хүссэн үедээ цуцлана · хугацаа дуустал үргэлжилнэ</span>
                 </div>
             </div>
