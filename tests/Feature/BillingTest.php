@@ -45,13 +45,13 @@ class BillingTest extends TestCase
         ]);
     }
 
-    public function test_checkout_creates_byl_invoice_with_correct_total(): void
+    public function test_checkout_creates_byl_checkout_with_correct_total(): void
     {
         $this->enableByl();
 
         Http::fake([
-            'byl.mn/api/v1/projects/42/invoices' => Http::response([
-                'data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/h/inv/777/abc'],
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response([
+                'data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/h/checkout/777/abc'],
             ]),
         ]);
 
@@ -72,10 +72,36 @@ class BillingTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.total', 290000 + 10000 + 149000 - 14900)
-            ->assertJsonPath('data.invoice_url', 'https://byl.mn/h/inv/777/abc');
+            ->assertJsonPath('data.invoice_url', 'https://byl.mn/h/checkout/777/abc');
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/projects/42/invoices')
-            && $request->hasHeader('Authorization', 'Bearer byl_test_token'));
+        // Төлбөрийн дараа сайт руу буцаах URL-ууд илгээгдсэн байх ёстой
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/projects/42/checkouts')
+            && $request->hasHeader('Authorization', 'Bearer byl_test_token')
+            && str_contains($request['success_url'] ?? '', '/pay?return=success')
+            && str_contains($request['cancel_url'] ?? '', '/pay?return=cancel')
+            && ($request['items'][0]['price_data']['unit_amount'] ?? null) === 290000 + 10000 + 149000 - 14900);
+    }
+
+    public function test_order_marked_paid_on_return_sync_when_checkout_complete(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/checkouts/777' => Http::response(['data' => ['id' => 777, 'status' => 'complete', 'url' => 'https://byl.mn/x']]),
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response(['data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/x']]),
+        ]);
+
+        $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+        ])->json('data');
+
+        // byl.mn-ээс буцаж ирээд төлөв асуухад (poll) шууд paid болно
+        $this->actingAs($this->owner)->getJson("/api/v1/orders/{$order['id']}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->assertSame('standard', $this->organization->refresh()->plan);
     }
 
     public function test_webhook_activates_plan_and_campaign(): void
@@ -83,7 +109,7 @@ class BillingTest extends TestCase
         $this->enableByl();
 
         Http::fake([
-            'byl.mn/api/v1/projects/42/invoices' => Http::response(['data' => ['id' => 777, 'url' => 'https://byl.mn/x']]),
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response(['data' => ['id' => 777, 'url' => 'https://byl.mn/x', 'status' => 'open']]),
         ]);
 
         $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
@@ -98,7 +124,7 @@ class BillingTest extends TestCase
             ]],
         ])->json('data');
 
-        $body = json_encode(['type' => 'invoice.paid', 'data' => ['object' => ['id' => 777, 'status' => 'paid']]]);
+        $body = json_encode(['type' => 'checkout.completed', 'data' => ['object' => ['id' => 777, 'status' => 'complete']]]);
         $signature = hash_hmac('sha256', $body, 'whsec_test');
 
         $this->call('POST', '/webhooks/byl', [], [], [], [
@@ -128,7 +154,7 @@ class BillingTest extends TestCase
     {
         $this->enableByl();
 
-        $body = json_encode(['type' => 'invoice.paid', 'data' => ['object' => ['id' => 1]]]);
+        $body = json_encode(['type' => 'checkout.completed', 'data' => ['object' => ['id' => 1]]]);
 
         $this->call('POST', '/webhooks/byl', [], [], [], [
             'CONTENT_TYPE' => 'application/json',
@@ -222,9 +248,8 @@ class BillingTest extends TestCase
         $this->enableByl();
 
         Http::fake([
-            'byl.mn/api/v1/projects/42/invoices' => Http::response(['data' => ['id' => 777, 'url' => 'https://byl.mn/x', 'status' => 'open']]),
-            'byl.mn/api/v1/projects/42/invoices/777/void' => Http::response(['data' => ['id' => 777, 'status' => 'void']]),
-            'byl.mn/api/v1/projects/42/invoices/777' => Http::response(['data' => ['id' => 777, 'status' => 'void']]),
+            'byl.mn/api/v1/projects/42/checkouts/777' => Http::response(['data' => ['id' => 777, 'status' => 'open']]),
+            'byl.mn/api/v1/projects/42/checkouts' => Http::response(['data' => ['id' => 777, 'url' => 'https://byl.mn/x', 'status' => 'open']]),
         ]);
 
         $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [

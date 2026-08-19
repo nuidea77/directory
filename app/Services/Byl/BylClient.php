@@ -8,49 +8,52 @@ use Illuminate\Support\Facades\Http;
 /**
  * Client for byl.mn — Mongolian payment aggregator (QPay, SocialPay, Pocket, Golomt).
  *
- * All endpoints live under https://byl.mn/api/v1/projects/:project_id and are
- * authenticated with a Bearer API token. Paid/void notifications arrive on the
- * webhook endpoint signed with HMAC-SHA256 in the Byl-Signature header.
+ * We use the Checkout API (not Invoices) because checkouts support
+ * success_url / cancel_url, so byl.mn sends the customer back to the site
+ * after paying. All endpoints live under https://byl.mn/api/v1/projects/:project_id
+ * and are authenticated with a Bearer API token. Paid notifications arrive on the
+ * webhook endpoint (checkout.completed) signed with HMAC-SHA256 in the
+ * Byl-Signature header.
  */
 class BylClient
 {
     /**
-     * Create an invoice and get back a hosted payment URL.
+     * Create a checkout and get back a hosted payment URL.
+     * byl.mn redirects the customer to $successUrl after payment
+     * and to $cancelUrl if they abandon it.
      *
-     * @return array{id: int, url: string, status: string, amount: mixed}
+     * @return array{id: int, url: string, status: string, amount_total: mixed}
      */
-    public function createInvoice(int $amount, string $description, ?int $customerId = null): array
+    public function createCheckout(int $amount, string $itemName, string $orderNumber, string $successUrl, string $cancelUrl): array
     {
         $payload = [
-            'amount' => $amount,
-            'description' => $description,
-            'auto_advance' => true,
+            'items' => [[
+                'price_data' => [
+                    'unit_amount' => $amount,
+                    'product_data' => ['name' => mb_substr($itemName, 0, 255)],
+                ],
+                'quantity' => 1,
+            ]],
+            'client_reference_id' => mb_substr($orderNumber, 0, 48),
+            'success_url' => $successUrl,
+            'cancel_url' => $cancelUrl,
+            'email_collection' => false,
         ];
 
-        if ($customerId !== null) {
-            $payload['customer_id'] = $customerId;
-        }
-
         $response = $this->http()
-            ->post($this->projectPath('/invoices'), $payload)
+            ->post($this->projectPath('/checkouts'), $payload)
             ->throw();
 
         return $response->json('data') ?? $response->json();
     }
 
-    public function getInvoice(int $invoiceId): array
+    /**
+     * @return array{id: int, url: string, status: string} status: open|complete|expired
+     */
+    public function getCheckout(int $checkoutId): array
     {
         $response = $this->http()
-            ->get($this->projectPath('/invoices/'.$invoiceId))
-            ->throw();
-
-        return $response->json('data') ?? $response->json();
-    }
-
-    public function voidInvoice(int $invoiceId): array
-    {
-        $response = $this->http()
-            ->post($this->projectPath('/invoices/'.$invoiceId.'/void'))
+            ->get($this->projectPath('/checkouts/'.$checkoutId))
             ->throw();
 
         return $response->json('data') ?? $response->json();

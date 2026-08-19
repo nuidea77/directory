@@ -118,6 +118,38 @@ class AuthFlowTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_expired_session_treated_as_failure(): void
+    {
+        // verify.mn PENDING хэвээр — хугацаа нь дуусна
+        $this->fakeVerifyMn('PENDING');
+
+        $start = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ]);
+
+        $uuid = $start->json('verification.uuid');
+
+        $this->travel(6)->minutes();
+
+        $this->getJson("/api/v1/auth/verifications/{$uuid}")
+            ->assertOk()
+            ->assertJsonPath('verification.status', 'expired')
+            ->assertJsonMissingPath('token');
+
+        $this->assertNull(User::where('phone', '99112233')->first()->phone_verified_at);
+    }
+
+    public function test_bad_api_key_returns_validation_error_not_500(): void
+    {
+        Http::fake([
+            'api.verify.mn/sessions' => Http::response(['message' => 'Unauthorized'], 401),
+        ]);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ])->assertStatus(422);
+    }
+
     public function test_unverified_user_cannot_review_or_message(): void
     {
         $user = User::factory()->unverified()->create();

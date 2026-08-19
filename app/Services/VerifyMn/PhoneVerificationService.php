@@ -4,7 +4,10 @@ namespace App\Services\VerifyMn;
 
 use App\Models\PhoneVerification;
 use App\Models\User;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * verify.mn (MO SMS) баталгаажуулалтын оркестрация.
@@ -51,7 +54,21 @@ class PhoneVerificationService
             'token' => $verification->callback_token,
         ]);
 
-        $session = $this->client->createSession($phone, $verification->code, $callbackUrl);
+        try {
+            $session = $this->client->createSession($phone, $verification->code, $callbackUrl);
+        } catch (RequestException $e) {
+            // 401 (буруу түлхүүр) / 5xx — API түлхүүрийг хэзээ ч лог руу оруулахгүй
+            Log::error('verify.mn: session үүсгэж чадсангүй', [
+                'status' => $e->response?->status(),
+                'phone' => $phone,
+            ]);
+
+            $verification->update(['status' => 'failed']);
+
+            throw ValidationException::withMessages([
+                'phone' => 'Баталгаажуулалтын үйлчилгээ түр ажиллахгүй байна. Хэсэг хугацааны дараа дахин оролдоно уу.',
+            ]);
+        }
 
         $verification->update([
             'session_id' => $session['sessionId'] ?? null,

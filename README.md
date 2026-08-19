@@ -37,7 +37,7 @@ Laravel + Vue 3 + Tailwind CSS + MySQL.
 | Frontend | Vue 3 SPA, Vue Router, Pinia, Tailwind CSS 4, Vite |
 | Өгөгдлийн сан | MySQL (production) · SQLite (dev/test) |
 | SMS баталгаажуулалт | [verify.mn](https://verify.mn) — MO SMS |
-| Төлбөр | [byl.mn](https://byl.mn) — нэхэмжлэх + HMAC webhook |
+| Төлбөр | [byl.mn](https://byl.mn) — Checkout API (төлсний дараа сайт руу буцаана) + HMAC webhook |
 
 ## Суулгах
 
@@ -55,6 +55,14 @@ php artisan serve
 ```
 
 Демо хэрэглэгчид (local seed): эзэмшигч `99000000` / админ `99000001`, нууц үг `password123`.
+
+Админ хэрэглэгч нэмэх (production дээр ч ажиллана):
+
+```bash
+php artisan admin:create 99112233                          # шинэ админ, нууц үг автоматаар үүсч 1 удаа харагдана
+php artisan admin:create 99112233 --name="Бат" --password=secret123
+php artisan admin:create 99112233 --demote                 # админ эрх буцаах
+```
 
 ### Гуравдагч үйлчилгээ (.env)
 
@@ -78,13 +86,14 @@ byl.mn dashboard дээр webhook URL: `https://тань-домэйн/webhooks/b
 2. Хэрэглэгч кодоо verify.mn-ийн богино дугаарт өөрөө илгээнэ (нэг товчтой `sms:` линк)
 3. verify.mn callback (`GET /webhooks/verify-mn/{uuid}?token=…`) → албан ёсны төлвийг API-аас давхар шалгана
 4. Клиент 3 секунд тутам poll (`GET /api/v1/auth/verifications/{uuid}`)
-5. Хэрэглэгддэг газрууд: бүртгэл, мессежээр нэвтрэх, нууц үг сэргээх, салбарын утас баталгаажуулах
+5. Хэрэглэгддэг газрууд: бүртгэл (заавал), мессежээр нэвтрэх, нууц үг сэргээх
 
 **byl.mn төлбөр** — эрх + салбарын нэмэлт + онцлох нэг захиалгаар:
-1. `POST /api/v1/checkout` → order (KH-YYYY-MM-XXXX) + byl нэхэмжлэх + QR
-2. `POST /webhooks/byl` — `Byl-Signature` (HMAC-SHA256, raw body, constant-time) шалгаад идэвхжүүлнэ
-3. Идэвхжүүлэлт idempotent: эрх сунгах, ✓ тэмдэг, онцлох зай эзлэх/дараалалд оруулах
-4. Fallback: `GET /api/v1/orders/{id}` төлөв poll
+1. `POST /api/v1/checkout` → order (KH-YYYY-MM-XXXX) + byl checkout → төлбөрийн хуудас руу шууд үсэрнэ
+2. Төлсний дараа byl.mn `success_url` (`/orders/{id}/pay?return=success`) руу буцаана; болиход `cancel_url`
+3. `POST /webhooks/byl` — `checkout.completed`, `Byl-Signature` (HMAC-SHA256, raw body, constant-time) шалгаад идэвхжүүлнэ
+4. Идэвхжүүлэлт idempotent: эрх сунгах, ✓ тэмдэг, онцлох зай эзлэх/дараалалд оруулах
+5. Fallback: `GET /api/v1/orders/{id}` төлөв poll (буцаж ирэх мөчид webhook хоцорсон ч барина)
 
 ## API v1 (мобайл апп-д бэлэн)
 
@@ -102,7 +111,7 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 ## Тест
 
 ```bash
-php artisan test   # 32 тест: verify.mn урсгал (mock), byl webhook + идэвхжүүлэлт,
+php artisan test   # 37 тест: verify.mn урсгал (mock), byl webhook + идэвхжүүлэлт,
                    # зайн дараалал/promote, хайлт + онцлох эрэмбэ, эрхийн хязгаар, модерац
 ```
 

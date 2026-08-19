@@ -160,15 +160,19 @@ class BillingService
                 return $order->refresh();
             }
 
-            $invoice = $this->byl->createInvoice(
+            // Checkout API: төлбөрийн дараа byl.mn хэрэглэгчийг сайт руу буцаана
+            $checkout = $this->byl->createCheckout(
                 $total,
                 sprintf('%s — %s', $order->number, $organization->name),
+                $order->number,
+                url("/orders/{$order->id}/pay?return=success"),
+                url("/orders/{$order->id}/pay?return=cancel"),
             );
 
             $order->update([
-                'byl_invoice_id' => $invoice['id'] ?? null,
-                'invoice_url' => $invoice['url'] ?? null,
-                'provider_payload' => $invoice,
+                'byl_checkout_id' => $checkout['id'] ?? null,
+                'invoice_url' => $checkout['url'] ?? null,
+                'provider_payload' => $checkout,
             ]);
 
             return $order->refresh();
@@ -180,19 +184,25 @@ class BillingService
      */
     public function sync(Order $order): Order
     {
-        if ($order->status !== 'pending' || $order->byl_invoice_id === null || ! $this->byl->enabled()) {
+        if ($order->status !== 'pending' || $order->byl_checkout_id === null || ! $this->byl->enabled()) {
             return $order;
         }
 
-        $invoice = $this->byl->getInvoice($order->byl_invoice_id);
+        $checkout = $this->byl->getCheckout($order->byl_checkout_id);
 
-        match ($invoice['status'] ?? null) {
-            'paid' => $this->markPaid($order, $invoice),
-            'void' => $order->update(['status' => 'void', 'provider_payload' => $invoice]),
+        match ($checkout['status'] ?? null) {
+            'complete' => $this->markPaid($order, $checkout),
+            'expired' => $this->voidOrder($order, $checkout),
             default => null,
         };
 
         return $order->refresh();
+    }
+
+    public function voidOrder(Order $order, array $payload = []): void
+    {
+        $order->update(['status' => 'void', 'provider_payload' => $payload ?: $order->provider_payload]);
+        $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
     }
 
     /**

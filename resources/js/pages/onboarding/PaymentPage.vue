@@ -14,7 +14,9 @@ const router = useRouter();
 
 const order = ref(null);
 const loadError = ref('');
-const redirected = ref(false);
+// byl.mn-ээс буцаж ирсэн үед (?return=success|cancel) дахин тийш нь үсэргэхгүй
+const returnState = ref(route.query.return || '');
+const redirected = ref(!!returnState.value);
 const checking = ref(false);
 const canceling = ref(false);
 let pollTimer = null;
@@ -127,10 +129,26 @@ onBeforeUnmount(stop);
                     <h1 class="mt-4 text-[20px] font-extrabold tracking-[-.02em] text-ink">Захиалга ачаалж байна…</h1>
                 </template>
 
+                <template v-else-if="returnState === 'success'">
+                    <h1 class="mt-4 text-[20px] font-extrabold tracking-[-.02em] text-ink">Төлбөрийг баталгаажуулж байна…</h1>
+                    <p class="mt-2 text-[13px] leading-relaxed text-soft">
+                        Та byl.mn-ээс буцаж ирлээ. Төлбөр батлагдмагц амжилтын хуудас руу автоматаар шилжинэ — хэдхэн секунд хүлээнэ үү.
+                    </p>
+                </template>
+
+                <template v-else-if="returnState === 'cancel'">
+                    <h1 class="mt-4 text-[20px] font-extrabold tracking-[-.02em] text-ink">Төлбөр хийгдээгүй байна</h1>
+                    <p class="mt-2 text-[13px] leading-relaxed text-soft">
+                        Та төлбөрөө дуусгалгүй буцаж ирсэн байна. Захиалга хадгалагдсан — хүссэн үедээ дахин төлж болно.
+                    </p>
+                    <a v-if="order.invoice_url" :href="order.invoice_url" class="btn-primary mt-5 w-full !py-3.5">{{ fmt(order.total) }} төлөх — byl.mn</a>
+                </template>
+
                 <template v-else-if="order.invoice_url">
                     <h1 class="mt-4 text-[20px] font-extrabold tracking-[-.02em] text-ink">byl.mn руу шилжүүлж байна…</h1>
                     <p class="mt-2 text-[13px] leading-relaxed text-soft">
                         Төлбөрийг byl.mn-ийн найдвартай хуудсаар (QR, банкны апп, карт) хийнэ.
+                        Төлсний дараа автоматаар энэ сайт руу буцаж ирнэ.
                         Автоматаар шилжихгүй бол доорх товчийг дарна уу.
                     </p>
                     <a :href="order.invoice_url" class="btn-primary mt-5 w-full !py-3.5">{{ fmt(order.total) }} төлөх — byl.mn</a>

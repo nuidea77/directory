@@ -17,7 +17,7 @@ class Order extends Model
         'organization_id',
         'total',
         'status',
-        'byl_invoice_id',
+        'byl_checkout_id',
         'invoice_url',
         'provider_payload',
         'paid_at',

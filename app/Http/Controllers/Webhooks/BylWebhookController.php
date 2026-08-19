@@ -27,21 +27,16 @@ class BylWebhookController extends Controller
         $type = $event['type'] ?? null;
         $object = $event['data']['object'] ?? [];
 
-        if (in_array($type, ['invoice.paid', 'invoice.void'], true)) {
-            $order = Order::where('byl_invoice_id', $object['id'] ?? 0)->first();
+        if ($type === 'checkout.completed') {
+            $order = Order::where('byl_checkout_id', $object['id'] ?? 0)->first();
 
             if ($order === null) {
-                Log::info('byl.mn webhook: no matching order', ['type' => $type, 'invoice_id' => $object['id'] ?? null]);
+                Log::info('byl.mn webhook: no matching order', ['type' => $type, 'checkout_id' => $object['id'] ?? null]);
 
                 return response()->json(['ok' => true]);
             }
 
-            if ($type === 'invoice.paid') {
-                $billing->markPaid($order, $object);
-            } else {
-                $order->update(['status' => 'void', 'provider_payload' => $object]);
-                $order->campaigns()->where('status', 'pending_payment')->update(['status' => 'canceled']);
-            }
+            $billing->markPaid($order, $object);
         }
 
         return response()->json(['ok' => true]);

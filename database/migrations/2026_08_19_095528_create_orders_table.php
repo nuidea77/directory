@@ -17,8 +17,8 @@ return new class extends Migration
             $table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedInteger('total'); // MNT, НӨАТ орсон
             $table->string('status', 20)->default('pending'); // pending | paid | void | expired
-            $table->unsignedBigInteger('byl_invoice_id')->nullable()->unique();
-            $table->string('invoice_url')->nullable();
+            $table->unsignedBigInteger('byl_checkout_id')->nullable()->unique();
+            $table->string('invoice_url')->nullable(); // byl.mn төлбөрийн хуудасны URL
             $table->json('provider_payload')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
