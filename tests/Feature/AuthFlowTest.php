@@ -118,6 +118,39 @@ class AuthFlowTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_provider_utc_expiry_not_treated_as_already_expired(): void
+    {
+        // verify.mn цагаа UTC (Z) форматаар өгдөг — апп +08 цагийн бүстэй үед
+        // хөрвүүлэлгүй хадгалбал 8 цаг зөрж шууд "дууссан" болдог байсан (regression)
+        $utcExpiry = now()->utc()->addMinutes(5)->format('Y-m-d\TH:i:s\Z');
+
+        Http::fake([
+            'api.verify.mn/sessions' => Http::response([
+                'sessionId' => 'sess-utc',
+                'smsUri' => 'sms:144773?body=482916',
+                'displayInstruction' => 'x',
+                'expiresAt' => $utcExpiry,
+            ]),
+            'api.verify.mn/sessions/*' => Http::response([
+                'sessionId' => 'sess-utc',
+                'sessionStatus' => 'PENDING',
+                'expiresAt' => $utcExpiry,
+            ]),
+        ]);
+
+        $start = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ]);
+
+        $start->assertCreated()->assertJsonPath('verification.status', 'pending');
+        $this->assertGreaterThan(200, $start->json('verification.expires_in'));
+
+        // Poll хийхэд хугацаа дуусаагүй хэвээр
+        $this->getJson('/api/v1/auth/verifications/'.$start->json('verification.uuid'))
+            ->assertOk()
+            ->assertJsonPath('verification.status', 'pending');
+    }
+
     public function test_expired_session_treated_as_failure(): void
     {
         // verify.mn PENDING хэвээр — хугацаа нь дуусна

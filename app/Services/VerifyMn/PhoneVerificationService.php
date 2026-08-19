@@ -89,7 +89,11 @@ class PhoneVerificationService
             'session_id' => $session['sessionId'] ?? null,
             'sms_uri' => $session['smsUri'] ?? null,
             'display_instruction' => $session['displayInstruction'] ?? null,
-            'expires_at' => isset($session['expiresAt']) ? now()->parse($session['expiresAt']) : $verification->expires_at,
+            // Провайдерын цагийг (UTC байж болно) апп-ын цагийн бүсэд хөрвүүлж
+            // хадгална — эс бөгөөс +08 бүсэд уншихад 8 цаг зөрж шууд "дууссан" болно
+            'expires_at' => isset($session['expiresAt'])
+                ? now()->parse($session['expiresAt'])->setTimezone(config('app.timezone'))
+                : $verification->expires_at,
         ]);
 
         return $verification->refresh();
@@ -136,7 +140,7 @@ class PhoneVerificationService
     {
         $verification->update([
             'status' => 'verified',
-            'verified_at' => $verifiedAt ? now()->parse($verifiedAt) : now(),
+            'verified_at' => $verifiedAt ? now()->parse($verifiedAt)->setTimezone(config('app.timezone')) : now(),
         ]);
 
         // Purpose-оос хамаарсан side effect-үүд (idempotent)
