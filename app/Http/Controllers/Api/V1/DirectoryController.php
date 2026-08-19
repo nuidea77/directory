@@ -34,6 +34,7 @@ class DirectoryController extends Controller
             'data' => collect(config('locations'))
                 ->map(fn (array $districts, string $city) => ['city' => $city, 'districts' => $districts])
                 ->values(),
+            'amenities' => config('amenities'),
         ]);
     }
 
@@ -49,9 +50,11 @@ class DirectoryController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Нүүрийн онцлох — 6 зай, дараа нь өндөр үнэлгээтэйгээр дүүргэнэ
+        // Нүүрийн онцлох — 6 зай (хот тус бүрт), дараа нь өндөр үнэлгээтэйгээр дүүргэнэ
+        $city = (string) $request->query('city', 'Улаанбаатар');
         $featuredIds = Campaign::query()->running()
             ->where('type', 'home_featured')
+            ->where(fn ($q) => $q->where('city', $city)->orWhereNull('city'))
             ->orderBy('slot')
             ->pluck('business_id');
 
@@ -97,6 +100,7 @@ class DirectoryController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
             'district' => ['nullable', 'string', 'max:100'],
             'price' => ['nullable', 'in:₮,₮₮,₮₮₮'],
             'rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
@@ -127,16 +131,41 @@ class DirectoryController extends Controller
 
         $term = trim((string) $request->query('q'));
 
+        // Түлхүүр үгийн зар: худалдаж авсан үг хайлтын үгэнд агуулагдах эсвэл
+        // эсрэгээрээ бол тухайн бизнес текст тохироогүй ч илэрцэд орж дээр гарна
+        $keywordFeaturedIds = collect();
+
+        if ($term !== '') {
+            $needle = mb_strtolower($term);
+            $keywordFeaturedIds = Campaign::query()->running()
+                ->where('type', 'keyword')
+                ->orderBy('slot')
+                ->get(['business_id', 'keyword'])
+                ->filter(fn ($c) => $c->keyword !== null
+                    && (str_contains($needle, $c->keyword) || str_contains($c->keyword, $needle)))
+                ->pluck('business_id');
+        }
+
         if ($term !== '') {
             // LIKE-ийн % _ тэмдэгтүүдийг escape хийнэ
             $like = '%'.addcslashes($term, '%_\\').'%';
-            $query->where(function (Builder $q) use ($like) {
-                $q->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
-                    ->orWhere('description', 'like', $like)
-                    ->orWhere('subcategory', 'like', $like))
-                    ->orWhere('address', 'like', $like)
-                    ->orWhere('name', 'like', $like);
+            $query->where(function (Builder $q) use ($like, $keywordFeaturedIds) {
+                $q->where(function (Builder $qq) use ($like) {
+                    $qq->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
+                        ->orWhere('description', 'like', $like)
+                        ->orWhere('subcategory', 'like', $like))
+                        ->orWhere('address', 'like', $like)
+                        ->orWhere('name', 'like', $like);
+                });
+
+                if ($keywordFeaturedIds->isNotEmpty()) {
+                    $q->orWhereIn('business_id', $keywordFeaturedIds);
+                }
             });
+        }
+
+        if ($city = $request->query('city')) {
+            $query->where('city', $city);
         }
 
         if ($district = $request->query('district')) {
@@ -191,15 +220,7 @@ class DirectoryController extends Controller
             );
         }
 
-        if ($term !== '' && $term !== null) {
-            $featuredBusinessIds = $featuredBusinessIds->merge(
-                Campaign::query()->running()
-                    ->where('type', 'keyword')
-                    ->where('keyword', mb_strtolower($term))
-                    ->orderBy('slot')
-                    ->pluck('business_id'),
-            );
-        }
+        $featuredBusinessIds = $featuredBusinessIds->merge($keywordFeaturedIds);
 
         $featuredBusinessIds = $featuredBusinessIds->unique()->values();
 
@@ -207,6 +228,14 @@ class DirectoryController extends Controller
             $placeholders = $featuredBusinessIds->map(fn () => '?')->implode(',');
             $query->orderByRaw("CASE WHEN business_id IN ({$placeholders}) THEN 0 ELSE 1 END", $featuredBusinessIds->all());
         }
+
+        // Бизнес эрхийн «ТОП жагсаалт» — идэвхтэй business эрхтэй байгууллагууд
+        // онцлохын дараа, бусдын өмнө эрэмбэлэгдэнэ
+        $query->orderByRaw(
+            'CASE WHEN business_id IN (select id from businesses where organization_id in '
+            .'(select id from organizations where plan = ? and plan_expires_at > ?)) THEN 0 ELSE 1 END',
+            ['business', now()],
+        );
 
         match ($request->query('sort', 'rating')) {
             'newest' => $query->latest('branches.created_at'),

@@ -78,12 +78,16 @@ class StatsController extends Controller
             ->limit(5)
             ->get();
 
+        $analyticsEnabled = (bool) ($organization->planConfig()['analytics'] ?? false);
+
         return response()->json([
             'totals' => $totals,
             'series' => $series,
-            'sources' => $sources,
+            // Эх сурвалжийн задаргаа — төлбөртэй эрхийн боломж тул серверээс нуана
+            // (frontend-ийн blur нь хамгаалалт биш)
+            'sources' => $analyticsEnabled ? $sources : $sources->map(fn ($s) => ['name' => $s['name'], 'value' => null, 'pct' => null]),
             'pending_reviews' => \App\Http\Resources\ReviewResource::collection($pendingReviews),
-            'analytics_enabled' => (bool) ($organization->planConfig()['analytics'] ?? false),
+            'analytics_enabled' => $analyticsEnabled,
         ]);
     }
 }

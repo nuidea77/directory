@@ -150,5 +150,12 @@ class Branch extends Model
         if ($type === 'view' && in_array($source, ['category', 'search', 'map', 'direct'], true)) {
             $stat->increment('views_'.$source);
         }
+
+        // Зар өгөгчийн ROI: идэвхтэй кампанит ажилд үзэлт/залгалт бүртгэнэ
+        if (in_array($type, ['view', 'call'], true)) {
+            Campaign::query()->running()
+                ->where('business_id', $this->business_id)
+                ->increment($type === 'view' ? 'views_count' : 'calls_count');
+        }
     }
 }

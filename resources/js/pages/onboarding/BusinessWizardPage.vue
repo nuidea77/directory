@@ -33,8 +33,13 @@ const info = ref({
     price_level: '₮₮',
 });
 
-const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан', 'Налайх', 'Багануур'];
-const amenityOptions = ['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Хүлээх танхим', 'Англи хэл', '24/7 дуудлага', 'Урьдчилсан цаг', 'Танхим'];
+// Аймаг/нийслэл + сум/дүүрэг, үйлчилгээний жагсаалт API-аас (config/locations, config/amenities)
+const locations = ref([]);
+const amenityOptions = ref([]);
+
+function districtsFor(city) {
+    return locations.value.find((l) => l.city === city)?.districts || [];
+}
 
 const defaultHours = () => ({
     mon: { from: '09:00', to: '19:00', closed: false }, tue: { from: '09:00', to: '19:00', closed: false },
@@ -50,7 +55,7 @@ const selectedCategory = computed(() => categories.value.find((c) => c.id === Nu
 
 function newBranchForm() {
     return {
-        district: '', khoroo: '', address: '', landmark: '',
+        city: 'Улаанбаатар', district: '', khoroo: '', address: '', landmark: '',
         phone: '', email: '', hours: defaultHours(), amenities: [],
     };
 }
@@ -96,11 +101,15 @@ async function submitBranches() {
         }
 
         for (const form of forms) {
+            // Алдаа гарч дахин илгээхэд өмнө нь үүссэн салбарыг давхардуулахгүй
+            if (form._created) continue;
+
             await api.post(`/console/businesses/${business.value.id}/branches`, {
                 ...form,
                 name: form.district + ' салбар',
                 phone: form.phone.replace(/\s/g, ''),
             });
+            form._created = true;
         }
 
         // Салбарууд хадгалагдмагц шууд эрх сонгох руу
@@ -117,8 +126,10 @@ onMounted(async () => {
         router.push({ name: 'verify' });
         return;
     }
-    const data = await api.get('/categories');
-    categories.value = data.data;
+    const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
+    categories.value = cats.data;
+    locations.value = locs.data;
+    amenityOptions.value = locs.amenities || [];
 });
 </script>
 
@@ -257,14 +268,20 @@ onMounted(async () => {
                             </div>
                             <div class="grid grid-cols-1 gap-3.5 p-4 sm:grid-cols-2">
                                 <div>
-                                    <label class="field-label !text-[12px]">Дүүрэг / сум</label>
-                                    <select v-model="form.district" class="input cursor-pointer" required>
-                                        <option value="" disabled>Сонгоно уу</option>
-                                        <option v-for="d in districts" :key="d" :value="d">{{ d }}</option>
+                                    <label class="field-label !text-[12px]">Аймаг / Нийслэл</label>
+                                    <select v-model="form.city" class="input cursor-pointer" required @change="form.district = ''">
+                                        <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="field-label !text-[12px]">Хороо</label>
+                                    <label class="field-label !text-[12px]">{{ form.city === 'Улаанбаатар' ? 'Дүүрэг' : 'Сум' }}</label>
+                                    <select v-model="form.district" class="input cursor-pointer" required>
+                                        <option value="" disabled>Сонгоно уу</option>
+                                        <option v-for="d in districtsFor(form.city)" :key="d" :value="d">{{ d }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label !text-[12px]">Хороо / баг (сонголт)</label>
                                     <input v-model="form.khoroo" type="text" placeholder="13-р хороо" class="input" />
                                 </div>
                                 <div class="sm:col-span-2">

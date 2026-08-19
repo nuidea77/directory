@@ -152,6 +152,7 @@ onMounted(() => {
                             class="flex gap-2.5 border-b border-hairline px-3.5 py-3"
                             :class="{ 'bg-bluepale': b.id === selectedId }"
                             @mouseenter="selectedId = b.id"
+                            @click="api.post(`/branches/${b.id}/event`, { type: 'view', source: 'map' }).catch(() => {})"
                         >
                             <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" :class="b.id === selectedId ? 'bg-brand text-white' : 'bg-bluetint text-brand'">{{ i + 1 }}</span>
                             <div class="min-w-0 flex-1">

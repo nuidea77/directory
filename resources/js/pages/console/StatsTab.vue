@@ -94,8 +94,8 @@ onMounted(fetchStats);
                     <div class="text-[15px] font-bold text-ink">Хэрхэн олсон</div>
                     <div class="mt-4 flex flex-col gap-3.5" :class="{ 'opacity-40 blur-[2px]': !stats.analytics_enabled }">
                         <div v-for="s in stats.sources" :key="s.name">
-                            <div class="flex justify-between text-[12.5px] font-semibold text-ink"><span>{{ s.name }}</span><span class="text-soft">{{ s.pct }}%</span></div>
-                            <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-chip"><div class="h-full bg-brand" :style="{ width: s.pct + '%' }"></div></div>
+                            <div class="flex justify-between text-[12.5px] font-semibold text-ink"><span>{{ s.name }}</span><span class="text-soft">{{ s.pct === null ? '🔒' : s.pct + '%' }}</span></div>
+                            <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-chip"><div class="h-full bg-brand" :style="{ width: (s.pct || 0) + '%' }"></div></div>
                         </div>
                     </div>
                     <p v-if="!stats.analytics_enabled" class="mt-3 text-[11.5px] font-medium text-mute">Стандарт эрхэд нээгдэнэ</p>

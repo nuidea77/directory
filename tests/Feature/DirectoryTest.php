@@ -88,6 +88,35 @@ class DirectoryTest extends TestCase
         $response = $this->getJson('/api/v1/search?q='.urlencode('авто'));
 
         $this->assertSame('Хангай авто сервис', $response->json('data.0.business.name'));
+
+        // Хэсэгчилсэн тохирол: «авто засвар» гэж хайхад ч «авто» түлхүүр гарна
+        $partial = $this->getJson('/api/v1/search?q='.urlencode('авто засвар'));
+        $this->assertSame('Хангай авто сервис', $partial->json('data.0.business.name'));
+    }
+
+    public function test_search_filters_by_city_and_business_plan_ranks_higher(): void
+    {
+        // Хөвсгөлд салбартай бизнес
+        $khovsgol = Business::factory()->create(['name' => 'мөрөн зочид буудал']);
+        Branch::factory()->create(['business_id' => $khovsgol->id, 'city' => 'Хөвсгөл', 'district' => 'Мөрөн', 'rating_avg' => 3.0]);
+
+        // УБ-д: энгийн (өндөр үнэлгээ) + Бизнес эрхтэй (бага үнэлгээ)
+        $plain = Business::factory()->create(['name' => 'энгийн буудал']);
+        Branch::factory()->create(['business_id' => $plain->id, 'rating_avg' => 5.0]);
+
+        $paidOrg = \App\Models\Organization::factory()->create(['plan' => 'business', 'plan_expires_at' => now()->addYear()]);
+        $paid = Business::factory()->create(['organization_id' => $paidOrg->id, 'name' => 'топ буудал']);
+        Branch::factory()->create(['business_id' => $paid->id, 'rating_avg' => 4.0]);
+
+        // city шүүлтүүр
+        $this->getJson('/api/v1/search?city='.urlencode('Хөвсгөл'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.business.name', 'мөрөн зочид буудал');
+
+        // Бизнес эрхтэй нь (топ жагсаалт) энгийнээс өмнө гарна
+        $all = $this->getJson('/api/v1/search?city='.urlencode('Улаанбаатар'));
+        $this->assertSame('топ буудал', $all->json('data.0.business.name'));
     }
 
     public function test_business_detail_hides_business_without_active_branches(): void

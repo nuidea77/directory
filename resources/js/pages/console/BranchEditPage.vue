@@ -13,8 +13,11 @@ const msg = ref({ type: '', text: '' });
 const busy = ref(false);
 const uploading = ref(false);
 
-const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан', 'Налайх', 'Багануур'];
-const amenityOptions = ['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Баталгаат засвар', 'Гэрээт даатгал', 'Хүлээх танхим', 'Англи хэл', '24/7 дуудлага', 'Урьдчилсан цаг', 'Танхим'];
+// Байршил, үйлчилгээний жагсаалт API-аас (нэг эх сурвалж)
+const locations = ref([]);
+const amenityOptions = ref([]);
+
+const districtOptions = computed(() => locations.value.find((l) => l.city === form.value?.city)?.districts || []);
 
 const todo = computed(() => {
     if (!branch.value) return [];
@@ -31,6 +34,7 @@ async function fetchBranch() {
     branch.value = data.data;
     form.value = {
         name: branch.value.name,
+        city: branch.value.city || 'Улаанбаатар',
         district: branch.value.district || '',
         khoroo: branch.value.khoroo || '',
         address: branch.value.address || '',
@@ -90,7 +94,12 @@ async function deleteImage(image) {
     branch.value.images = branch.value.images.filter((i) => i.id !== image.id);
 }
 
-onMounted(fetchBranch);
+onMounted(async () => {
+    fetchBranch();
+    const locs = await api.get('/locations');
+    locations.value = locs.data;
+    amenityOptions.value = locs.amenities || [];
+});
 </script>
 
 <template>
@@ -137,9 +146,16 @@ onMounted(fetchBranch);
                             <input v-model="form.address" type="text" class="input" />
                         </div>
                         <div>
-                            <label class="field-label">Дүүрэг</label>
+                            <label class="field-label">Аймаг / Нийслэл</label>
+                            <select v-model="form.city" class="input cursor-pointer" @change="form.district = ''">
+                                <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label">{{ form.city === 'Улаанбаатар' ? 'Дүүрэг' : 'Сум' }}</label>
                             <select v-model="form.district" class="input cursor-pointer">
-                                <option v-for="d in districts" :key="d" :value="d">{{ d }}</option>
+                                <option value="" disabled>Сонгоно уу</option>
+                                <option v-for="d in districtOptions" :key="d" :value="d">{{ d }}</option>
                             </select>
                         </div>
                         <div>

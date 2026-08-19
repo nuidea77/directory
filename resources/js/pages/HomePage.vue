@@ -14,20 +14,31 @@ const loading = ref(true);
 const featuredFilter = ref('all');
 
 const popular = ['хоолны газар', 'шүдний эмнэлэг', 'нотариат', 'барилгын материал'];
+const cities = ref([]);
 
-onMounted(async () => {
+async function fetchHome() {
+    loading.value = true;
     try {
-        const data = await api.get('/home');
+        const data = await api.get('/home', { city: city.value });
         categories.value = data.categories;
         featured.value = data.featured;
         stats.value = data.stats;
     } finally {
         loading.value = false;
     }
+}
+
+onMounted(async () => {
+    fetchHome();
+    api.get('/locations').then((locs) => (cities.value = locs.data.map((l) => l.city))).catch(() => {});
 });
 
 function search(term) {
-    router.push({ name: 'search', query: term || query.value ? { q: term || query.value } : {} });
+    const params = {};
+    const q = term || query.value;
+    if (q) params.q = q;
+    if (city.value && city.value !== 'Улаанбаатар') params.city = city.value;
+    router.push({ name: 'search', query: params });
 }
 
 function filteredFeatured() {
@@ -59,9 +70,11 @@ function filteredFeatured() {
                         <svg class="h-4 w-4 shrink-0 text-ph" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4-4"/></svg>
                         <input v-model="query" type="search" placeholder="Бизнес, үйлчилгээ, брэнд хайх" class="w-full bg-transparent text-[14px] font-medium text-ink outline-none placeholder:text-ph" />
                     </div>
-                    <div class="flex flex-1 items-center justify-between rounded-[10px] border border-inputline bg-white px-4 py-3.5">
-                        <span class="text-[14px] font-medium text-ink">{{ city }}</span>
-                        <span class="text-[12px] text-ph">▾</span>
+                    <div class="flex flex-1 items-center rounded-[10px] border border-inputline bg-white px-4 py-1.5">
+                        <select v-model="city" class="w-full cursor-pointer bg-transparent py-2 text-[14px] font-medium text-ink outline-none" @change="fetchHome()">
+                            <option value="Улаанбаатар">Улаанбаатар</option>
+                            <option v-for="c in cities.filter((c) => c !== 'Улаанбаатар')" :key="c" :value="c">{{ c }}</option>
+                        </select>
                     </div>
                     <button type="submit" class="btn-primary !rounded-[10px] !px-8 !py-3.5 !text-[14px]">Хайх</button>
                 </form>

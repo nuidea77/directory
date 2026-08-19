@@ -44,7 +44,10 @@ async function fetchBusiness() {
         selectedBranchId.value = business.value.branches?.[0]?.id || null;
 
         if (branch.value) {
-            api.post(`/branches/${branch.value.id}/event`, { type: 'view', source: 'direct' }).catch(() => {});
+            // Аппын доторх шилжилтэд эх сурвалжийг жагсаалтын хуудас аль хэдийн
+            // бүртгэсэн тул давхардуулахгүй; шууд орж ирсэн үед л direct гэж тоолно
+            const cameFromApp = !!window.history.state?.back;
+            api.post(`/branches/${branch.value.id}/event`, cameFromApp ? { type: 'view' } : { type: 'view', source: 'direct' }).catch(() => {});
         }
     } catch (e) {
         if (e instanceof ApiError && e.status === 404) notFound.value = true;

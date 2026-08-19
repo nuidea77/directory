@@ -14,15 +14,20 @@ const branches = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const loading = ref(true);
 
-const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан'];
-const amenityOptions = ['Зогсоол', 'Хүргэлт', 'Захиалга', 'Wi-Fi', 'Картаар'];
+// Байршил, үйлчилгээний жагсаалт API-аас
+const locations = ref([]);
+const amenityOptions = ref([]);
+
+const districts = computed(() => locations.value.find((l) => l.city === (filters.value.city || 'Улаанбаатар'))?.districts || []);
 
 const filters = ref({
     q: '',
+    city: '',
     district: '',
     price: '',
     rating: '',
     open_now: false,
+    verified: false,
     amenity: '',
     sub: '',
     sort: 'rating',
@@ -31,13 +36,22 @@ const filters = ref({
 
 const isCategory = computed(() => route.name === 'category');
 
+// Одоогийн хуудсыг тойрсон 5 хуудасны цонх
+const pageWindow = computed(() => {
+    const last = meta.value.last_page;
+    const start = Math.max(1, Math.min(meta.value.current_page - 2, last - 4));
+    return Array.from({ length: Math.min(5, last) }, (_, i) => start + i);
+});
+
 function syncFromRoute() {
     filters.value = {
         q: route.query.q || '',
+        city: route.query.city || '',
         district: route.query.district || '',
         price: route.query.price || '',
         rating: route.query.rating || '',
         open_now: route.query.open_now === '1',
+        verified: route.query.verified === '1',
         amenity: route.query.amenity || '',
         sub: route.query.sub || '',
         sort: route.query.sort || 'rating',
@@ -62,10 +76,12 @@ async function fetchResults() {
         const data = await api.get('/search', {
             q: filters.value.q,
             category: filters.value.sub || (isCategory.value ? route.params.slug : ''),
+            city: filters.value.city,
             district: filters.value.district,
             price: filters.value.price,
             rating: filters.value.rating,
             open_now: filters.value.open_now ? 1 : undefined,
+            verified: filters.value.verified ? 1 : undefined,
             amenity: filters.value.amenity,
             sort: filters.value.sort,
             page: filters.value.page,
@@ -84,10 +100,12 @@ function apply(page = 1) {
         params: route.params,
         query: {
             q: filters.value.q || undefined,
+            city: filters.value.city || undefined,
             district: filters.value.district || undefined,
             price: filters.value.price || undefined,
             rating: filters.value.rating || undefined,
             open_now: filters.value.open_now ? '1' : undefined,
+            verified: filters.value.verified ? '1' : undefined,
             amenity: filters.value.amenity || undefined,
             sub: filters.value.sub || undefined,
             sort: filters.value.sort !== 'rating' ? filters.value.sort : undefined,
@@ -97,7 +115,7 @@ function apply(page = 1) {
 }
 
 function clearFilters() {
-    filters.value = { ...filters.value, district: '', price: '', rating: '', open_now: false, amenity: '', sub: '' };
+    filters.value = { ...filters.value, city: '', district: '', price: '', rating: '', open_now: false, amenity: '', sub: '' };
     apply();
 }
 
@@ -116,8 +134,10 @@ watch(() => route.fullPath, async () => {
 
 onMounted(async () => {
     syncFromRoute();
-    const cats = await api.get('/categories');
+    const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
     categories.value = cats.data;
+    locations.value = locs.data;
+    amenityOptions.value = locs.amenities || [];
     await Promise.all([fetchCategory(), fetchResults()]);
 });
 </script>
@@ -184,12 +204,25 @@ onMounted(async () => {
                     <button class="cursor-pointer text-[11.5px] font-medium text-brand" @click="clearFilters">Цэвэрлэх</button>
                 </div>
 
-                <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ДҮҮРЭГ</div>
-                <label v-for="d in districts" :key="d" class="flex cursor-pointer items-center gap-2 py-1">
-                    <input v-model="filters.district" type="radio" :value="filters.district === d ? '' : d" class="hidden" @click="filters.district = filters.district === d ? '' : d; apply()" />
-                    <span class="flex h-[15px] w-[15px] items-center justify-center rounded border-[1.5px]" :class="filters.district === d ? 'border-brand bg-brand text-[9px] text-white' : 'border-[#cfccc5]'">{{ filters.district === d ? '✓' : '' }}</span>
-                    <span class="text-[13px] font-medium text-body">{{ d }}</span>
-                </label>
+                <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">БАЙРШИЛ</div>
+                <select v-model="filters.city" class="input cursor-pointer !py-2 !text-[12.5px]" @change="filters.district = ''; apply()">
+                    <option value="">Улаанбаатар (бүх дүүрэг)</option>
+                    <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
+                </select>
+
+                <div class="mb-2 mt-4 text-[11px] font-bold tracking-[.08em] text-mute">{{ (filters.city || 'Улаанбаатар') === 'Улаанбаатар' ? 'ДҮҮРЭГ' : 'СУМ' }}</div>
+                <div class="max-h-56 overflow-y-auto pr-1">
+                    <button
+                        v-for="d in districts"
+                        :key="d"
+                        class="flex w-full cursor-pointer items-center gap-2 py-1 text-left"
+                        :aria-pressed="filters.district === d"
+                        @click="filters.district = filters.district === d ? '' : d; apply()"
+                    >
+                        <span class="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded border-[1.5px]" :class="filters.district === d ? 'border-brand bg-brand text-[9px] text-white' : 'border-[#cfccc5]'">{{ filters.district === d ? '✓' : '' }}</span>
+                        <span class="text-[13px] font-medium text-body">{{ d }}</span>
+                    </button>
+                </div>
 
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ҮНИЙН ЗЭРЭГЛЭЛ</div>
                 <div class="flex gap-1.5">
@@ -204,6 +237,7 @@ onMounted(async () => {
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ОНЦЛОГ</div>
                 <div class="flex flex-wrap gap-1.5">
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.open_now ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.open_now = !filters.open_now; apply()">Одоо нээлттэй</button>
+                    <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.verified ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.verified = !filters.verified; apply()">✓ Баталгаажсан</button>
                     <button v-for="a in amenityOptions" :key="a" class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.amenity === a ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.amenity = filters.amenity === a ? '' : a; apply()">{{ a }}</button>
                 </div>
 
@@ -246,7 +280,7 @@ onMounted(async () => {
                         </div>
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * 20 + i + 1).padStart(2, '0') }}</span>
+                                <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * (meta.per_page || 20) + i + 1).padStart(2, '0') }}</span>
                                 <span class="text-[17px] font-bold text-ink">{{ branch.business.name }}</span>
                                 <span v-if="branch.business.is_verified" class="badge-verified">✓</span>
                                 <span v-if="branch.business.is_featured" class="badge-featured">ОНЦЛОХ</span>
@@ -262,7 +296,7 @@ onMounted(async () => {
                                 <span class="text-[#c9ccd1]">·</span>
                                 <span class="font-semibold" :class="branch.is_open ? 'text-green' : 'text-amberdark'">{{ branch.open_label }}</span>
                             </div>
-                            <div class="mt-1.5 text-[13px] text-soft">{{ branch.district }} дүүрэг{{ branch.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch.address }}</div>
+                            <div class="mt-1.5 text-[13px] text-soft">{{ branch.city && branch.city !== 'Улаанбаатар' ? branch.city + ', ' : '' }}{{ branch.district }}{{ branch.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch.address }}</div>
                             <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
                                 <span v-for="tag in (branch.amenities || []).slice(0, 3)" :key="tag" class="rounded-full border border-line bg-panel px-2.5 py-1 text-[11.5px] font-medium text-body">{{ tag }}</span>
                                 <span class="ml-auto hidden gap-2 text-[12.5px] font-semibold sm:flex">
@@ -283,7 +317,7 @@ onMounted(async () => {
                 <div v-if="meta.last_page > 1" class="mt-5 flex items-center justify-between">
                     <div class="flex gap-1.5 text-[12.5px] font-semibold">
                         <button class="cursor-pointer rounded-lg border border-inputline px-3 py-2 text-mute disabled:opacity-40" :disabled="meta.current_page <= 1" @click="apply(meta.current_page - 1)">←</button>
-                        <button v-for="p in Math.min(meta.last_page, 5)" :key="p" class="cursor-pointer rounded-lg px-3.5 py-2" :class="p === meta.current_page ? 'bg-ink text-white' : 'border border-inputline text-ink'" @click="apply(p)">{{ p }}</button>
+                        <button v-for="p in pageWindow" :key="p" class="cursor-pointer rounded-lg px-3.5 py-2" :class="p === meta.current_page ? 'bg-ink text-white' : 'border border-inputline text-ink'" @click="apply(p)">{{ p }}</button>
                         <button class="cursor-pointer rounded-lg border border-inputline px-3 py-2 text-ink disabled:opacity-40" :disabled="meta.current_page >= meta.last_page" @click="apply(meta.current_page + 1)">→</button>
                     </div>
                     <div class="text-[12.5px] font-medium text-mute">{{ (meta.current_page - 1) * meta.per_page + 1 }}–{{ Math.min(meta.current_page * meta.per_page, meta.total) }} / {{ meta.total.toLocaleString() }}</div>
@@ -294,7 +328,7 @@ onMounted(async () => {
                     <div class="text-[15px] font-bold text-ink">Дүүргээр үзэх</div>
                     <div class="mt-3 flex flex-wrap gap-2 text-[12.5px] font-medium">
                         <button v-for="d in districts" :key="d" class="cursor-pointer rounded-lg border border-blueline bg-bluetint px-3 py-1.5 text-brand" @click="filters.district = d; apply()">
-                            {{ d }} дүүргийн {{ category.name.toLowerCase() }}
+                            {{ d }} — {{ category.name.toLowerCase() }}
                         </button>
                     </div>
                 </div>

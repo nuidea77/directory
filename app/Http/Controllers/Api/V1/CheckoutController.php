@@ -36,20 +36,27 @@ class CheckoutController extends Controller
             'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],
             'campaigns.*.business_id' => ['required', 'integer', 'exists:businesses,id'],
             'campaigns.*.branch_id' => ['nullable', 'integer', 'exists:branches,id'],
-            'campaigns.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'campaigns.*.category_id' => ['nullable', 'required_if:campaigns.*.type,category_featured', 'integer', 'exists:categories,id'],
             'campaigns.*.district' => ['nullable', 'string', 'max:80'],
             'campaigns.*.city' => ['nullable', 'string', 'max:80'],
-            'campaigns.*.keyword' => ['nullable', 'string', 'max:80'],
+            'campaigns.*.keyword' => ['nullable', 'required_if:campaigns.*.type,keyword', 'string', 'max:80'],
             'campaigns.*.days' => ['required', 'integer', 'in:7,14,30'],
         ]);
 
         $organization = Organization::findOrFail($data['organization_id']);
         abort_unless($organization->owner_id === $request->user()->id, 403);
 
-        // Кампанит ажлын бизнесүүд өөрийнх байх ёстой
+        // Кампанит ажлын бизнес, салбар өөрийнх байх ёстой
         foreach ($data['campaigns'] ?? [] as $c) {
             $business = Business::findOrFail($c['business_id']);
             abort_unless($business->organization_id === $organization->id, 403);
+
+            if (! empty($c['branch_id'])) {
+                abort_unless(
+                    \App\Models\Branch::where('id', $c['branch_id'])->where('business_id', $business->id)->exists(),
+                    403,
+                );
+            }
         }
 
         $order = $this->billing->createOrder($request->user(), $organization, $data);
