@@ -17,6 +17,7 @@ class Organization extends Model
         'registration_number',
         'plan',
         'plan_term_years',
+        'plan_period',
         'plan_started_at',
         'plan_expires_at',
         'auto_renew',

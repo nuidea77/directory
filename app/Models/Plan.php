@@ -11,6 +11,7 @@ class Plan extends Model
         'key',
         'name',
         'price',
+        'price_monthly',
         'term_years',
         'limits',
         'analytics',
@@ -41,6 +42,7 @@ class Plan extends Model
             $plan->key => [
                 'name' => $plan->name,
                 'price' => (int) $plan->price,
+                'price_monthly' => $plan->price_monthly !== null ? (int) $plan->price_monthly : null,
                 'term_years' => (int) $plan->term_years,
                 'limits' => $plan->limits,
                 'analytics' => $plan->analytics,

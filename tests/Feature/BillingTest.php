@@ -104,6 +104,66 @@ class BillingTest extends TestCase
         $this->assertSame('standard', $this->organization->refresh()->plan);
     }
 
+    public function test_monthly_plan_purchase_charges_monthly_price_and_extends_one_month(): void
+    {
+        $this->enableByl();
+
+        Http::fake([
+            'byl.mn/api/v1/projects/42/checkouts/777' => Http::response(['data' => ['id' => 777, 'status' => 'complete', 'url' => 'https://byl.mn/x']]),
+            'byl.mn/api/v1/projects/42/checkouts/888' => Http::response(['data' => ['id' => 888, 'status' => 'complete', 'url' => 'https://byl.mn/x']]),
+            // Эхний худалдан авалт → 777, сунгалт → 888
+            'byl.mn/api/v1/projects/42/checkouts' => Http::sequence()
+                ->push(['data' => ['id' => 777, 'status' => 'open', 'url' => 'https://byl.mn/x']])
+                ->push(['data' => ['id' => 888, 'status' => 'open', 'url' => 'https://byl.mn/x']]),
+        ]);
+
+        $order = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+            'plan_period' => 'monthly',
+        ])->assertCreated()->json('data');
+
+        $this->assertSame(config('billing.plans.standard.price_monthly'), $order['total']);
+
+        $this->actingAs($this->owner)->getJson("/api/v1/orders/{$order['id']}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->organization->refresh();
+        $this->assertSame('standard', $this->organization->plan);
+        $this->assertSame('monthly', $this->organization->plan_period);
+        // Сарын эрх: дуусах хугацаа +1 сар (жил биш)
+        $this->assertTrue($this->organization->plan_expires_at->between(now()->addMonth()->subMinute(), now()->addMonth()->addMinute()));
+
+        // Дахин сунгахад одоогийн дуусах хугацаан дээр +1 сар нэмэгдэнэ
+        $firstExpiry = $this->organization->plan_expires_at->copy();
+
+        $renewal = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+            'plan_period' => 'monthly',
+        ])->assertCreated()->json('data');
+
+        $this->actingAs($this->owner)->getJson("/api/v1/orders/{$renewal['id']}")->assertOk();
+
+        $this->assertTrue($this->organization->refresh()->plan_expires_at->between(
+            $firstExpiry->copy()->addMonth()->subMinute(),
+            $firstExpiry->copy()->addMonth()->addMinute(),
+        ));
+    }
+
+    public function test_monthly_purchase_rejected_when_plan_has_no_monthly_price(): void
+    {
+        $this->enableByl();
+        config(['billing.plans.standard.price_monthly' => null]);
+
+        $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'plan' => 'standard',
+            'plan_period' => 'monthly',
+        ])->assertStatus(422)->assertJsonValidationErrors('plan');
+    }
+
     public function test_webhook_activates_plan_and_campaign(): void
     {
         $this->enableByl();

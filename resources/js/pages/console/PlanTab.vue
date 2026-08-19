@@ -7,11 +7,33 @@ import { useConsoleStore } from '../../stores/console';
 const store = useConsoleStore();
 const campaigns = ref([]);
 const orders = ref([]);
+const pricingPlans = ref([]);
 const loadError = ref('');
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
 const org = computed(() => store.organization);
+
+// Одоогийн эрхийн бодит үнэ — /pricing-аас, сар/жилийн сонголтыг харгалзана
+const isMonthly = computed(() => org.value?.plan_period === 'monthly');
+const planPricing = computed(() => pricingPlans.value.find((p) => p.key === org.value?.plan));
+const planPrice = computed(() => {
+    if (!planPricing.value) return null;
+    return isMonthly.value ? planPricing.value.price_monthly : planPricing.value.price;
+});
+const planUnit = computed(() => (isMonthly.value ? '/ сар' : `/ ${org.value?.plan_term_years} жил`));
+
+// Дуусах хугацааны сануулга: 14 хоногийн дотор эсвэл аль хэдийн дууссан
+const daysLeft = computed(() => org.value?.plan_days_left);
+const planExpired = computed(() => org.value && org.value.plan !== 'free' && org.value.effective_plan === 'free');
+const expiryWarning = computed(() => !planExpired.value && org.value?.plan !== 'free' && daysLeft.value !== null && daysLeft.value <= 14);
+
+// Огноог YYYY.MM.DD хэлбэрээр — browser бүрд mn-MN locale байдаггүй
+const expiresLabel = computed(() => {
+    if (!org.value?.plan_expires_at) return '—';
+    const d = new Date(org.value.plan_expires_at);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+});
 
 const planProgress = computed(() => {
     if (!org.value?.plan_started_at || !org.value?.plan_expires_at) return null;
@@ -51,12 +73,14 @@ async function fetchData() {
     if (!org.value) return;
     loadError.value = '';
     try {
-        const [c, o] = await Promise.all([
+        const [c, o, pricing] = await Promise.all([
             api.get(`/console/organizations/${org.value.id}/campaigns`),
             api.get('/orders'),
+            api.get('/pricing'),
         ]);
         campaigns.value = c.data;
         orders.value = o.data.slice(0, 4);
+        pricingPlans.value = pricing.plans;
     } catch {
         loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     }
@@ -79,25 +103,43 @@ onMounted(fetchData);
         </div>
 
         <template v-else>
+        <!-- Эрх дууссан / дуусах дөхсөн сануулга -->
+        <div v-if="planExpired" class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border-[1.5px] border-redline bg-redtint p-4">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red text-[15px] font-bold text-white">!</span>
+            <div class="min-w-[220px] flex-1">
+                <div class="text-[14px] font-bold text-ink">Таны {{ planPricing?.name || org?.plan_name }} эрхийн хугацаа дууссан</div>
+                <div class="mt-0.5 text-[12.5px] text-body">Бүртгэл үнэгүй эрхийн хязгаарт шилжсэн — мэдээлэл устаагүй. Сунгаад бүх боломжоо буцааж нээгээрэй.</div>
+            </div>
+            <router-link :to="{ name: 'pricing' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Эрх сунгах</router-link>
+        </div>
+        <div v-else-if="expiryWarning" class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border-[1.5px] border-amberline bg-ambertint p-4">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber text-[15px] font-bold text-white">!</span>
+            <div class="min-w-[220px] flex-1">
+                <div class="text-[14px] font-bold text-ink">Эрхийн хугацаа {{ daysLeft }} хоногийн дараа дуусна</div>
+                <div class="mt-0.5 text-[12.5px] text-ambertext">{{ expiresLabel }}-нд дуусна. Сунгахгүй бол бүртгэл үнэгүй эрхийн хязгаарт шилжинэ (мэдээлэл устахгүй).</div>
+            </div>
+            <router-link :to="{ name: 'pricing' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Эрх сунгах</router-link>
+        </div>
+
         <div class="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-[1.25fr_1fr]">
             <!-- Одоогийн эрх (9a) -->
             <div class="card p-5">
                 <div class="flex items-center gap-2.5">
                     <span class="text-[15px] font-bold text-ink">Одоогийн эрх</span>
-                    <span class="badge-verified uppercase">{{ org?.plan_name }}{{ org?.plan !== 'free' ? ' · ' + org?.plan_term_years + ' ЖИЛ' : '' }}</span>
+                    <span class="badge-verified uppercase">{{ org?.plan_name }}{{ org?.plan !== 'free' ? (isMonthly ? ' · САРААР' : ' · ' + org?.plan_term_years + ' ЖИЛ') : '' }}</span>
                     <router-link :to="{ name: 'pricing' }" class="ml-auto text-[12.5px] font-semibold text-brand">Эрх солих</router-link>
                 </div>
 
                 <template v-if="org?.effective_plan !== 'free'">
                     <div class="mt-3.5 flex items-baseline gap-2">
-                        <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ org.plan === 'business' ? fmt(290000) : fmt(120000) }}</span>
-                        <span class="text-[12.5px] font-medium text-mute">/ {{ org.plan_term_years }} жил · дараагийн төлбөр {{ org.plan_expires_at ? new Date(org.plan_expires_at).toLocaleDateString() : '—' }}</span>
+                        <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ planPrice !== null ? fmt(planPrice) : '—' }}</span>
+                        <span class="text-[12.5px] font-medium text-mute">{{ planUnit }} · дуусах хугацаа {{ expiresLabel }}</span>
                     </div>
                     <template v-if="planProgress">
-                        <div class="mt-3.5 h-[7px] overflow-hidden rounded-full bg-chip"><div class="h-full bg-brand" :style="{ width: planProgress.pct + '%' }"></div></div>
+                        <div class="mt-3.5 h-[7px] overflow-hidden rounded-full bg-chip"><div class="h-full" :class="expiryWarning ? 'bg-amber' : 'bg-brand'" :style="{ width: planProgress.pct + '%' }"></div></div>
                         <div class="mt-1.5 flex justify-between text-[11.5px] font-medium text-mute">
                             <span>Эрх ашиглалт: {{ planProgress.usedDays }} хоног</span>
-                            <span>{{ planProgress.leftDays }} хоног үлдсэн</span>
+                            <span :class="{ 'font-bold text-amberdark': expiryWarning }">{{ daysLeft ?? planProgress.leftDays }} хоног үлдсэн</span>
                         </div>
                     </template>
                 </template>

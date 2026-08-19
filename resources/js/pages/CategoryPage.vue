@@ -22,6 +22,7 @@ const districts = computed(() => locations.value.find((l) => l.city === (filters
 
 const filters = ref({
     q: '',
+    category: '',
     city: '',
     district: '',
     price: '',
@@ -46,6 +47,7 @@ const pageWindow = computed(() => {
 function syncFromRoute() {
     filters.value = {
         q: route.query.q || '',
+        category: route.query.category || '',
         city: route.query.city || '',
         district: route.query.district || '',
         price: route.query.price || '',
@@ -76,7 +78,7 @@ async function fetchResults() {
     try {
         const data = await api.get('/search', {
             q: filters.value.q,
-            category: filters.value.sub || (isCategory.value ? route.params.slug : ''),
+            category: filters.value.sub || (isCategory.value ? route.params.slug : filters.value.category),
             city: filters.value.city,
             district: filters.value.district,
             price: filters.value.price,
@@ -101,6 +103,7 @@ function apply(page = 1) {
         params: route.params,
         query: {
             q: filters.value.q || undefined,
+            category: !isCategory.value ? filters.value.category || undefined : undefined,
             city: filters.value.city || undefined,
             district: filters.value.district || undefined,
             price: filters.value.price || undefined,
@@ -116,7 +119,7 @@ function apply(page = 1) {
 }
 
 function clearFilters() {
-    filters.value = { ...filters.value, city: '', district: '', price: '', rating: '', open_now: false, amenity: '', sub: '' };
+    filters.value = { ...filters.value, category: '', city: '', district: '', price: '', rating: '', open_now: false, amenity: '', sub: '' };
     apply();
 }
 
@@ -204,6 +207,14 @@ onMounted(async () => {
                     <div class="text-[13px] font-bold text-ink">Шүүлтүүр</div>
                     <button class="cursor-pointer text-[11.5px] font-medium text-brand" @click="clearFilters">Цэвэрлэх</button>
                 </div>
+
+                <template v-if="!isCategory">
+                    <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">АНГИЛАЛ</div>
+                    <select v-model="filters.category" class="input cursor-pointer !py-2 !text-[12.5px]" @change="apply()">
+                        <option value="">Бүх ангилал</option>
+                        <option v-for="c in categories" :key="c.slug" :value="c.slug">{{ c.name }} ({{ c.businesses_count }})</option>
+                    </select>
+                </template>
 
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">БАЙРШИЛ</div>
                 <select v-model="filters.city" class="input cursor-pointer !py-2 !text-[12.5px]" @change="filters.district = ''; apply()">

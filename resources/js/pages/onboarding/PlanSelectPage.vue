@@ -18,6 +18,7 @@ const branchAddon = ref(5000);
 const slotState = ref(null);
 
 const selectedPlan = ref('standard');
+const planPeriod = ref('yearly'); // yearly | monthly
 const featuredDays = ref(0); // 0 = авахгүй
 const error = ref('');
 const loadError = ref('');
@@ -35,6 +36,13 @@ const mainBranch = computed(() => business.value?.branches?.[0]);
 
 const planRow = computed(() => plans.value.find((p) => p.key === selectedPlan.value));
 
+// Сонгосон эрхийн үнэ — сараар авах боломжтой бол сарын үнэ
+const isMonthly = computed(() => planPeriod.value === 'monthly' && !!planRow.value?.price_monthly);
+const planPrice = computed(() => (isMonthly.value ? planRow.value.price_monthly : planRow.value?.price || 0));
+
+const cardPrice = (p) => (planPeriod.value === 'monthly' && p.price_monthly ? p.price_monthly : p.price);
+const cardUnit = (p) => (planPeriod.value === 'monthly' && p.price_monthly ? '/ сар' : `/ ${p.term_years} жил`);
+
 const featuredPrice = computed(() => {
     if (!featuredDays.value || !categoryAd.value) return 0;
     const base = categoryAd.value.prices[featuredDays.value];
@@ -44,7 +52,7 @@ const featuredPrice = computed(() => {
 
 const total = computed(() => {
     let sum = 0;
-    if (selectedPlan.value !== 'free') sum += planRow.value?.price || 0;
+    if (selectedPlan.value !== 'free') sum += planPrice.value;
     if (selectedPlan.value !== 'free') sum += extraBranches.value * branchAddon.value;
     sum += featuredPrice.value;
     return sum;
@@ -52,7 +60,7 @@ const total = computed(() => {
 
 const totalBreakdown = computed(() => {
     const parts = [];
-    if (selectedPlan.value !== 'free' && planRow.value) parts.push(`${planRow.value.name} ${planRow.value.term_years} жил ${fmt(planRow.value.price)}`);
+    if (selectedPlan.value !== 'free' && planRow.value) parts.push(`${planRow.value.name} ${isMonthly.value ? '1 сар' : planRow.value.term_years + ' жил'} ${fmt(planPrice.value)}`);
     if (selectedPlan.value !== 'free' && extraBranches.value) parts.push(`${extraBranches.value} салбар ${fmt(extraBranches.value * branchAddon.value)}`);
     if (featuredPrice.value) parts.push(`онцлох ${fmt(featuredPrice.value)}`);
     return parts.join(' + ');
@@ -97,6 +105,7 @@ async function checkout() {
         const data = await api.post('/checkout', {
             organization_id: organization.value.id,
             plan: selectedPlan.value !== 'free' ? selectedPlan.value : null,
+            plan_period: selectedPlan.value !== 'free' && isMonthly.value ? 'monthly' : 'yearly',
             extra_branches: selectedPlan.value !== 'free' ? extraBranches.value : 0,
             campaigns,
         });
@@ -190,8 +199,22 @@ onMounted(load);
                 Үнэгүй эрх нь 1 бизнес, 1 зураг, салбаргүй — 1 жилийн хугацаатай. Салбар нэмэх, аналитик, ТОП жагсаалт хэрэгтэй бол Стандарт эсвэл Бизнес эрхийг сонгоно.
             </p>
 
+            <!-- Төлөх хугацаа -->
+            <div class="mt-5 inline-flex gap-1.5 rounded-[10px] border border-searchline bg-white p-1.5">
+                <button
+                    class="cursor-pointer rounded-[7px] px-4 py-2 text-[12.5px] font-bold"
+                    :class="planPeriod === 'yearly' ? 'bg-ink text-white' : 'text-soft'"
+                    @click="planPeriod = 'yearly'"
+                >Жилээр</button>
+                <button
+                    class="cursor-pointer rounded-[7px] px-4 py-2 text-[12.5px] font-bold"
+                    :class="planPeriod === 'monthly' ? 'bg-ink text-white' : 'text-soft'"
+                    @click="planPeriod = 'monthly'"
+                >Сараар</button>
+            </div>
+
             <!-- Эрхийн картууд -->
-            <div class="mt-5 grid grid-cols-1 gap-3.5 md:grid-cols-3">
+            <div class="mt-4 grid grid-cols-1 gap-3.5 md:grid-cols-3">
                 <button
                     v-for="p in plans"
                     :key="p.key"
@@ -205,8 +228,11 @@ onMounted(load);
                         <span class="ml-auto rounded-full px-2 py-0.5 text-[9.5px] font-semibold" :class="p.key === 'standard' ? 'bg-bluetint text-brand' : 'bg-chip text-chiptext'">{{ planCard(p).tag }}</span>
                     </div>
                     <div class="mt-3.5 flex items-baseline gap-1.5">
-                        <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(p.price) }}</span>
-                        <span class="text-[12px] font-medium text-mute">/ {{ p.term_years }} жил</span>
+                        <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(cardPrice(p)) }}</span>
+                        <span class="text-[12px] font-medium text-mute">{{ cardUnit(p) }}</span>
+                    </div>
+                    <div v-if="p.price_monthly" class="mt-0.5 text-[11px] font-medium text-mute">
+                        {{ planPeriod === 'yearly' ? `эсвэл сараар ${fmt(p.price_monthly)}/сар` : `жилээр ${fmt(p.price)} (${p.term_years} жил)` }}
                     </div>
                     <div class="mt-1.5 min-h-[32px] text-[11.5px] font-medium" :class="p.key === 'standard' ? 'text-brand' : 'text-mute'">{{ planCard(p).note }}</div>
                     <div class="my-3.5 h-px bg-divider"></div>

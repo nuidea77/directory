@@ -15,10 +15,15 @@ class PlanSeeder extends Seeder
     {
         $sort = 0;
 
-        foreach (config('billing.plans', []) as $key => $plan) {
+        // Runtime config-ийг boot үед DB-ээс override хийдэг тул эндээс
+        // авбал хуучин DB-ийн утга эргэж орно — заавал эх файлаас уншина.
+        $base = require config_path('billing.php');
+
+        foreach ($base['plans'] ?? [] as $key => $plan) {
             Plan::firstOrCreate(['key' => $key], [
                 'name' => $plan['name'],
                 'price' => $plan['price'],
+                'price_monthly' => $plan['price_monthly'] ?? null,
                 'term_years' => $plan['term_years'],
                 'limits' => $plan['limits'],
                 'analytics' => (bool) ($plan['analytics'] ?? false),

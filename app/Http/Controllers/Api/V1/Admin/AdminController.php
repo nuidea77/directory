@@ -277,6 +277,7 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'price' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'price_monthly' => ['nullable', 'integer', 'min:0', 'max:100000000'],
             'term_years' => ['required', 'integer', 'min:1', 'max:5'],
             'limits' => ['required', 'array'],
             'limits.businesses' => ['required', 'integer', 'min:1', 'max:100'],

@@ -16,6 +16,7 @@ class PricingController extends Controller
             'key' => $key,
             'name' => $plan['name'],
             'price' => $plan['price'],
+            'price_monthly' => $plan['price_monthly'] ?? null,
             'term_years' => $plan['term_years'],
             'limits' => $plan['limits'],
             'analytics' => $plan['analytics'],

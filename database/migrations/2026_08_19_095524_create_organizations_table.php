@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('plan_term_years')->default(1); // 1 | 2
             $table->timestamp('plan_started_at')->nullable();
             $table->timestamp('plan_expires_at')->nullable();
+            $table->string('plan_period', 10)->default('yearly'); // monthly | yearly — сүүлд худалдаж авсан хэлбэр
             $table->boolean('auto_renew')->default(false);
             $table->unsignedInteger('extra_branches')->default(0); // худалдаж авсан нэмэлт салбарын эрх
             $table->index(['plan', 'plan_expires_at']);

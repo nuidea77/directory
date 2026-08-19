@@ -20,6 +20,9 @@ class OrganizationResource extends JsonResource
             'effective_plan' => $effective,
             'plan_name' => $config['name'] ?? 'Үнэгүй',
             'plan_term_years' => $this->plan_term_years,
+            'plan_period' => $this->plan_period,
+            // Дуусах хугацааны UI-д: үлдсэн хоног (null = үнэгүй/хугацаагүй)
+            'plan_days_left' => $this->plan_expires_at ? max(0, (int) ceil(now()->diffInDays($this->plan_expires_at, false))) : null,
             'plan_started_at' => $this->plan_started_at,
             'plan_expires_at' => $this->plan_expires_at,
             'auto_renew' => $this->auto_renew,

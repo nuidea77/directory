@@ -25,6 +25,7 @@ return [
         'standard' => [
             'name' => 'Стандарт',
             'price' => 120000,
+            'price_monthly' => 15000,
             'term_years' => 1,
             'limits' => [
                 'businesses' => 1,
@@ -38,6 +39,7 @@ return [
         'business' => [
             'name' => 'Бизнес',
             'price' => 290000,
+            'price_monthly' => 35000,
             'term_years' => 2,
             'limits' => [
                 'businesses' => 5,

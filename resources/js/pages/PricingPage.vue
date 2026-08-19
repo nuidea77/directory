@@ -5,8 +5,13 @@ import { api } from '../api';
 const plans = ref([]);
 const ads = ref([]);
 const branchAddon = ref(5000);
+const period = ref('yearly'); // yearly | monthly
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
+
+// Сар/жилийн үнэ — сарын үнэгүй эрх (жишээ нь үнэгүй) жилээрээ харагдана
+const priceFor = (p) => (period.value === 'monthly' && p.price_monthly ? p.price_monthly : p.price);
+const unitFor = (p) => (period.value === 'monthly' && p.price_monthly ? '/ сар' : `/ ${p.term_years} жил`);
 
 const faq = [
     { q: 'Үнэгүй бүртгэл хугацаа хязгаартай юу?', a: 'Үнэгүй бүртгэл 1 жилийн хугацаатай — дуусахад мэдээлэл устахгүй, хайлтад үлдэнэ. Нэмэлт боломжууд Стандарт/Бизнес эрхээс нээгдэнэ.' },
@@ -51,6 +56,16 @@ onMounted(async () => {
                 Бизнесүүдийн дийлэнх нь үнэгүй бүртгэлээр ажилладаг. Төлбөртэй эрх нь статистик, олон салбар, редакцын дэмжлэг нэмнэ. Онцлох байршил нь нэмэлт бүтээгдэхүүн.
             </p>
             <div class="mt-5 inline-flex gap-1.5 rounded-[10px] border border-searchline bg-white p-1.5">
+                <button
+                    class="cursor-pointer rounded-[7px] px-4 py-2 text-[12.5px] font-bold"
+                    :class="period === 'yearly' ? 'bg-ink text-white' : 'text-soft'"
+                    @click="period = 'yearly'"
+                >Жилээр</button>
+                <button
+                    class="cursor-pointer rounded-[7px] px-4 py-2 text-[12.5px] font-bold"
+                    :class="period === 'monthly' ? 'bg-ink text-white' : 'text-soft'"
+                    @click="period = 'monthly'"
+                >Сараар</button>
             </div>
         </div>
 
@@ -63,8 +78,13 @@ onMounted(async () => {
                 </div>
                 <div class="mt-2 min-h-[38px] text-[12.5px] leading-relaxed text-soft">{{ p.for }}</div>
                 <div class="mt-3.5 flex items-baseline gap-1.5">
-                    <span class="text-[32px] font-extrabold tracking-[-.025em] text-ink">{{ fmt(p.price) }}</span>
-                    <span class="text-[12.5px] font-medium text-mute">/ {{ p.term_years }} жил</span>
+                    <span class="text-[32px] font-extrabold tracking-[-.025em] text-ink">{{ fmt(priceFor(p)) }}</span>
+                    <span class="text-[12.5px] font-medium text-mute">{{ unitFor(p) }}</span>
+                </div>
+                <div class="mt-1 text-[11.5px] font-medium text-mute">
+                    <template v-if="p.price_monthly">
+                        {{ period === 'yearly' ? `эсвэл сараар ${fmt(p.price_monthly)}/сар` : `жилээр авбал ${fmt(p.price)} (${p.term_years} жил)` }}
+                    </template>
                 </div>
                 <div class="mt-1.5 text-[11.5px] font-medium" :class="p.key === 'standard' ? 'text-brand' : 'text-mute'">{{ p.note }}</div>
                 <router-link

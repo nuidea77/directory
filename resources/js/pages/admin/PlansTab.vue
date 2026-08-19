@@ -12,6 +12,7 @@ const emptyPlan = () => ({
     key: '',
     name: '',
     price: 0,
+    price_monthly: null,
     term_years: 1,
     limits: { businesses: 1, branches: 1, images_per_branch: 1 },
     analytics: false,
@@ -31,7 +32,8 @@ async function savePlan(plan) {
     msg.value = { type: '', text: '' };
     busyId.value = plan.id;
     try {
-        await api.put(`/admin/plans/${plan.id}`, plan);
+        // Хоосон сарын үнэ = сараар зарагдахгүй (null)
+        await api.put(`/admin/plans/${plan.id}`, { ...plan, price_monthly: plan.price_monthly === '' ? null : plan.price_monthly });
         msg.value = { type: 'ok', text: `«${plan.name}» хадгалагдлаа — үнэ, лимит шууд хүчинтэй.` };
     } catch (e) {
         msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа' };
@@ -43,7 +45,7 @@ async function savePlan(plan) {
 async function createPlan() {
     msg.value = { type: '', text: '' };
     try {
-        await api.post('/admin/plans', newPlan.value);
+        await api.post('/admin/plans', { ...newPlan.value, price_monthly: newPlan.value.price_monthly === '' ? null : newPlan.value.price_monthly });
         newPlan.value = emptyPlan();
         createOpen.value = false;
         await fetchPlans();
@@ -72,7 +74,8 @@ onMounted(fetchPlans);
             <form class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4" @submit.prevent="createPlan">
                 <div><label class="field-label !text-[11px]">Түлхүүр (латин)</label><input v-model="newPlan.key" type="text" class="input" placeholder="premium" required maxlength="30" pattern="[a-z0-9\-]+" /></div>
                 <div><label class="field-label !text-[11px]">Нэр</label><input v-model="newPlan.name" type="text" class="input" required maxlength="60" /></div>
-                <div><label class="field-label !text-[11px]">Үнэ (₮)</label><input v-model.number="newPlan.price" type="number" min="0" class="input" required /></div>
+                <div><label class="field-label !text-[11px]">Жилийн үнэ (₮)</label><input v-model.number="newPlan.price" type="number" min="0" class="input" required /></div>
+                <div><label class="field-label !text-[11px]">Сарын үнэ (₮, хоосон=сараар зарагдахгүй)</label><input v-model.number="newPlan.price_monthly" type="number" min="0" class="input" /></div>
                 <div><label class="field-label !text-[11px]">Хугацаа (жил)</label><input v-model.number="newPlan.term_years" type="number" min="1" max="5" class="input" required /></div>
                 <div><label class="field-label !text-[11px]">Бизнес</label><input v-model.number="newPlan.limits.businesses" type="number" min="1" class="input" required /></div>
                 <div><label class="field-label !text-[11px]">Салбар (0=хязгааргүй)</label><input v-model.number="newPlan.limits.branches" type="number" min="0" class="input" required /></div>
@@ -100,7 +103,8 @@ onMounted(fetchPlans);
 
                 <div class="mt-3.5 grid grid-cols-2 gap-2.5">
                     <div><label class="field-label !text-[11px]">Нэр</label><input v-model="plan.name" type="text" class="input !py-2 !text-[12.5px]" /></div>
-                    <div><label class="field-label !text-[11px]">Үнэ (₮)</label><input v-model.number="plan.price" type="number" min="0" class="input !py-2 !text-[12.5px]" /></div>
+                    <div><label class="field-label !text-[11px]">Жилийн үнэ (₮)</label><input v-model.number="plan.price" type="number" min="0" class="input !py-2 !text-[12.5px]" /></div>
+                    <div><label class="field-label !text-[11px]">Сарын үнэ (₮, хоосон=үгүй)</label><input v-model.number="plan.price_monthly" type="number" min="0" class="input !py-2 !text-[12.5px]" /></div>
                     <div><label class="field-label !text-[11px]">Хугацаа (жил)</label><input v-model.number="plan.term_years" type="number" min="1" max="5" class="input !py-2 !text-[12.5px]" /></div>
                     <div><label class="field-label !text-[11px]">Бизнес</label><input v-model.number="plan.limits.businesses" type="number" min="1" class="input !py-2 !text-[12.5px]" /></div>
                     <div><label class="field-label !text-[11px]">Салбар (0=∞)</label><input v-model.number="plan.limits.branches" type="number" min="0" class="input !py-2 !text-[12.5px]" /></div>

@@ -14,7 +14,8 @@ return new class extends Migration
             $table->id();
             $table->string('key', 30)->unique(); // free | standard | business | ...
             $table->string('name', 60);
-            $table->unsignedInteger('price'); // MNT, НӨАТ орсон
+            $table->unsignedInteger('price'); // жилийн (term_years жилийн) үнэ, MNT
+            $table->unsignedInteger('price_monthly')->nullable(); // сарын үнэ (null = сараар зарагдахгүй)
             $table->unsignedTinyInteger('term_years')->default(1);
             $table->json('limits'); // {businesses, branches (0=хязгааргүй), images_per_branch}
             $table->boolean('analytics')->default(false);

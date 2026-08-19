@@ -52,6 +52,12 @@ onMounted(() => store.load());
                     <span class="badge-verified !border-blueline !px-1.5 !py-0.5 !text-[9.5px] uppercase">{{ store.organization.plan_name }}</span>
                     <span class="text-[11px] font-medium text-mute">{{ store.branches.length }} салбар</span>
                 </div>
+                <router-link
+                    v-if="store.organization.plan !== 'free' && store.organization.plan_days_left !== null && store.organization.plan_days_left <= 14"
+                    :to="{ name: 'console-plan' }"
+                    class="mt-1.5 block rounded-md px-1.5 py-1 text-[10.5px] font-bold"
+                    :class="store.organization.plan_days_left === 0 ? 'bg-redtint text-red' : 'bg-ambertint text-amberdark'"
+                >{{ store.organization.plan_days_left === 0 ? 'Эрх дууссан — сунгах' : `Эрх ${store.organization.plan_days_left} хоногт дуусна` }}</router-link>
             </div>
 
             <nav class="mt-3.5 flex flex-col gap-0.5">

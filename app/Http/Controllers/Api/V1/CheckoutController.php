@@ -34,6 +34,7 @@ class CheckoutController extends Controller
             'plan' => ['nullable', \Illuminate\Validation\Rule::in(
                 collect(config('billing.plans'))->filter(fn ($p, $k) => $k !== 'free' && ($p['is_active'] ?? true))->keys()->all(),
             )],
+            'plan_period' => ['nullable', 'in:monthly,yearly'],
             'extra_branches' => ['nullable', 'integer', 'min:0', 'max:100'],
             'campaigns' => ['nullable', 'array', 'max:5'],
             'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],

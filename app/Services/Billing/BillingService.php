@@ -40,6 +40,8 @@ class BillingService
         // --- Эрхийн бичиг --------------------------------------------------
         $plan = $payload['plan'] ?? null;
 
+        $planPeriod = $payload['plan_period'] ?? 'yearly';
+
         if ($plan !== null && $plan !== 'free') {
             $planConfig = config("billing.plans.{$plan}");
 
@@ -47,14 +49,22 @@ class BillingService
                 throw ValidationException::withMessages(['plan' => 'Буруу эрхийн бичиг сонгосон байна.']);
             }
 
-            $total += $planConfig['price'];
+            // Сарын эсвэл жилийн үнэ — сарын үнэгүй эрхийг сараар зарахгүй
+            if ($planPeriod === 'monthly' && empty($planConfig['price_monthly'])) {
+                throw ValidationException::withMessages(['plan' => 'Энэ эрх зөвхөн жилээр зарагдана.']);
+            }
+
+            $planPrice = $planPeriod === 'monthly' ? (int) $planConfig['price_monthly'] : (int) $planConfig['price'];
+            $planLabel = $planPeriod === 'monthly' ? '1 сар' : $planConfig['term_years'].' жил';
+
+            $total += $planPrice;
             $items[] = [
                 'type' => 'plan',
-                'name' => $planConfig['name'].' эрх · '.$planConfig['term_years'].' жил',
+                'name' => $planConfig['name'].' эрх · '.$planLabel,
                 'meta' => $organization->name,
-                'amount' => $planConfig['price'],
+                'amount' => $planPrice,
                 'discount' => 0,
-                'payload' => ['plan' => $plan],
+                'payload' => ['plan' => $plan, 'period' => $planPeriod],
             ];
         }
 
@@ -277,6 +287,7 @@ class BillingService
                 }
 
                 $organization = $order->organization;
+                $period = $item->payload['period'] ?? 'yearly';
 
                 // Ижил эрх идэвхтэй бол хугацаан дээр нь сунгана
                 $from = $organization->plan === $plan
@@ -288,8 +299,10 @@ class BillingService
                 $organization->update([
                     'plan' => $plan,
                     'plan_term_years' => $planConfig['term_years'],
+                    'plan_period' => $period,
                     'plan_started_at' => $organization->plan === $plan ? $organization->plan_started_at ?? now() : now(),
-                    'plan_expires_at' => $from->copy()->addYears($planConfig['term_years']),
+                    // Сараар бол 1 сар, жилээр бол term_years жилээр сунгана
+                    'plan_expires_at' => $period === 'monthly' ? $from->copy()->addMonth() : $from->copy()->addYears($planConfig['term_years']),
                 ]);
 
                 // Бизнес эрх — баталгаажсан тэмдэг
