@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReviewResource;
 use App\Models\Branch;
+use App\Notifications\NewReview;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -34,6 +35,11 @@ class ReviewController extends Controller
             ['user_id' => $request->user()->id],
             $data,
         );
+
+        // Шинэ сэтгэгдэл ирэхэд эзэнд мэдэгдэнэ (засварт биш)
+        if ($review->wasRecentlyCreated) {
+            $branch->business->organization->owner?->notify(new NewReview($review));
+        }
 
         return new ReviewResource($review->load('user'));
     }

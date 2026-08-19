@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BranchResource;
+use App\Notifications\BranchModerated;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Campaign;
@@ -55,6 +56,8 @@ class AdminController extends Controller
     {
         $branch->update(['status' => 'active', 'rejection_reason' => null]);
 
+        $branch->business?->organization?->owner?->notify(new BranchModerated($branch, approved: true));
+
         return response()->json(['message' => 'Батлагдлаа.', 'data' => new BranchResource($branch)]);
     }
 
@@ -63,6 +66,8 @@ class AdminController extends Controller
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
 
         $branch->update(['status' => 'rejected', 'rejection_reason' => $data['reason'] ?? null]);
+
+        $branch->business?->organization?->owner?->notify(new BranchModerated($branch, approved: false));
 
         return response()->json(['message' => 'Татгалзлаа.', 'data' => new BranchResource($branch)]);
     }

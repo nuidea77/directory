@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Organization;
+use App\Notifications\PlanExpiring;
 use Illuminate\Console\Command;
 
 /**
@@ -28,6 +29,12 @@ class SyncPlans extends Command
             });
 
         $this->info("{$revoked} бизнесийн баталгаажсан тэмдэг буцаагдлаа.");
+
+        // 7 хоногийн дараа дуусах эрхийн сануулга (өдөрт нэг удаа ажилладаг тул давхардахгүй)
+        Organization::where('plan', '!=', 'free')
+            ->whereBetween('plan_expires_at', [now()->addDays(6), now()->addDays(7)])
+            ->with('owner')
+            ->each(fn (Organization $organization) => $organization->owner?->notify(new PlanExpiring($organization)));
 
         return self::SUCCESS;
     }

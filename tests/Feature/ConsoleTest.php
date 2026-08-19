@@ -198,6 +198,40 @@ class ConsoleTest extends TestCase
         $this->assertSame('active', $branch->refresh()->status);
     }
 
+    public function test_notifications_sent_for_moderation_review_and_message(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $branch = Branch::factory()->pending()->create();
+        $branch->update(['status' => 'active']);
+        $owner = $branch->business->organization->owner;
+        $owner->update(['email' => 'owner@example.mn']);
+        $visitor = User::factory()->create(['email' => 'visitor@example.mn']);
+
+        // Модерацын шийдвэр
+        $this->actingAs($admin)->postJson("/api/v1/admin/branches/{$branch->id}/reject", ['reason' => 'Х'])->assertOk();
+        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\BranchModerated::class);
+
+        $branch->refresh()->update(['status' => 'active']);
+
+        // Шинэ сэтгэгдэл
+        $this->actingAs($visitor)->postJson("/api/v1/branches/{$branch->id}/reviews", ['rating' => 5])->assertCreated();
+        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\NewReview::class);
+
+        // Зурвас: хэрэглэгч → эзэн, эзэн → хэрэглэгч
+        $business = $branch->business;
+        $this->actingAs($visitor)->postJson("/api/v1/businesses/{$business->id}/messages", ['body' => 'Сайн уу'])->assertCreated();
+        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\NewMessage::class);
+
+        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$visitor->id}", ['body' => 'Тавтай морил'])->assertCreated();
+        \Illuminate\Support\Facades\Notification::assertSentTo($visitor, \App\Notifications\NewMessage::class);
+
+        // Огт бичээгүй хэрэглэгч рүү хариулж болохгүй
+        $stranger = User::factory()->create();
+        $this->actingAs($owner)->postJson("/api/v1/console/businesses/{$business->id}/messages/{$stranger->id}", ['body' => 'x'])->assertNotFound();
+    }
+
     public function test_rejection_reason_saved_and_visible_to_owner(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

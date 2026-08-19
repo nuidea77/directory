@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Console;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Message;
+use App\Notifications\NewMessage;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,6 +61,12 @@ class ConsoleMessageController extends Controller
     {
         $this->authorizeOwner($request, $business);
 
+        // Зөвхөн өмнө нь бичсэн хэрэглэгчид хариулж болно (спамаас сэргийлнэ)
+        abort_unless(
+            Message::where('business_id', $business->id)->where('user_id', $user->id)->exists(),
+            404,
+        );
+
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
 
         $message = Message::create([
@@ -68,6 +75,8 @@ class ConsoleMessageController extends Controller
             'sender' => 'business',
             'body' => $data['body'],
         ]);
+
+        $user->notify(new NewMessage($business, toOwner: false));
 
         return response()->json(['data' => $message], 201);
     }

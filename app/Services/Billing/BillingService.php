@@ -6,6 +6,7 @@ use App\Models\Campaign;
 use App\Models\Order;
 use App\Models\Organization;
 use App\Models\User;
+use App\Notifications\OrderPaid;
 use App\Services\Byl\BylClient;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
@@ -291,6 +292,9 @@ class BillingService
             foreach ($order->campaigns()->where('status', 'pending_payment')->get() as $campaign) {
                 $this->campaigns->activateOrQueue($campaign);
             }
+
+            // 4. Худалдан авагчид баримт илгээнэ
+            $order->user?->notify(new OrderPaid($order->load('items')));
         });
     }
 }

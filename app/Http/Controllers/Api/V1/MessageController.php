@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Message;
+use App\Notifications\NewMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -62,6 +63,8 @@ class MessageController extends Controller
             'sender' => 'user',
             'body' => $data['body'],
         ]);
+
+        $business->organization?->owner?->notify(new NewMessage($business, toOwner: true));
 
         return response()->json(['data' => $message], 201);
     }
