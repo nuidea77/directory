@@ -8,6 +8,7 @@ const route = useRoute();
 const order = ref(null);
 const organization = ref(null);
 const loadError = ref('');
+const pendingBranchesNote = ref('');
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
@@ -20,6 +21,45 @@ const nextThree = [
     { n: '3', title: 'Статистикаа харах', text: 'Хандалт, залгалт, хайлтын үгсийг хянана.', cta: 'Статистик →', to: { name: 'console-stats' } },
 ];
 
+/**
+ * Бүртгэлийн мастерт бөглөсөн ч эрхийн лимитээс болж үүсээгүй салбаруудыг
+ * төлбөр батлагдсаны дараа үүсгэнэ.
+ */
+async function createPendingBranches() {
+    const business = organization.value?.businesses?.[organization.value.businesses.length - 1];
+    if (!business) return;
+
+    const key = `pending_branches:${business.id}`;
+    let pending = [];
+
+    try {
+        pending = JSON.parse(sessionStorage.getItem(key) || '[]');
+    } catch {
+        sessionStorage.removeItem(key);
+        return;
+    }
+
+    if (!pending.length) return;
+
+    const failed = [];
+
+    for (const payload of pending) {
+        try {
+            await api.post(`/console/businesses/${business.id}/branches`, payload);
+        } catch {
+            failed.push(payload);
+        }
+    }
+
+    if (failed.length) {
+        sessionStorage.setItem(key, JSON.stringify(failed));
+        pendingBranchesNote.value = `${failed.length} салбарыг үүсгэж чадсангүй — Бизнес зөвлөлөөс гараар нэмнэ үү.`;
+    } else {
+        sessionStorage.removeItem(key);
+        pendingBranchesNote.value = `${pending.length} нэмэлт салбар үүслээ.`;
+    }
+}
+
 async function load() {
     loadError.value = '';
     try {
@@ -29,6 +69,8 @@ async function load() {
         ]);
         order.value = orderData.data;
         organization.value = orgs.data.find((o) => o.id === order.value.organization_id) || orgs.data[0];
+
+        if (order.value.status === 'paid') await createPendingBranches();
     } catch {
         loadError.value = 'Захиалга олдсонгүй эсвэл таных биш байна.';
     }
@@ -47,6 +89,7 @@ onMounted(load);
                 <p class="mx-auto mt-2 max-w-[480px] text-[13.5px] leading-[1.65] text-body">
                     {{ planItem ? planItem.name + ' нээгдлээ. ' : '' }}{{ campaignItems.length ? 'Онцлох байршил 10 минутын дотор ажиллаж эхэлнэ.' : '' }}
                 </p>
+                <p v-if="pendingBranchesNote" class="mx-auto mt-2 max-w-[480px] text-[12.5px] font-semibold text-green">{{ pendingBranchesNote }}</p>
                 <div class="mt-4 inline-flex gap-2">
                     <router-link :to="{ name: 'console' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Бизнес зөвлөл рүү</router-link>
                     <a v-if="order.invoice_url" :href="order.invoice_url" target="_blank" rel="noopener" class="rounded-lg border border-[#cfe6da] bg-white px-4 py-2.5 text-[12.5px] font-bold text-ink">И-баримт татах</a>

@@ -28,6 +28,8 @@ class BusinessResource extends JsonResource
             'reviews_total' => $this->when($this->relationLoaded('branches'), fn () => $this->reviewsTotal()),
             'branches_count' => $this->when($this->relationLoaded('branches'), fn () => $this->branches->where('status', 'active')->count()),
             'is_favorited' => $this->when(isset($this->is_favorited), fn () => (bool) $this->is_favorited),
+            // Хадгалсан жагсаалтын нэр (FavoriteController-ээс) — «Миний булан»-д
+            'list_name' => $this->when(isset($this->list_name), fn () => $this->list_name),
             'is_featured' => $this->when(isset($this->is_featured), fn () => (bool) $this->is_featured),
             'organization_id' => $this->organization_id,
             'created_at' => $this->created_at,

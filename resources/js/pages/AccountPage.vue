@@ -35,6 +35,7 @@ async function deleteReview(r) {
 const favorites = ref([]);
 const reviews = ref([]);
 const loading = ref(true);
+const loadError = ref('');
 
 const profileForm = ref({ name: auth.user?.name || '', email: auth.user?.email || '' });
 watch(() => auth.user, (u) => { if (u) profileForm.value = { name: u.name || '', email: u.email || '' }; });
@@ -47,13 +48,18 @@ const nav = [
     ['settings', 'Тохиргоо'],
 ];
 
+// Сэтгэгдэл нь хуудаслагддаг тул нийт тоог meta-аас авна — .length нь
+// зөвхөн эхний хуудсыг тоолж, хувь нэмрийг дутуу харуулдаг байсан
+const reviewsTotal = ref(0);
+
 const contributions = computed(() => ({
-    reviews: reviews.value.length,
+    reviews: reviewsTotal.value,
     saved: favorites.value.length,
 }));
 
 async function fetchAll() {
     loading.value = true;
+    loadError.value = '';
     try {
         const [f, r] = await Promise.all([
             api.get('/favorites'),
@@ -61,7 +67,10 @@ async function fetchAll() {
         ]);
         favorites.value = f.data;
         reviews.value = r.data;
+        reviewsTotal.value = r.meta?.total ?? r.data.length;
 
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     } finally {
         loading.value = false;
     }
@@ -130,7 +139,7 @@ onMounted(fetchAll);
                     >
                         <span class="h-4 w-4 rounded-[5px]" :class="tab === key ? 'bg-brand' : 'bg-searchline'"></span>
                         {{ label }}
-                        <span class="ml-auto font-mono text-[11px] font-medium text-mute">{{ key === 'saved' ? favorites.length || '' : key === 'reviews' ? reviews.length || '' : '' }}</span>
+                        <span class="ml-auto font-mono text-[11px] font-medium text-mute">{{ key === 'saved' ? favorites.length || '' : key === 'reviews' ? reviewsTotal || '' : '' }}</span>
                     </button>
                 </nav>
 
@@ -147,13 +156,19 @@ onMounted(fetchAll);
                 <div class="flex flex-wrap items-baseline justify-between gap-3">
                     <div>
                         <h1 class="text-[26px] font-extrabold tracking-[-.02em] text-ink">Сайн уу, {{ auth.user?.name }}</h1>
-                        <p class="mt-1.5 text-[13.5px] text-soft">Хадгалсан {{ favorites.length }} бизнес · {{ reviews.length }} сэтгэгдэл</p>
+                        <p class="mt-1.5 text-[13.5px] text-soft">Хадгалсан {{ favorites.length }} бизнес · {{ reviewsTotal }} сэтгэгдэл</p>
                     </div>
                     <router-link :to="{ name: 'add-business' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Бизнес нэмэх</router-link>
                 </div>
 
                 <div v-if="loading" class="mt-6 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
                     <div v-for="i in 3" :key="i" class="card h-56 animate-pulse bg-panel"></div>
+                </div>
+
+                <!-- Ачаалахад алдаа (тохиргооны таб дата шаарддаггүй тул үлдэнэ) -->
+                <div v-else-if="loadError && tab !== 'settings'" class="card mt-5 p-14 text-center">
+                    <p class="text-[15px] font-bold text-red">{{ loadError }}</p>
+                    <button class="btn-primary mt-4" @click="fetchAll">Дахин оролдох</button>
                 </div>
 
                 <!-- Хадгалсан -->

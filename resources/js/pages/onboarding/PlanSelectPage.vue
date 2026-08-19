@@ -26,8 +26,18 @@ const busy = ref(false);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
+// Мастерт бөглөсөн ч эрхийн лимитээс болж үүсээгүй салбарууд
+const pendingBranches = computed(() => {
+    if (!business.value) return 0;
+    try {
+        return JSON.parse(sessionStorage.getItem(`pending_branches:${business.value.id}`) || '[]').length;
+    } catch {
+        return 0;
+    }
+});
+
 const extraBranches = computed(() => {
-    const count = business.value?.branches?.length || 1;
+    const count = (business.value?.branches?.length || 1) + pendingBranches.value;
     return Math.max(0, count - 1);
 });
 

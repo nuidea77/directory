@@ -7,6 +7,7 @@ const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 
 const state = ref('ask'); // ask | loading | ready | denied
 const branches = ref([]);
+const loadError = ref('');
 const total = ref(0);
 const coords = ref(null);
 const radius = ref(2);
@@ -54,19 +55,27 @@ function pickDistrict(d) {
 
 async function fetchNearby() {
     if (!coords.value) return;
-    const data = await api.get('/search', {
-        q: query.value,
-        lat: coords.value.lat,
-        lng: coords.value.lng,
-        radius: radius.value,
-        open_now: openOnly.value ? 1 : undefined,
-        rating: rating45.value ? 4.5 : undefined,
-        sort: 'distance',
-        per_page: 30,
-    });
-    branches.value = data.data;
-    total.value = data.meta.total;
-    selectedId.value = branches.value[0]?.id || null;
+    loadError.value = '';
+    try {
+        const data = await api.get('/search', {
+            q: query.value,
+            lat: coords.value.lat,
+            lng: coords.value.lng,
+            radius: radius.value,
+            open_now: openOnly.value ? 1 : undefined,
+            rating: rating45.value ? 4.5 : undefined,
+            sort: 'distance',
+            per_page: 30,
+        });
+        branches.value = data.data;
+        total.value = data.meta.total;
+        selectedId.value = branches.value[0]?.id || null;
+    } catch {
+        branches.value = [];
+        total.value = 0;
+        selectedId.value = null;
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 
@@ -169,7 +178,11 @@ onMounted(() => {
                                 </div>
                             </div>
                         </router-link>
-                        <div v-if="!branches.length" class="p-8 text-center text-[13px] text-mute">Энэ радиуст бизнес олдсонгүй. Радиусаа томсгоно уу.</div>
+                        <div v-if="loadError" class="p-8 text-center">
+                            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+                            <button class="btn-primary mt-4 !py-2 !text-[12.5px]" @click="fetchNearby">Дахин оролдох</button>
+                        </div>
+                        <div v-else-if="!branches.length" class="p-8 text-center text-[13px] text-mute">Энэ радиуст бизнес олдсонгүй. Радиусаа томсгоно уу.</div>
                     </div>
 
                     <!-- Зураглал (Leaflet + OpenStreetMap) -->

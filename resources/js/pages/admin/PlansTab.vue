@@ -4,6 +4,7 @@ import { api, ApiError } from '../../api';
 
 // Эрхийн бичгүүд: үнэ, хугацаа, лимитийг админаас удирдана
 const plans = ref(null);
+const loadError = ref('');
 const msg = ref({ type: '', text: '' });
 const busyId = ref(null);
 const createOpen = ref(false);
@@ -24,8 +25,13 @@ const emptyPlan = () => ({
 const newPlan = ref(emptyPlan());
 
 async function fetchPlans() {
-    const data = await api.get('/admin/plans');
-    plans.value = data.data;
+    loadError.value = '';
+    try {
+        const data = await api.get('/admin/plans');
+        plans.value = data.data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function savePlan(plan) {
@@ -89,7 +95,12 @@ onMounted(fetchPlans);
             </form>
         </div>
 
-        <div v-if="!plans" class="card mt-4 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-4 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchPlans">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!plans" class="card mt-4 h-64 animate-pulse"></div>
 
         <div v-else class="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
             <div v-for="plan in plans" :key="plan.id" class="card p-5" :class="{ 'opacity-60': !plan.is_active }">

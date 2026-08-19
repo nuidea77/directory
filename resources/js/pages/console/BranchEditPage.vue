@@ -14,6 +14,7 @@ const route = useRoute();
 
 const branch = ref(null);
 const form = ref(null);
+const loadError = ref('');
 const msg = ref({ type: '', text: '' });
 const busy = ref(false);
 const uploading = ref(false);
@@ -35,22 +36,27 @@ const todo = computed(() => {
 });
 
 async function fetchBranch() {
-    const data = await api.get(`/console/branches/${route.params.id}`);
-    branch.value = data.data;
-    form.value = {
-        name: branch.value.name,
-        city: branch.value.city || 'Улаанбаатар',
-        district: branch.value.district || '',
-        khoroo: branch.value.khoroo || '',
-        address: branch.value.address || '',
-        landmark: branch.value.landmark || '',
-        lat: branch.value.lat,
-        lng: branch.value.lng,
-        phone: branch.value.phone,
-        email: branch.value.email || '',
-        hours: branch.value.hours || {},
-        amenities: branch.value.amenities || [],
-    };
+    loadError.value = '';
+    try {
+        const data = await api.get(`/console/branches/${route.params.id}`);
+        branch.value = data.data;
+        form.value = {
+            name: branch.value.name,
+            city: branch.value.city || 'Улаанбаатар',
+            district: branch.value.district || '',
+            khoroo: branch.value.khoroo || '',
+            address: branch.value.address || '',
+            landmark: branch.value.landmark || '',
+            lat: branch.value.lat,
+            lng: branch.value.lng,
+            phone: branch.value.phone,
+            email: branch.value.email || '',
+            hours: branch.value.hours || {},
+            amenities: branch.value.amenities || [],
+        };
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 function toggleAmenity(a) {
@@ -155,10 +161,14 @@ const mapCenter = computed(() => {
 });
 
 onMounted(async () => {
-    fetchBranch();
-    const locs = await api.get('/locations');
-    locations.value = locs.data;
-    amenityOptions.value = locs.amenities || [];
+    await fetchBranch();
+    try {
+        const locs = await api.get('/locations');
+        locations.value = locs.data;
+        amenityOptions.value = locs.amenities || [];
+    } catch {
+        /* байршлын жагсаалтгүйгээр үргэлжилнэ */
+    }
 });
 </script>
 
@@ -345,6 +355,13 @@ onMounted(async () => {
                     </div>
                 </div>
             </aside>
+        </div>
+
+        <div v-else-if="loadError" class="p-5 sm:p-7">
+            <div class="card p-10 text-center">
+                <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+                <button class="btn-primary mt-4" @click="fetchBranch">Дахин оролдох</button>
+            </div>
         </div>
 
         <div v-else class="space-y-4 p-7">

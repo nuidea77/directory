@@ -4,12 +4,18 @@ import { api, ApiError } from '../../api';
 
 // Ангиллын CRUD — үндсэн + дэд ангиллуудыг админаас удирдана
 const categories = ref(null);
+const loadError = ref('');
 const msg = ref({ type: '', text: '' });
 const newCat = ref({ name: '', parent_id: '' });
 
 async function fetchCategories() {
-    const data = await api.get('/categories');
-    categories.value = data.data;
+    loadError.value = '';
+    try {
+        const data = await api.get('/categories');
+        categories.value = data.data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function createCategory() {
@@ -77,7 +83,12 @@ onMounted(fetchCategories);
             </form>
         </div>
 
-        <div v-if="!categories" class="card mt-4 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-4 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchCategories">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!categories" class="card mt-4 h-64 animate-pulse"></div>
 
         <div v-else class="card mt-4 overflow-hidden">
             <div v-for="cat in categories" :key="cat.id" class="border-b border-hairline last:border-0">

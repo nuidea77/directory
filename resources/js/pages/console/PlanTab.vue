@@ -6,7 +6,6 @@ import { useConsoleStore } from '../../stores/console';
 // Эрх ба сурталчилгаа (9a): одоогийн эрх, ашиглалт, кампанит ажлууд
 const store = useConsoleStore();
 const campaigns = ref([]);
-const orders = ref([]);
 const pricingPlans = ref([]);
 const loadError = ref('');
 
@@ -73,13 +72,11 @@ async function fetchData() {
     if (!org.value) return;
     loadError.value = '';
     try {
-        const [c, o, pricing] = await Promise.all([
+        const [c, pricing] = await Promise.all([
             api.get(`/console/organizations/${org.value.id}/campaigns`),
-            api.get('/orders'),
             api.get('/pricing'),
         ]);
         campaigns.value = c.data;
-        orders.value = o.data.slice(0, 4);
         pricingPlans.value = pricing.plans;
     } catch {
         loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';

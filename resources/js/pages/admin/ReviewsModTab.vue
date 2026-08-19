@@ -5,12 +5,21 @@ import { api } from '../../api';
 // Гомдолтой сэтгэгдэл + хэрэглэгчдийн залруулгын модерац
 const reviews = ref(null);
 const corrections = ref(null);
+const reviewsTotal = ref(0);
+const loadError = ref('');
 const busyId = ref(null);
 
 async function fetchAll() {
-    const [r, c] = await Promise.all([api.get('/admin/reviews'), api.get('/admin/corrections')]);
-    reviews.value = r.data;
-    corrections.value = c.data;
+    loadError.value = '';
+    try {
+        const [r, c] = await Promise.all([api.get('/admin/reviews'), api.get('/admin/corrections')]);
+        reviews.value = r.data;
+        // Гомдлын тоог meta-аас — жагсаалт нь 20-оор хуудаслагддаг
+        reviewsTotal.value = r.meta?.total ?? r.data.length;
+        corrections.value = c.data;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function moderateReview(review, action) {
@@ -44,20 +53,25 @@ onMounted(fetchAll);
     <div class="p-5 sm:p-7">
         <h1 class="text-[15px] font-bold text-ink">Сэтгэгдэл ба залруулга</h1>
 
-        <div v-if="!reviews" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-5 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchAll">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!reviews" class="card mt-5 h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- Гомдолтой сэтгэгдлүүд -->
             <div class="card mt-4 overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                     <span class="text-[14px] font-bold text-ink">Гомдолтой сэтгэгдэл</span>
-                    <span class="rounded-full bg-redtint px-2 py-0.5 font-mono text-[10.5px] font-bold text-red">{{ reviews.length }}</span>
+                    <span class="rounded-full bg-redtint px-2 py-0.5 font-mono text-[10.5px] font-bold text-red">{{ reviewsTotal }}</span>
                 </div>
                 <div v-for="r in reviews" :key="r.id" class="border-b border-hairline px-4 py-3 last:border-0">
                     <div class="flex flex-wrap items-center gap-2 text-[12.5px]">
                         <span class="font-bold text-ink">{{ r.user?.name }}</span>
                         <span class="text-amberdot">{{ '★'.repeat(Math.round(r.rating)) }}</span>
-                        <span class="text-mute">→ {{ r.branch?.business?.name }} — {{ r.branch?.name }}</span>
+                        <span class="text-mute">→ {{ r.branch?.business_name }} — {{ r.branch?.name }}</span>
                     </div>
                     <p class="mt-1.5 text-[13px] leading-relaxed text-body">{{ r.comment || '(сэтгэгдэлгүй, зөвхөн үнэлгээ)' }}</p>
                     <div class="mt-2 flex gap-1.5 text-[11.5px] font-semibold">

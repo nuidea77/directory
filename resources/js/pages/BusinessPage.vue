@@ -23,6 +23,7 @@ const similar = ref([]);
 const selectedBranchId = ref(null);
 const loading = ref(true);
 const notFound = ref(false);
+const loadError = ref('');
 const tab = ref('overview');
 
 const reviewForm = ref({ rating: 5, comment: '' });
@@ -92,12 +93,17 @@ const gallery = computed(() => branch.value?.images || []);
 async function fetchBusiness() {
     loading.value = true;
     notFound.value = false;
+    loadError.value = '';
     try {
         const data = await api.get(`/businesses/${route.params.slug}`);
         business.value = data.data;
         similar.value = data.similar;
         document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Хаана.mn`;
-        selectedBranchId.value = business.value.branches?.[0]?.id || null;
+
+        // Сэтгэгдэл бичсэний дараа дахин ачаалахад сонгосон салбар 1-рт
+        // үсэрдэг байсан — байгаа сонголтоо хадгална
+        const stillExists = business.value.branches?.some((b) => b.id === selectedBranchId.value);
+        selectedBranchId.value = stillExists ? selectedBranchId.value : business.value.branches?.[0]?.id || null;
 
         if (branch.value) {
             // Аппын доторх шилжилтэд эх сурвалжийг жагсаалтын хуудас аль хэдийн
@@ -106,7 +112,9 @@ async function fetchBusiness() {
             api.post(`/branches/${branch.value.id}/event`, cameFromApp ? { type: 'view' } : { type: 'view', source: 'direct' }).catch(() => {});
         }
     } catch (e) {
+        // 404 бол «олдсонгүй», бусад алдаанд (500, сүлжээ) дахин оролдох мөр
         if (e instanceof ApiError && e.status === 404) notFound.value = true;
+        else loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     } finally {
         loading.value = false;
     }
@@ -166,6 +174,11 @@ onMounted(fetchBusiness);
         <div v-else-if="notFound" class="mx-auto max-w-md px-5 py-24 text-center">
             <p class="text-lg font-bold text-ink">Бизнес олдсонгүй</p>
             <router-link :to="{ name: 'search' }" class="btn-primary mt-6">Хайлт руу буцах</router-link>
+        </div>
+
+        <div v-else-if="loadError" class="mx-auto max-w-md px-5 py-24 text-center">
+            <p class="text-[15px] font-bold text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-6" @click="fetchBusiness">Дахин оролдох</button>
         </div>
 
         <template v-else-if="business">

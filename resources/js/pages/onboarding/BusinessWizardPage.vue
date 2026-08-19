@@ -100,16 +100,44 @@ async function submitBranches() {
             }
         }
 
-        for (const form of forms) {
+        // Эрхийн лимитээс хэтэрсэн салбаруудыг түр хадгалж, төлбөр төлсний
+        // дараа үүсгэнэ — өмнө нь 2 дахь салбар дээр 422 өгч, хэрэглэгч
+        // цаашаа гарах аргагүй гацдаг байсан
+        const deferred = [];
+
+        for (const [i, form] of forms.entries()) {
             // Алдаа гарч дахин илгээхэд өмнө нь үүссэн салбарыг давхардуулахгүй
             if (form._created) continue;
 
-            await api.post(`/console/businesses/${business.value.id}/branches`, {
+            const payload = {
                 ...form,
                 name: form.district + ' салбар',
                 phone: form.phone.replace(/\s/g, ''),
-            });
-            form._created = true;
+            };
+
+            // Лимит дүүрсэн нь тодорхой болмогц үлдсэнийг шалгалгүй хойшлуулна
+            if (deferred.length) {
+                deferred.push(payload);
+                continue;
+            }
+
+            try {
+                await api.post(`/console/businesses/${business.value.id}/branches`, payload);
+                form._created = true;
+            } catch (e) {
+                const limitReached = e instanceof ApiError && e.status === 422;
+
+                // Эхний салбар үүсэхгүй бол жинхэнэ алдаа — хэрэглэгчид харуулна
+                if (i === 0 || !limitReached) throw e;
+
+                deferred.push(payload);
+            }
+        }
+
+        if (deferred.length) {
+            sessionStorage.setItem(`pending_branches:${business.value.id}`, JSON.stringify(deferred));
+        } else {
+            sessionStorage.removeItem(`pending_branches:${business.value.id}`);
         }
 
         // Салбарууд хадгалагдмагц шууд эрх сонгох руу

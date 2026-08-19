@@ -21,6 +21,7 @@ const keyword = ref('');
 const days = ref(30);
 const error = ref('');
 const loadError = ref('');
+const pricingError = ref('');
 const busy = ref(false);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
@@ -106,12 +107,19 @@ async function checkout() {
 
 watch([type, selectedBusinessId, selectedBranchId], fetchSlots);
 
-onMounted(async () => {
+async function loadPage() {
+    pricingError.value = '';
     await store.load();
-    const [p] = await Promise.all([api.get('/pricing')]);
-    pricing.value = p;
+    try {
+        pricing.value = await api.get('/pricing');
+    } catch {
+        pricingError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+        return;
+    }
     fetchSlots();
-});
+}
+
+onMounted(loadPage);
 </script>
 
 <template>
@@ -141,6 +149,11 @@ onMounted(async () => {
                 <p class="mt-2 max-w-[600px] text-[13.5px] leading-[1.65] text-soft">
                     Төрөл, салбар, ангилал сонгоно. <b>Зай тус бүрт хязгаартай</b> — сул зай байхгүй бол дараалалд бүртгүүлнэ. Хугацаа: 7, 14 эсвэл 30 хоног.
                 </p>
+
+                <div v-if="pricingError" class="card mt-5 max-w-[620px] p-10 text-center">
+                    <p class="text-[13px] font-medium text-red">{{ pricingError }}</p>
+                    <button class="btn-primary mt-4" @click="loadPage">Дахин оролдох</button>
+                </div>
 
                 <!-- Төрөл -->
                 <div class="mt-5 flex flex-wrap gap-2">
@@ -204,6 +217,10 @@ onMounted(async () => {
                             <div class="mt-0.5 text-[11px] font-medium text-mute">{{ slot.available ? `/ ${days} хоног` : 'дараалал' }}</div>
                         </div>
                     </div>
+                </div>
+                <div v-else-if="loadError" class="card max-w-[620px] p-10 text-center">
+                    <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+                    <button class="btn-primary mt-4" @click="fetchSlots">Дахин оролдох</button>
                 </div>
                 <p v-else class="text-[13px] text-mute">{{ type === 'keyword' ? 'Хайлтын үгээ оруулаад шалгана уу.' : 'Ачаалж байна…' }}</p>
 

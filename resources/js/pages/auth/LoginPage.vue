@@ -70,7 +70,14 @@ async function onVerified(data) {
         }
 
         done();
+        return;
     }
+
+    // Токен нэг л удаа олгогддог (consumed) — дахин poll хийхэд хоосон ирвэл
+    // хэрэглэгч мөнхийн spinner дээр үлддэг байсан
+    verification.value = null;
+    mode.value = 'password';
+    error.value = 'Баталгаажуулалт дууссан байна. Нууц үгээрээ нэвтэрнэ үү.';
 }
 </script>
 

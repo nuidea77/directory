@@ -6,6 +6,7 @@ import { useConsoleStore } from '../../stores/console';
 // Сэтгэгдэл (3c): жагсаалт + хариу бичих
 const store = useConsoleStore();
 const reviews = ref([]);
+const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const unrepliedOnly = ref(false);
 const replyingId = ref(null);
 const replyText = ref('');
@@ -13,15 +14,19 @@ const busy = ref(false);
 const loading = ref(true);
 const loadError = ref('');
 
-async function fetchReviews() {
+async function fetchReviews(page = 1) {
     if (!store.organization) return;
     loading.value = true;
     loadError.value = '';
     try {
         const data = await api.get(`/console/organizations/${store.organization.id}/reviews`, {
             unreplied: unrepliedOnly.value ? 1 : undefined,
+            page: page > 1 ? page : undefined,
         });
         reviews.value = data.data;
+        // Хуудаслалт: өмнө нь зөвхөн эхний 20 сэтгэгдэл харагдаж, үлдсэнд нь
+        // хүрэх арга байхгүй байсан
+        meta.value = data.meta || { current_page: 1, last_page: 1, total: data.data.length };
     } catch {
         loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     } finally {
@@ -41,8 +46,10 @@ async function submitReply(review) {
     }
 }
 
-watch(() => store.organization?.id, fetchReviews);
-onMounted(fetchReviews);
+// Дугаартай аргумент дамжуулахгүй — watch/onMounted нь өөрийн утгаа
+// page параметрт өгвөл буруу хуудас дуудагдана
+watch(() => store.organization?.id, () => fetchReviews());
+onMounted(() => fetchReviews());
 </script>
 
 <template>
@@ -54,7 +61,7 @@ onMounted(fetchReviews);
 
         <div v-if="loadError" class="card mt-4 p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
-            <button class="btn-primary mt-4" @click="fetchReviews">Дахин оролдох</button>
+            <button class="btn-primary mt-4" @click="fetchReviews()">Дахин оролдох</button>
         </div>
 
         <div v-else-if="loading" class="card mt-4 h-40 animate-pulse"></div>
@@ -87,6 +94,14 @@ onMounted(fetchReviews);
             </div>
 
             <div v-if="!reviews.length" class="card p-12 text-center text-[13px] text-mute">Одоогоор сэтгэгдэл алга</div>
+
+            <div v-if="meta.last_page > 1" class="mt-4 flex items-center justify-between">
+                <div class="flex gap-1.5 text-[12.5px] font-semibold">
+                    <button class="cursor-pointer rounded-lg border border-inputline px-3 py-2 text-mute disabled:opacity-40" :disabled="meta.current_page <= 1" @click="fetchReviews(meta.current_page - 1)">←</button>
+                    <button class="cursor-pointer rounded-lg border border-inputline px-3 py-2 text-ink disabled:opacity-40" :disabled="meta.current_page >= meta.last_page" @click="fetchReviews(meta.current_page + 1)">→</button>
+                </div>
+                <div class="text-[12.5px] font-medium text-mute">{{ meta.current_page }} / {{ meta.last_page }} хуудас · нийт {{ meta.total }} сэтгэгдэл</div>
+            </div>
         </div>
     </div>
 </template>

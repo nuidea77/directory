@@ -135,6 +135,12 @@ function trackView(branch) {
     api.post(`/branches/${branch.id}/event`, { type: 'view', source: isCategory.value ? 'category' : 'search' }).catch(() => {});
 }
 
+// Залгалтыг бүртгээд tel: холбоосыг өөрийг нь ажиллуулна. Өмнө нь template
+// дотроос window-д хандаж байсан нь Vue-д боломжгүй (алдаа шидээд залгадаггүй)
+function trackCall(branch) {
+    api.post(`/branches/${branch.id}/event`, { type: 'call' }).catch(() => {});
+}
+
 async function loadAll() {
     // Ангилал/байршлын жагсаалт унавал ч илэрцээ харуулна — хуудас бүхэлдээ унахгүй
     try {
@@ -330,7 +336,7 @@ onMounted(async () => {
                             <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
                                 <span v-for="tag in (branch.amenities || []).slice(0, 3)" :key="tag" class="rounded-full border border-line bg-panel px-2.5 py-1 text-[11.5px] font-medium text-body">{{ tag }}</span>
                                 <span class="ml-auto hidden gap-2 text-[12.5px] font-semibold sm:flex">
-                                    <a :href="`tel:${branch.phone}`" class="rounded-lg border border-inputline px-3.5 py-2 text-ink hover:bg-panel" @click.stop.prevent="api.post(`/branches/${branch.id}/event`, { type: 'call' }).catch(() => {}); window.location.href = `tel:${branch.phone}`">{{ branch.phone }}</a>
+                                    <a :href="`tel:${branch.phone}`" class="rounded-lg border border-inputline px-3.5 py-2 text-ink hover:bg-panel" @click.stop="trackCall(branch)">{{ branch.phone }}</a>
                                     <span class="rounded-lg bg-brand px-4 py-2 text-white">Дэлгэрэнгүй</span>
                                 </span>
                             </div>

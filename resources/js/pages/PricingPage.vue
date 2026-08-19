@@ -6,6 +6,7 @@ const plans = ref([]);
 const ads = ref([]);
 const branchAddon = ref(5000);
 const period = ref('yearly'); // yearly | monthly
+const loadError = ref('');
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
@@ -36,12 +37,19 @@ const planCards = computed(() => plans.value.map((p) => ({
     ],
 })));
 
-onMounted(async () => {
-    const data = await api.get('/pricing');
-    plans.value = data.plans;
-    ads.value = data.ads;
-    branchAddon.value = data.branch_addon_price;
-});
+async function fetchPricing() {
+    loadError.value = '';
+    try {
+        const data = await api.get('/pricing');
+        plans.value = data.plans;
+        ads.value = data.ads;
+        branchAddon.value = data.branch_addon_price;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
+}
+
+onMounted(fetchPricing);
 </script>
 
 <template>
@@ -70,7 +78,12 @@ onMounted(async () => {
         </div>
 
         <!-- Эрхийн бичгүүд -->
-        <div class="mx-auto grid max-w-7xl grid-cols-1 border-b border-line md:grid-cols-3">
+        <div v-if="loadError" class="mx-auto max-w-xl px-5 py-16 text-center">
+            <p class="text-[15px] font-bold text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchPricing">Дахин оролдох</button>
+        </div>
+
+        <div v-else class="mx-auto grid max-w-7xl grid-cols-1 border-b border-line md:grid-cols-3">
             <div v-for="p in planCards" :key="p.key" class="border-line px-7 py-8 md:border-r md:last:border-r-0" :class="{ 'bg-bluecard': p.key === 'standard' }">
                 <div class="flex items-center gap-2">
                     <span class="text-[17px] font-bold text-ink">{{ p.name }}</span>

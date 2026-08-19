@@ -53,7 +53,9 @@ async function saveBusiness() {
     try {
         // Лого файлтай тул multipart-аар илгээнэ
         const fd = new FormData();
-        Object.entries(bizForm.value).forEach(([k, v]) => v !== '' && v !== null && fd.append(k, v));
+        // Хоосон болгосон талбарыг ч илгээнэ — эс бөгөөс устгасан вэб сайт,
+        // тайлбар зэрэг хадгалагдахгүй хуучнаараа үлддэг (backend-д nullable)
+        Object.entries(bizForm.value).forEach(([k, v]) => fd.append(k, v ?? ''));
         if (logoFile.value) fd.append('logo', logoFile.value);
 
         await api.postForm(`/console/businesses/${business.value.id}`, fd);

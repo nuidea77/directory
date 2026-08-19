@@ -4,10 +4,16 @@ import { api } from '../../api';
 
 // Модерацын тойм (4a): KPI, хүлээгдэж буй бүртгэл, дата чанар
 const data = ref(null);
+const loadError = ref('');
 const busyId = ref(null);
 
 async function fetchData() {
-    data.value = await api.get('/admin/moderation');
+    loadError.value = '';
+    try {
+        data.value = await api.get('/admin/moderation');
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
+    }
 }
 
 async function decide(branch, action) {
@@ -42,7 +48,12 @@ onMounted(fetchData);
             </div>
         </div>
 
-        <div v-if="!data" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-if="loadError" class="card mt-5 p-10 text-center">
+            <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+            <button class="btn-primary mt-4" @click="fetchData">Дахин оролдох</button>
+        </div>
+
+        <div v-else-if="!data" class="card mt-5 h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- KPI (4a) -->

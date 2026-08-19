@@ -11,6 +11,7 @@ const stats = ref({ businesses: 0 });
 const query = ref('');
 const city = ref('Улаанбаатар');
 const loading = ref(true);
+const loadError = ref('');
 const featuredFilter = ref('all');
 
 const popular = ['хоолны газар', 'шүдний эмнэлэг', 'нотариат', 'барилгын материал'];
@@ -18,19 +19,22 @@ const cities = ref([]);
 
 async function fetchHome() {
     loading.value = true;
+    loadError.value = '';
     try {
         const data = await api.get('/home', { city: city.value });
         categories.value = data.categories;
         featured.value = data.featured;
         stats.value = data.stats;
+    } catch {
+        loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     } finally {
         loading.value = false;
     }
 }
 
 onMounted(async () => {
-    fetchHome();
     api.get('/locations').then((locs) => (cities.value = locs.data.map((l) => l.city))).catch(() => {});
+    await fetchHome();
 });
 
 function search(term) {
@@ -123,6 +127,10 @@ function filteredFeatured() {
 
             <div v-if="loading" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="i in 6" :key="i" class="card h-72 animate-pulse bg-panel"></div>
+            </div>
+            <div v-else-if="loadError" class="card mt-4 p-10 text-center">
+                <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
+                <button class="btn-primary mt-4" @click="fetchHome()">Дахин оролдох</button>
             </div>
             <div v-else-if="filteredFeatured().length" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <BusinessCard v-for="business in filteredFeatured()" :key="business.id" :business="business" />
