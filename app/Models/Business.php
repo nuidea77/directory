@@ -35,6 +35,18 @@ class Business extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Business $business) {
+            // DB cascade Eloquent event дуудахгүй тул салбаруудыг моделиор устгана
+            $business->branches()->get()->each->delete();
+
+            if ($business->logo_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($business->logo_path);
+            }
+        });
+    }
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);

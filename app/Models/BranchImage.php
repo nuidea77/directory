@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BranchImage extends Model
 {
-    protected $fillable = ['branch_id', 'path', 'is_cover', 'sort_order'];
+    protected $fillable = ['branch_id', 'path',
+        'thumb_path', 'is_cover', 'sort_order'];
 
     protected function casts(): array
     {

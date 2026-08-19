@@ -11,7 +11,7 @@ return new class extends Migration
         // Байгууллага — эрхийн бичиг (subscription) эзэмшигч. Доороо 1-5 бизнестэй.
         Schema::create('organizations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('owner_id')->constrained('users')->restrictOnDelete();
             $table->string('name');
             $table->string('registration_number', 20)->nullable(); // УБД (улсын бүртгэлийн дугаар)
             $table->string('plan', 20)->default('free'); // free | standard | business
@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamp('plan_expires_at')->nullable();
             $table->boolean('auto_renew')->default(false);
             $table->unsignedInteger('extra_branches')->default(0); // худалдаж авсан нэмэлт салбарын эрх
+            $table->index(['plan', 'plan_expires_at']);
             $table->timestamps();
         });
     }

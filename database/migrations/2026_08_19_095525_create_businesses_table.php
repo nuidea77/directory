@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('businesses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained()->restrictOnDelete(); // ангилал устгахад бизнес хамт устахгүй
             $table->string('subcategory')->nullable();
             $table->string('name');
             $table->string('slug')->unique();
@@ -56,6 +56,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['district', 'status']);
+            $table->index(['status', 'rating_avg']); // хайлтын үндсэн шүүлт + эрэмбэ
+            $table->index(['city', 'district', 'status']);
             $table->index('business_id');
         });
 
@@ -63,6 +65,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
             $table->string('path');
+            $table->string('thumb_path')->nullable(); // жагсаалтад зориулсан жижигрүүлсэн хувилбар
             $table->boolean('is_cover')->default(false);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();

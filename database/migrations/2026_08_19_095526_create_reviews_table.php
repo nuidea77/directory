@@ -23,6 +23,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['branch_id', 'user_id']);
+            $table->index(['branch_id', 'status']);
+            $table->index(['status', 'created_at']);
         });
 
         // «Хэрэгтэй» тэмдэглэгээ — хэрэглэгч тутамд нэг удаа

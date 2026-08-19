@@ -42,9 +42,11 @@ class BranchResource extends JsonResource
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
                 'id' => $img->id,
                 'url' => $disk->url($img->path),
+                'thumb_url' => $disk->url($img->thumb_path ?: $img->path),
                 'is_cover' => $img->is_cover,
             ])),
-            'cover_url' => $this->whenLoaded('images', fn () => $this->images->first() ? $disk->url($this->images->first()->path) : null),
+            // Жагсаалтад жижигрүүлсэн хувилбарыг өгнө (байхгүй бол оригинал)
+            'cover_url' => $this->whenLoaded('images', fn () => $this->images->first() ? $disk->url($this->images->first()->thumb_path ?: $this->images->first()->path) : null),
             'business' => new BusinessResource($this->whenLoaded('business')),
             'reviews' => ReviewResource::collection($this->whenLoaded('reviews')),
             'distance_km' => $this->when(isset($this->distance_km), fn () => round($this->distance_km, 1)),

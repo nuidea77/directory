@@ -182,6 +182,41 @@ class ConsoleTest extends TestCase
         $this->assertCount(9, $districts);
     }
 
+    public function test_image_upload_creates_thumbnail_and_cover_selection(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $branch = Branch::factory()->create();
+        // Үнэгүй эрх 1 зурагтай тул стандарт эрх өгнө
+        $branch->business->organization->update(['plan' => 'standard', 'plan_expires_at' => now()->addYear()]);
+        $owner = $branch->business->organization->owner;
+
+        $res = $this->actingAs($owner)->post("/api/v1/console/branches/{$branch->id}/images", [
+            'images' => [
+                \Illuminate\Http\UploadedFile::fake()->image('a.jpg', 1600, 900),
+                \Illuminate\Http\UploadedFile::fake()->image('b.jpg', 400, 300),
+            ],
+        ], ['Accept' => 'application/json']);
+
+        $res->assertOk();
+        $images = $branch->images()->get();
+        $this->assertCount(2, $images);
+        $this->assertNotNull($images[0]->thumb_path); // жижигрүүлсэн хувилбар үүссэн
+        $this->assertTrue((bool) $images[0]->is_cover);
+
+        // Хоёр дахь зургийг нүүр болгоно
+        $this->actingAs($owner)->postJson("/api/v1/console/branches/{$branch->id}/images/{$images[1]->id}/cover")->assertOk();
+        $this->assertTrue((bool) $images[1]->refresh()->is_cover);
+        $this->assertFalse((bool) $images[0]->refresh()->is_cover);
+
+        // Салбар устгахад файлууд дискнээс устана
+        $paths = $images->flatMap(fn ($i) => [$i->path, $i->thumb_path])->filter();
+        $this->actingAs($owner)->deleteJson("/api/v1/console/branches/{$branch->id}")->assertOk();
+        foreach ($paths as $path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
+        }
+    }
+
     public function test_admin_moderation_flow(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

@@ -24,7 +24,7 @@ class AdminController extends Controller
     public function moderation(Request $request): JsonResponse
     {
         $pending = Branch::where('status', 'pending')
-            ->with(['business.category', 'business.organization'])
+            ->with(['business.category', 'business.organization', 'images'])
             ->oldest('updated_at')
             ->paginate(10);
 
@@ -46,7 +46,7 @@ class AdminController extends Controller
 
         return response()->json([
             'kpis' => $kpis,
-            'queue' => BranchResource::collection($pending->getCollection()->each->load('images')),
+            'queue' => BranchResource::collection($pending->getCollection()),
             'queue_total' => $pending->total(),
             'data_quality' => $dataQuality,
         ]);
@@ -104,6 +104,7 @@ class AdminController extends Controller
 
         // Онцлох зайн бүртгэл (инвентор)
         $inventory = Campaign::query()->running()
+            ->with('category:id,name')
             ->get()
             ->groupBy(fn (Campaign $c) => implode('|', [$c->type, $c->category_id, $c->district, $c->city, $c->keyword]))
             ->map(function ($group) {
@@ -275,8 +276,8 @@ class AdminController extends Controller
     {
         $data = $request->validate(['action' => ['required', 'in:restore,hide']]);
 
+        // refreshRating() нь Review-ийн saved event-ээр автоматаар дуудагдана
         $review->update(['status' => $data['action'] === 'restore' ? 'active' : 'hidden']);
-        $review->branch->refreshRating();
 
         return response()->json(['message' => 'Шийдвэрлэлээ.']);
     }

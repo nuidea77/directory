@@ -18,16 +18,15 @@ class ReviewResource extends JsonResource
             'replied_at' => $this->replied_at,
             'status' => $this->status,
             'helpful_count' => $this->helpful_count,
-            'user' => [
-                'id' => $this->user?->id,
-                'name' => $this->user?->name,
-                'reviews_count' => $this->when($this->user?->relationLoaded('reviews') || isset($this->user?->reviews_count), fn () => $this->user->reviews_count),
-            ],
+            'user' => $this->whenLoaded('user', fn () => [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+            ]),
             'branch' => $this->whenLoaded('branch', fn () => [
                 'id' => $this->branch->id,
                 'name' => $this->branch->name,
-                'business_name' => $this->branch->business?->name,
-                'business_slug' => $this->branch->business?->slug,
+                'business_name' => $this->branch->relationLoaded('business') ? $this->branch->business?->name : null,
+                'business_slug' => $this->branch->relationLoaded('business') ? $this->branch->business?->slug : null,
             ]),
             'created_at' => $this->created_at,
         ];

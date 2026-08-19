@@ -110,15 +110,33 @@ class Branch extends Model
      */
     public function completeness(): int
     {
+        // N+1-ээс сэргийлж eager-loaded relation-ыг ашиглана
+        $imagesCount = $this->relationLoaded('images') ? $this->images->count() : $this->images()->count();
+
         $checks = [
             filled($this->address),
             $this->lat !== null && $this->lng !== null,
             ! empty($this->hours),
-            $this->images()->count() >= 3,
+            $imagesCount >= 3,
             ! empty($this->amenities),
         ];
 
         return (int) round(collect($checks)->filter()->count() / count($checks) * 100);
+    }
+
+    protected static function booted(): void
+    {
+        // Салбар устахад зургийн файлууд дискнээс хамт устана
+        static::deleting(function (Branch $branch) {
+            $paths = $branch->images()->get(['path', 'thumb_path'])
+                ->flatMap(fn ($img) => [$img->path, $img->thumb_path])
+                ->filter()
+                ->all();
+
+            if ($paths !== []) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+            }
+        });
     }
 
     public function recordEvent(string $type, ?string $source = null): void

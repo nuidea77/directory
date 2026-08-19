@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('number', 30)->unique();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete(); // санхүүгийн бичлэг хэрэглэгчтэй хамт устахгүй
             $table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedInteger('total'); // MNT, НӨАТ орсон
             $table->string('status', 20)->default('pending'); // pending | paid | void | expired
@@ -24,6 +24,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'status']);
+            $table->index(['status', 'paid_at']);
+            $table->index(['organization_id', 'status']);
         });
 
         Schema::create('order_items', function (Blueprint $table) {
@@ -61,6 +63,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['type', 'status', 'category_id', 'district']);
+            $table->index(['status', 'ends_at']);
+            $table->index(['type', 'keyword', 'status']);
         });
 
         // Салбарын өдөр тутмын статистик (аналитик график)

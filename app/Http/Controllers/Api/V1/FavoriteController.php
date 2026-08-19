@@ -13,7 +13,7 @@ class FavoriteController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $favorites = $request->user()->favorites()->with('business.category', 'business.branches.images')->latest()->get();
+        $favorites = $request->user()->favorites()->with('business.category', 'business.branches.images')->latest()->limit(100)->get();
 
         $businesses = $favorites->map(function ($favorite) {
             $business = $favorite->business;

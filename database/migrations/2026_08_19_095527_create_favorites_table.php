@@ -29,6 +29,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['business_id', 'user_id']);
+            $table->index(['user_id', 'created_at']);
+            $table->index(['business_id', 'created_at']);
         });
 
         // Хэрэглэгчийн залруулга ("Орох хаалга барилгын хажуу талд" гэх мэт)
@@ -38,6 +40,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->text('text');
             $table->string('status', 20)->default('pending'); // pending | accepted | rejected
+            $table->index('status');
             $table->timestamps();
         });
     }

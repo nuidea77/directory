@@ -16,23 +16,36 @@ class MessageController extends Controller
 {
     public function threads(Request $request): JsonResponse
     {
-        $threads = Message::query()
-            ->where('user_id', $request->user()->id)
-            ->with('business:id,name,slug,logo_path')
-            ->latest()
-            ->get()
+        // Бүх мессежийг ачаалахгүй: thread бүрийн сүүлийн мөрийг window function-ээр
+        // (MySQL 8 / SQLite 3.25+ хоёулаа дэмжинэ), unread-ийг aggregate-аар авна
+        $userId = $request->user()->id;
+
+        $lastMessages = Message::query()->fromSub(
+            Message::query()
+                ->select('*')
+                ->selectRaw('ROW_NUMBER() OVER (PARTITION BY business_id ORDER BY created_at DESC, id DESC) as rn')
+                ->where('user_id', $userId),
+            'm',
+        )->where('rn', 1)->orderByDesc('created_at')->limit(50)->with('business:id,name,slug,logo_path')->get();
+
+        $unread = Message::query()
+            ->where('user_id', $userId)
+            ->where('sender', 'business')
+            ->whereNull('read_at')
+            ->selectRaw('business_id, count(*) as cnt')
             ->groupBy('business_id')
-            ->map(fn ($messages) => [
-                'business' => [
-                    'id' => $messages->first()->business->id,
-                    'name' => $messages->first()->business->name,
-                    'slug' => $messages->first()->business->slug,
-                ],
-                'last_message' => $messages->first()->body,
-                'last_at' => $messages->first()->created_at,
-                'unread' => $messages->where('sender', 'business')->whereNull('read_at')->count(),
-            ])
-            ->values();
+            ->pluck('cnt', 'business_id');
+
+        $threads = $lastMessages->map(fn (Message $m) => [
+            'business' => [
+                'id' => $m->business->id,
+                'name' => $m->business->name,
+                'slug' => $m->business->slug,
+            ],
+            'last_message' => $m->body,
+            'last_at' => $m->created_at,
+            'unread' => (int) ($unread[$m->business_id] ?? 0),
+        ]);
 
         return response()->json(['data' => $threads]);
     }

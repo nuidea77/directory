@@ -19,22 +19,32 @@ class ConsoleMessageController extends Controller
     {
         $this->authorizeOwner($request, $business);
 
-        $threads = Message::query()
+        // Thread бүрийн сүүлийн мөр window function-ээр, unread aggregate-аар
+        $lastMessages = Message::query()->fromSub(
+            Message::query()
+                ->select('*')
+                ->selectRaw('ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC, id DESC) as rn')
+                ->where('business_id', $business->id),
+            'm',
+        )->where('rn', 1)->orderByDesc('created_at')->limit(100)->with('user:id,name')->get();
+
+        $unread = Message::query()
             ->where('business_id', $business->id)
-            ->with('user:id,name')
-            ->latest()
-            ->get()
+            ->where('sender', 'user')
+            ->whereNull('read_at')
+            ->selectRaw('user_id, count(*) as cnt')
             ->groupBy('user_id')
-            ->map(fn ($messages) => [
-                'user' => [
-                    'id' => $messages->first()->user->id,
-                    'name' => $messages->first()->user->name,
-                ],
-                'last_message' => $messages->first()->body,
-                'last_at' => $messages->first()->created_at,
-                'unread' => $messages->where('sender', 'user')->whereNull('read_at')->count(),
-            ])
-            ->values();
+            ->pluck('cnt', 'user_id');
+
+        $threads = $lastMessages->map(fn (Message $m) => [
+            'user' => [
+                'id' => $m->user->id,
+                'name' => $m->user->name,
+            ],
+            'last_message' => $m->body,
+            'last_at' => $m->created_at,
+            'unread' => (int) ($unread[$m->user_id] ?? 0),
+        ]);
 
         return response()->json(['data' => $threads]);
     }

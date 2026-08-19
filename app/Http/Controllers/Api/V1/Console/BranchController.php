@@ -83,8 +83,7 @@ class BranchController extends Controller
     {
         $this->authorizeOwner($request, $branch->business);
 
-        Storage::disk('public')->delete($branch->images->pluck('path')->all());
-        $branch->delete();
+        $branch->delete(); // файлуудыг Branch::booted deleting hook устгана
 
         return response()->json(['message' => 'Салбар устгагдлаа.']);
     }
@@ -107,9 +106,12 @@ class BranchController extends Controller
             ]);
         }
 
+        $thumbs = app(\App\Services\ImageService::class);
+
         foreach ($request->file('images', []) as $i => $file) {
             $branch->images()->create([
                 'path' => $file->store('branches', 'public'),
+                'thumb_path' => $thumbs->makeCard($file),
                 'is_cover' => $existing === 0 && $i === 0,
                 'sort_order' => $existing + $i,
             ]);
@@ -123,7 +125,7 @@ class BranchController extends Controller
         $this->authorizeOwner($request, $branch->business);
         abort_unless($image->branch_id === $branch->id, 404);
 
-        Storage::disk('public')->delete($image->path);
+        Storage::disk('public')->delete(array_filter([$image->path, $image->thumb_path]));
         $image->delete();
 
         return response()->json(['message' => 'Зураг устгагдлаа.']);

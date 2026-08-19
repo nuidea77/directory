@@ -12,11 +12,12 @@ class CategoryController extends Controller
 {
     public function index(): JsonResponse
     {
-        $categories = Category::whereNull('parent_id')
+        // Ангиллын мод бараг өөрчлөгддөггүй — 10 минут cache
+        $categories = \Illuminate\Support\Facades\Cache::remember('categories:index', 600, fn () => Category::whereNull('parent_id')
             ->withCount('businesses')
             ->with(['children' => fn ($q) => $q->withCount('businesses')])
             ->orderBy('sort_order')
-            ->get();
+            ->get());
 
         return response()->json(['data' => CategoryResource::collection($categories)]);
     }
@@ -37,7 +38,8 @@ class CategoryController extends Controller
             ->whereHas('business', fn ($q) => $q->where('is_verified', true))
             ->count();
 
-        $openNow = Branch::whereIn('id', $branchIds)->get()
+        // Санах ойд бүгдийг ачаалахгүй — эхний 500-аар хязгаарлана
+        $openNow = Branch::whereIn('id', $branchIds)->limit(500)->get(['id', 'hours'])
             ->filter(fn (Branch $b) => $b->openState()['open'])
             ->count();
 

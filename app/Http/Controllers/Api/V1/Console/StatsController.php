@@ -73,7 +73,7 @@ class StatsController extends Controller
         // Хариу хүлээж буй сэтгэгдлүүд
         $pendingReviews = Review::whereIn('branch_id', $branchIds)
             ->whereNull('reply')
-            ->with(['user', 'branch'])
+            ->with(['user', 'branch.business'])
             ->latest()
             ->limit(5)
             ->get();
