@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import VerifyPanel from '../../components/VerifyPanel.vue';
+import VerifiedSuccess from '../../components/VerifiedSuccess.vue';
 
 // Нэвтэрсэн ч дугаараа баталгаажуулаагүй хэрэглэгчийн хуудас
 const auth = useAuthStore();
@@ -27,9 +28,11 @@ async function start() {
     }
 }
 
+const done = ref(false);
+
 async function onVerified() {
     await auth.refresh();
-    router.push({ name: 'home' });
+    done.value = true;
 }
 
 onMounted(() => {
@@ -43,7 +46,8 @@ onMounted(() => {
 
 <template>
     <div class="bg-hero px-4 py-14">
-        <div class="card mx-auto max-w-[460px] bg-white p-8">
+        <VerifiedSuccess v-if="done" :name="auth.user?.name" :phone="auth.user?.phone" />
+        <div v-else class="card mx-auto max-w-[460px] bg-white p-8">
             <h1 class="text-[25px] font-extrabold leading-tight tracking-[-.025em] text-ink">Дугаараа баталгаажуулна уу</h1>
             <p class="mt-2 text-[13px] leading-[1.65] text-soft">
                 Сэтгэгдэл бичих, бизнес нэмэхэд утасны дугаар баталгаажсан байх шаардлагатай.

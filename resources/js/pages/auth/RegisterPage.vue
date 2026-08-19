@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import VerifyPanel from '../../components/VerifyPanel.vue';
+import VerifiedSuccess from '../../components/VerifiedSuccess.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -65,7 +66,8 @@ async function onVerified(data) {
     if (data?.token) {
         auth.setSession(data.token, data.user?.data ?? data.user);
         await auth.refresh();
-        router.push({ name: 'home' });
+        // Амжилттай баталгаажсан дэлгэц харуулна
+        step.value = 'success';
     } else {
         // Токен өөр төхөөрөмж дээр олгогдсон бол нэвтрэх хуудас руу
         router.push({ name: 'login' });
@@ -174,6 +176,9 @@ async function onVerified(data) {
                 Бүртгэлийг идэвхжүүлэхийн тулд дугаараа заавал баталгаажуулна. Мессеж илгээх боломжгүй бол дугаараа өөрчилж дахин оролдоно уу.
             </p>
         </div>
+
+        <!-- Амжилттай баталгаажлаа -->
+        <VerifiedSuccess v-else-if="step === 'success'" :name="form.name" :phone="'+976 ' + form.phone" />
 
         <!-- Хугацаа дууссан -->
         <div v-else class="card mx-auto max-w-[460px] bg-white p-8 text-center">

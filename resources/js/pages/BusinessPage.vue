@@ -1,10 +1,18 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
 import BizLogo from '../components/BizLogo.vue';
+
+// Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
+const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
+
+// Газрын зурагт бүх идэвхтэй, координаттай салбаруудыг pin-ээр харуулна
+const mapMarkers = () => (business.value?.branches || [])
+    .filter((b) => b.lat !== null && b.lat !== undefined)
+    .map((b, i) => ({ id: b.id, lat: b.lat, lng: b.lng, label: i + 1 }));
 
 const route = useRoute();
 const router = useRouter();
@@ -346,10 +354,17 @@ onMounted(fetchBusiness);
                         </div>
                     </div>
 
-                    <!-- Зураглал -->
+                    <!-- Зураглал (Leaflet + OpenStreetMap) -->
                     <div class="overflow-hidden rounded-xl border border-line">
-                        <div class="map-ph relative h-[170px]">
-                            <div v-if="branch?.lat" class="absolute left-1/2 top-1/2 h-[22px] w-[22px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-brand shadow-lg"></div>
+                        <MapView
+                            v-if="mapMarkers().length"
+                            :markers="mapMarkers()"
+                            :selected-id="branch?.id"
+                            height="170px"
+                            @select="(id) => (selectedBranchId = id)"
+                        />
+                        <div v-else class="map-ph relative h-[170px]">
+                            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[11.5px] font-medium text-mute">Байршил тэмдэглээгүй</div>
                         </div>
                         <div class="flex items-center justify-between px-4 py-3.5">
                             <span class="text-[12.5px] font-medium text-soft">{{ branch?.address }}</span>

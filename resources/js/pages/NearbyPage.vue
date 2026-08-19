@@ -1,6 +1,9 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { api } from '../api';
+
+// Leaflet газрын зураг — lazy-load
+const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 
 const state = ref('ask'); // ask | loading | ready | denied
 const branches = ref([]);
@@ -12,6 +15,12 @@ const openOnly = ref(false);
 const rating45 = ref(false);
 const district = ref('');
 const selectedId = ref(null);
+const mobileView = ref('list'); // list | map — мобайл дээр сэлгэнэ
+
+// Газрын зургийн pin-үүд: бодит координаттай салбарууд
+const mapMarkers = computed(() => branches.value
+    .map((b, i) => ({ id: b.id, lat: b.lat, lng: b.lng, label: i + 1 }))
+    .filter((m) => m.lat !== null && m.lat !== undefined));
 
 const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан'];
 // Улаанбаатарын дүүргүүдийн ойролцоо төв цэгүүд (гараар сонгоход)
@@ -60,14 +69,6 @@ async function fetchNearby() {
     selectedId.value = branches.value[0]?.id || null;
 }
 
-// Зураглал дээрх pin байрлал: зайд суурилсан псевдо байршуулалт
-function pinStyle(branch, i) {
-    const angle = (i * 137.5) % 360; // алтан өнцөг — жигд тархана
-    const dist = Math.min(1, (branch.distance_km || 0.3) / radius.value);
-    const x = 50 + Math.cos((angle * Math.PI) / 180) * dist * 38;
-    const y = 50 + Math.sin((angle * Math.PI) / 180) * dist * 38;
-    return { left: `${x}%`, top: `${y}%` };
-}
 
 function setRadius(r) {
     radius.value = r;
@@ -133,6 +134,9 @@ onMounted(() => {
                     <div class="h-5 w-px bg-searchline"></div>
                     <button class="cursor-pointer rounded-[7px] border px-2.5 py-1.5 text-[11.5px] font-semibold" :class="openOnly ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-chiptext'" @click="openOnly = !openOnly; fetchNearby()">Одоо нээлттэй</button>
                     <button class="cursor-pointer rounded-[7px] border px-2.5 py-1.5 text-[11.5px] font-semibold" :class="rating45 ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-chiptext'" @click="rating45 = !rating45; fetchNearby()">4.5+</button>
+                    <button class="cursor-pointer rounded-[7px] border border-searchline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-chiptext sm:hidden" @click="mobileView = mobileView === 'list' ? 'map' : 'list'">
+                        {{ mobileView === 'list' ? '🗺 Зураг' : '☰ Жагсаалт' }}
+                    </button>
                     <span class="ml-auto whitespace-nowrap text-[11.5px] font-medium text-mute">
                         Байршил: {{ district || 'GPS' }} · <button class="cursor-pointer font-semibold text-brand" @click="state = 'ask'">Өөрчлөх</button>
                     </span>
@@ -140,7 +144,7 @@ onMounted(() => {
 
                 <div class="flex h-[520px]">
                     <!-- Жагсаалт -->
-                    <div class="flex w-full flex-col overflow-y-auto border-r border-line sm:w-[266px]">
+                    <div class="w-full flex-col overflow-y-auto border-r border-line sm:flex sm:w-[266px]" :class="mobileView === 'list' ? 'flex' : 'hidden'">
                         <div class="flex items-baseline justify-between border-b border-divider px-3.5 py-3">
                             <span class="text-[12.5px] font-bold text-ink">{{ total }} бизнес · {{ radius >= 30 ? 'бүх хот' : radius + ' км' }}</span>
                             <span class="text-[11.5px] font-medium text-soft">Ойрхноос холуур эрэмбэлэв</span>
@@ -168,28 +172,23 @@ onMounted(() => {
                         <div v-if="!branches.length" class="p-8 text-center text-[13px] text-mute">Энэ радиуст бизнес олдсонгүй. Радиусаа томсгоно уу.</div>
                     </div>
 
-                    <!-- Зураглал -->
-                    <div class="map-ph relative hidden flex-1 sm:block">
-                        <!-- Радиусын хүрээ -->
-                        <div class="absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-brand/35 bg-brand/10"></div>
-                        <div class="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5">
-                            <div class="h-[18px] w-[18px] rounded-full border-[3px] border-white bg-brand shadow-lg"></div>
-                            <div class="rounded-[5px] bg-white/95 px-2 py-1 text-[10.5px] font-semibold text-ink">Та энд байна</div>
-                        </div>
-                        <button
-                            v-for="(b, i) in branches.slice(0, 8)"
-                            :key="b.id"
-                            class="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11.5px] font-bold shadow-md transition"
-                            :class="b.id === selectedId ? 'bg-brand text-white' : 'bg-white text-ink'"
-                            :style="pinStyle(b, i)"
-                            @click="selectedId = b.id"
-                        >{{ i + 1 }} · {{ b.distance_km }} км</button>
+                    <!-- Зураглал (Leaflet + OpenStreetMap) -->
+                    <div class="relative flex-1" :class="mobileView === 'map' ? 'block' : 'hidden sm:block'">
+                        <MapView
+                            :markers="mapMarkers"
+                            :selected-id="selectedId"
+                            :circle="coords && radius < 30 ? { lat: coords.lat, lng: coords.lng, radiusKm: radius } : null"
+                            :center="coords ? { lat: coords.lat, lng: coords.lng } : null"
+                            :zoom="radius <= 0.5 ? 15 : radius <= 2 ? 14 : radius <= 5 ? 12 : 11"
+                            height="100%"
+                            @select="(id) => (selectedId = id)"
+                        />
 
                         <!-- Сонгосон салбарын карт -->
-                        <div v-if="selected" class="absolute bottom-4 left-4 w-[280px] rounded-[11px] bg-white p-3.5 shadow-xl">
+                        <div v-if="selected" class="absolute bottom-4 left-4 z-[500] w-[280px] rounded-[11px] bg-white p-3.5 shadow-xl">
                             <div class="flex items-center gap-2">
                                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">{{ branches.indexOf(selected) + 1 }}</span>
-                                <span class="truncate text-[13.5px] font-bold text-ink">{{ selected.business.name }}</span>
+                                <router-link :to="{ name: 'business', params: { slug: selected.business.slug } }" class="truncate text-[13.5px] font-bold text-ink hover:text-brand">{{ selected.business.name }}</router-link>
                                 <span class="ml-auto font-mono text-[12px] font-bold text-ink">{{ selected.distance_km }} км</span>
                             </div>
                             <div class="mt-1.5 text-[11.5px] text-mute">{{ selected.address }}</div>

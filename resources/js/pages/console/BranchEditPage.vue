@@ -3,6 +3,11 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
+import { cityCenters } from '../../data/cityCenters';
+import { defineAsyncComponent } from 'vue';
+
+// Leaflet газрын зураг — дарж/чирж байршил сонгоно
+const MapView = defineAsyncComponent(() => import('../../components/MapView.vue'));
 
 // Салбар засах editor (6a): хаяг/байршил, холбоо/цаг, зураг, үйлчилгээ
 const route = useRoute();
@@ -120,6 +125,35 @@ async function deleteBranch() {
     }
 }
 
+// Зураг дээр дарж/чирэхэд координат шинэчлэгдэнэ
+function onPick({ lat, lng }) {
+    form.value.lat = lat;
+    form.value.lng = lng;
+}
+
+// GPS-ээр одоогийн байршлаа авах
+const locating = ref(false);
+
+function useMyLocation() {
+    if (!navigator.geolocation) return;
+    locating.value = true;
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            onPick({ lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) });
+            locating.value = false;
+        },
+        () => { locating.value = false; },
+        { timeout: 8000 },
+    );
+}
+
+// Аймаг солиход зураг тухайн төв рүү шилжинэ (координат сонгоогүй үед)
+const mapCenter = computed(() => {
+    if (form.value?.lat) return { lat: Number(form.value.lat), lng: Number(form.value.lng) };
+    const c = cityCenters[form.value?.city] || cityCenters['Улаанбаатар'];
+    return { lat: c.lat, lng: c.lng };
+});
+
 onMounted(async () => {
     fetchBranch();
     const locs = await api.get('/locations');
@@ -200,10 +234,13 @@ onMounted(async () => {
                             <input v-model="form.landmark" type="text" class="input" />
                         </div>
                     </div>
-                    <div class="map-ph relative mt-3.5 h-[150px] overflow-hidden rounded-[11px] border border-line">
-                        <div v-if="form.lat" class="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-                            <span class="rounded-[5px] bg-ink px-2 py-1 text-[10.5px] font-semibold text-white">{{ form.lat?.toFixed?.(4) }}, {{ form.lng?.toFixed?.(4) }}</span>
-                            <span class="mt-1.5 h-[18px] w-[18px] rounded-full border-[3px] border-white bg-brand shadow-lg"></span>
+                    <div class="mt-3.5 overflow-hidden rounded-[11px] border border-line">
+                        <MapView :center="mapCenter" :zoom="form.lat ? 15 : 12" picker height="230px" @pick="onPick" />
+                        <div class="flex flex-wrap items-center gap-2 border-t border-line bg-panel px-3 py-2">
+                            <span class="text-[11.5px] font-medium text-mute">Зураг дээр дарж эсвэл цэгийг чирж байршлаа тавина</span>
+                            <button type="button" class="ml-auto cursor-pointer rounded-[7px] border border-inputline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-brand" :disabled="locating" @click="useMyLocation">
+                                {{ locating ? 'Тогтоож байна…' : '📍 Одоогийн байршлаа ашиглах' }}
+                            </button>
                         </div>
                     </div>
                 </div>
