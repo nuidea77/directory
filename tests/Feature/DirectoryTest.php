@@ -157,6 +157,37 @@ class DirectoryTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_review_report_helpful_and_corrections(): void
+    {
+        $branch = Branch::factory()->create();
+        $author = User::factory()->create();
+        $reader = User::factory()->create();
+
+        $review = \App\Models\Review::factory()->create(['branch_id' => $branch->id, 'user_id' => $author->id, 'status' => 'active']);
+
+        // Report → flagged, админы дараалалд орно
+        $this->actingAs($reader)->postJson("/api/v1/branches/{$branch->id}/reviews/{$review->id}/report")->assertOk();
+        $this->assertSame('flagged', $review->refresh()->status);
+
+        // Өөрийн сэтгэгдлийг report хийж болохгүй
+        $review->update(['status' => 'active']);
+        $this->actingAs($author)->postJson("/api/v1/branches/{$branch->id}/reviews/{$review->id}/report")->assertStatus(422);
+
+        // Helpful toggle
+        $this->actingAs($reader)->postJson("/api/v1/reviews/{$review->id}/helpful")->assertOk()->assertJsonPath('helpful_count', 1);
+        $this->actingAs($reader)->postJson("/api/v1/reviews/{$review->id}/helpful")->assertOk()->assertJsonPath('helpful_count', 0);
+
+        // Залруулга → админд харагдана
+        $this->actingAs($reader)->postJson("/api/v1/branches/{$branch->id}/corrections", ['text' => 'Утас солигдсон'])->assertCreated();
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $list = $this->actingAs($admin)->getJson('/api/v1/admin/corrections');
+        $list->assertOk()->assertJsonPath('data.0.text', 'Утас солигдсон');
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/corrections/'.$list->json('data.0.id').'/moderate', ['action' => 'accept'])->assertOk();
+        $this->assertSame('accepted', \App\Models\Correction::first()->status);
+    }
+
     public function test_nearby_search_with_radius(): void
     {
         $near = Branch::factory()->create(['lat' => 47.9180, 'lng' => 106.9170]);

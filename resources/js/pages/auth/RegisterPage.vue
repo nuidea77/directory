@@ -14,6 +14,7 @@ const showPassword = ref(false);
 const verification = ref(null);
 const error = ref('');
 const busy = ref(false);
+const agreed = ref(false);
 
 const perks = [
     { n: '1', title: 'Дуртай газраа хадгалах', text: 'Жагсаалт үүсгэж, цагийн хуваарь өөрчлөгдөхөд мэдэгдэл авна.' },
@@ -118,11 +119,11 @@ async function onVerified(data) {
 
                     <p v-if="error" class="rounded-lg bg-redtint px-3 py-2 text-[12.5px] font-medium text-red">{{ error }}</p>
 
-                    <div class="mt-1 flex items-start gap-2.5">
-                        <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-brand text-[10px] font-bold text-white">✓</span>
-                        <span class="text-[12px] leading-relaxed text-soft"><span class="text-brand">Үйлчилгээний нөхцөл</span> ба <span class="text-brand">нууцлалын журам</span>-ыг зөвшөөрч байна</span>
-                    </div>
-                    <button type="submit" class="btn-primary mt-1 !rounded-[10px] !py-3.5" :disabled="busy">
+                    <label class="mt-1 flex cursor-pointer items-start gap-2.5">
+                        <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold" :class="agreed ? 'bg-brand text-white' : 'border-[1.5px] border-inputline'" @click.prevent="agreed = !agreed">{{ agreed ? '✓' : '' }}</span>
+                        <span class="text-[12px] leading-relaxed text-soft"><router-link :to="{ name: 'terms' }" target="_blank" class="text-brand underline">Үйлчилгээний нөхцөл</router-link> ба <router-link :to="{ name: 'privacy' }" target="_blank" class="text-brand underline">нууцлалын журам</router-link>-ыг зөвшөөрч байна</span>
+                    </label>
+                    <button type="submit" class="btn-primary mt-1 !rounded-[10px] !py-3.5" :disabled="busy || !agreed">
                         {{ busy ? 'Илгээж байна…' : 'Бүртгүүлэх' }}
                     </button>
                 </form>

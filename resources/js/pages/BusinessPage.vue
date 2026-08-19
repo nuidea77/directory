@@ -27,6 +27,58 @@ const messageBody = ref('');
 const messageSent = ref(false);
 const messageError = ref('');
 
+const correctionOpen = ref(false);
+const correctionText = ref('');
+const correctionMsg = ref('');
+
+async function sendCorrection() {
+    if (!auth.isLoggedIn) return router.push({ name: 'login', query: { redirect: route.fullPath } });
+    try {
+        const data = await api.post(`/branches/${branch.value.id}/corrections`, { text: correctionText.value });
+        correctionMsg.value = data.message;
+        correctionText.value = '';
+    } catch (e) {
+        if (e instanceof ApiError && e.data?.code === 'phone_unverified') return router.push({ name: 'verify' });
+        correctionMsg.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
+    }
+}
+
+async function reportReview(review) {
+    if (!auth.isLoggedIn) return router.push({ name: 'login', query: { redirect: route.fullPath } });
+    if (!confirm('Энэ сэтгэгдлийг зохисгүй гэж мэдэгдэх үү?')) return;
+    try {
+        await api.post(`/branches/${branch.value.id}/reviews/${review.id}/report`);
+        alert('Мэдэгдэл хүлээн авлаа. Редакц шалгана.');
+    } catch (e) {
+        if (e instanceof ApiError && e.data?.code === 'phone_unverified') return router.push({ name: 'verify' });
+        alert(e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа');
+    }
+}
+
+async function markHelpful(review) {
+    if (!auth.isLoggedIn) return router.push({ name: 'login', query: { redirect: route.fullPath } });
+    try {
+        const data = await api.post(`/reviews/${review.id}/helpful`);
+        review.helpful_count = data.helpful_count;
+        review._helpful = data.helpful;
+    } catch {
+        // чимээгүй
+    }
+}
+
+async function deleteMyReview() {
+    if (!confirm('Сэтгэгдлээ устгах уу?')) return;
+    try {
+        await api.delete(`/branches/${branch.value.id}/reviews`);
+        await fetchBusiness();
+    } catch {
+        alert('Устгахад алдаа гарлаа.');
+    }
+}
+
+// Энэ салбарт бичсэн миний сэтгэгдэл
+const myReview = computed(() => branch.value?.reviews?.find((r) => r.user?.id === auth.user?.id));
+
 const weekdays = { mon: 'Даваа', tue: 'Мягмар', wed: 'Лхагва', thu: 'Пүрэв', fri: 'Баасан', sat: 'Хагас', sun: 'Бүтэн' };
 const todayKey = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][(new Date().getDay() + 6) % 7];
 
@@ -146,7 +198,7 @@ onMounted(fetchBusiness);
                     <div class="overflow-hidden rounded-tr-xl"><ImagePh :src="gallery[1]?.url" :alt="business.name" /></div>
                     <div class="relative overflow-hidden rounded-br-xl">
                         <ImagePh :src="gallery[2]?.url" :alt="business.name" />
-                        <div v-if="gallery.length > 3" class="absolute bottom-3 right-3 rounded-[7px] bg-ink/80 px-3 py-1.5 text-[11.5px] font-semibold text-white">+{{ gallery.length - 3 }} зураг</div>
+                        <button v-if="gallery.length > 3" class="absolute bottom-3 right-3 cursor-pointer rounded-[7px] bg-ink/80 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink" @click="tab = 'photos'">+{{ gallery.length - 3 }} зураг</button>
                     </div>
                 </div>
             </div>
@@ -163,7 +215,7 @@ onMounted(fetchBusiness);
                             </div>
                             <div class="mt-2.5 flex flex-wrap items-center gap-2.5 text-[13.5px] font-medium text-soft">
                                 <span class="font-bold text-ink">{{ (business.rating_avg || 0).toFixed(1) }}</span>
-                                <span class="tracking-tight text-amberdot">★★★★★</span>
+                                <span class="tracking-tight"><span class="text-amberdot">{{ '★'.repeat(Math.round(business.rating_avg || 0)) }}</span><span class="text-searchline">{{ '☆'.repeat(5 - Math.round(business.rating_avg || 0)) }}</span></span>
                                 <span>{{ business.reviews_total }} сэтгэгдэл</span>
                                 <template v-if="hasMultipleBranches"><span class="text-[#c9ccd1]">·</span><span>{{ business.branches_count }} салбар</span></template>
                                 <span class="text-[#c9ccd1]">·</span>
@@ -242,7 +294,12 @@ onMounted(fetchBusiness);
                             <h2 class="text-[17px] font-bold text-ink">Сэтгэгдэл <span v-if="hasMultipleBranches" class="text-[13px] font-medium text-mute">· {{ branch?.name }}</span></h2>
                         </div>
 
-                        <form class="mb-4 space-y-3 rounded-[11px] border border-line bg-panel p-4" @submit.prevent="submitReview">
+                        <div v-if="!auth.isLoggedIn" class="mb-4 flex items-center justify-between rounded-[11px] border border-line bg-panel p-4">
+                            <span class="text-[13px] font-medium text-body">Сэтгэгдэл бичихийн тулд нэвтэрнэ үү.</span>
+                            <router-link :to="{ name: 'login', query: { redirect: route.fullPath } }" class="btn-primary !px-4 !py-2 !text-[12.5px]">Нэвтрэх</router-link>
+                        </div>
+                        <form v-else class="mb-4 space-y-3 rounded-[11px] border border-line bg-panel p-4" @submit.prevent="submitReview">
+                            <p v-if="myReview" class="text-[12px] font-medium text-mute">Та энэ салбарт сэтгэгдэл бичсэн — доорх форм илгээвэл хуучныг шинэчилнэ. <button type="button" class="cursor-pointer font-semibold text-red" @click="deleteMyReview">Сэтгэгдлээ устгах</button></p>
                             <div class="flex items-center gap-3">
                                 <span class="text-[13px] font-semibold text-body">Таны үнэлгээ:</span>
                                 <div class="flex gap-0.5">
@@ -270,6 +327,10 @@ onMounted(fetchBusiness);
                                 <div v-if="review.reply" class="mt-2.5 rounded-lg bg-greentint px-3 py-2 text-[12px] font-medium leading-relaxed text-green">
                                     Бизнесийн хариу: {{ review.reply }}
                                 </div>
+                                <div class="mt-2.5 flex items-center gap-3 text-[11.5px] font-semibold">
+                                    <button class="cursor-pointer" :class="review._helpful ? 'text-brand' : 'text-mute hover:text-brand'" @click="markHelpful(review)">👍 Хэрэгтэй{{ review.helpful_count ? ` (${review.helpful_count})` : '' }}</button>
+                                    <button v-if="review.user?.id !== auth.user?.id" class="cursor-pointer text-mute hover:text-red" @click="reportReview(review)">Мэдэгдэх</button>
+                                </div>
                             </div>
                         </div>
                         <p v-else class="text-[13px] text-mute">Энэ салбарт одоогоор сэтгэгдэл алга. Та анхны сэтгэгдлийг үлдээгээрэй!</p>
@@ -295,7 +356,10 @@ onMounted(fetchBusiness);
                         <button class="mt-2.5 w-full cursor-pointer rounded-[9px] border border-inputline bg-white py-3 text-[13.5px] font-bold text-ink hover:bg-panel" @click="messageOpen = true">Зурвас бичих</button>
 
                         <div v-if="messageOpen" class="mt-3 rounded-[10px] border border-blueline bg-bluecard p-3">
-                            <div v-if="messageSent" class="text-[12.5px] font-semibold text-green">Зурвас илгээгдлээ. Хариуг «Миний булан»-гаас харна.</div>
+                            <div v-if="messageSent" class="text-[12.5px] font-semibold text-green">
+                                Зурвас илгээгдлээ. Хариуг <router-link :to="{ name: 'account', query: { tab: 'messages' } }" class="underline">Миний булангаас</router-link> харна.
+                                <button class="mt-1.5 block cursor-pointer font-semibold text-brand" @click="messageSent = false">Дахин бичих</button>
+                            </div>
                             <template v-else>
                                 <textarea v-model="messageBody" rows="3" placeholder="Асуултаа бичнэ үү..." class="input resize-none !bg-white"></textarea>
                                 <p v-if="messageError" class="mt-1.5 text-[12px] text-red">{{ messageError }}</p>
@@ -305,7 +369,7 @@ onMounted(fetchBusiness);
 
                         <div class="my-[18px] h-px bg-divider"></div>
                         <div class="flex flex-col gap-3.5 text-[13.5px]">
-                            <div><div class="kicker !text-[11px]">ХАЯГ</div><div class="mt-1 font-medium leading-normal text-ink">{{ branch?.district }} дүүрэг{{ branch?.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch?.address }}</div></div>
+                            <div><div class="kicker !text-[11px]">ХАЯГ</div><div class="mt-1 font-medium leading-normal text-ink">{{ branch?.city && branch.city !== 'Улаанбаатар' ? branch.city + ', ' : '' }}{{ branch?.district }}{{ branch?.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch?.address }}</div></div>
                             <div><div class="kicker !text-[11px]">УТАС</div><div class="mt-1 font-medium text-ink">{{ branch?.phone }}</div></div>
                             <div v-if="business.website"><div class="kicker !text-[11px]">ВЭБ</div><a :href="'https://' + business.website.replace(/^https?:\/\//, '')" target="_blank" rel="noopener" class="mt-1 block font-medium text-brand">{{ business.website }}</a></div>
                             <div v-if="business.facebook || business.instagram"><div class="kicker !text-[11px]">СОШИАЛ</div><div class="mt-1 flex gap-2 font-medium text-brand">
@@ -350,9 +414,18 @@ onMounted(fetchBusiness);
 
             <!-- Залруулга (2a footer) -->
             <div class="bg-dark">
-                <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-10">
-                    <span class="text-[13px] text-darkmute">Мэдээлэл буруу байна уу? Хаана редакцад мэдэгдэх</span>
-                    <button class="cursor-pointer rounded-lg bg-chip px-4 py-2.5 text-[12.5px] font-semibold text-ink hover:bg-white">Залруулга хүсэх</button>
+                <div class="mx-auto max-w-7xl px-5 py-6 sm:px-10">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <span class="text-[13px] text-darkmute">Мэдээлэл буруу байна уу? Хаана редакцад мэдэгдэх</span>
+                        <button class="cursor-pointer rounded-lg bg-chip px-4 py-2.5 text-[12.5px] font-semibold text-ink hover:bg-white" @click="correctionOpen = !correctionOpen">Залруулга хүсэх</button>
+                    </div>
+                    <div v-if="correctionOpen" class="mt-4 max-w-xl">
+                        <p v-if="correctionMsg" class="mb-2 rounded-lg bg-white/10 px-3 py-2 text-[12.5px] font-medium text-white">{{ correctionMsg }}</p>
+                        <form class="flex gap-2" @submit.prevent="sendCorrection">
+                            <input v-model="correctionText" type="text" maxlength="1000" placeholder="Жш: Утасны дугаар солигдсон — 7011 2233 боллоо" class="w-full rounded-[9px] border border-white/20 bg-white/10 px-3.5 py-2.5 text-[13px] text-white outline-none placeholder:text-darkmute" required />
+                            <button type="submit" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Илгээх</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </template>

@@ -1,10 +1,51 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import ImagePh from '../../components/ImagePh.vue';
 
 // Миний салбарууд (4b): салбар бүр үзэлт/залгалт/үнэлгээ/бүрэн байдалтай
 const store = useConsoleStore();
+const router = useRouter();
+
+// Байгаа бизнест шинэ салбар нэмэх (шинэ байгууллага үүсгэхгүй)
+const addOpen = ref(false);
+const addBusy = ref(false);
+const addError = ref('');
+const locations = ref([]);
+const addForm = ref({ business_id: null, city: 'Улаанбаатар', district: '', address: '', phone: '' });
+
+const addDistricts = computed(() => locations.value.find((l) => l.city === addForm.value.city)?.districts || []);
+
+async function openAdd() {
+    addOpen.value = !addOpen.value;
+    addForm.value.business_id = store.businesses[0]?.id || null;
+    if (!locations.value.length) {
+        const locs = await api.get('/locations');
+        locations.value = locs.data;
+    }
+}
+
+async function submitAdd() {
+    addError.value = '';
+    addBusy.value = true;
+    try {
+        const data = await api.post(`/console/businesses/${addForm.value.business_id}/branches`, {
+            ...addForm.value,
+            name: addForm.value.district + ' салбар',
+            phone: addForm.value.phone.replace(/\s/g, ''),
+        });
+        await store.load(true);
+        addOpen.value = false;
+        // Зураг, цаг зэргийг гүйцээхээр засварын хуудас руу
+        router.push({ name: 'branch-edit', params: { id: data.data.id } });
+    } catch (e) {
+        addError.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
+    } finally {
+        addBusy.value = false;
+    }
+}
 
 const statusLabel = {
     active: ['НЭЭЛТТЭЙ', 'bg-greentint text-green'],
@@ -28,7 +69,49 @@ const totals = computed(() => ({
                 <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Салбарууд</h1>
                 <p class="mt-1 text-[12.5px] text-mute">Бүртгэл бүр тусад нь эрэмбэлэгддэг</p>
             </div>
-            <router-link :to="{ name: 'add-business' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Салбар нэмэх</router-link>
+            <div class="flex gap-2">
+                <router-link :to="{ name: 'add-business' }" class="btn-outline !px-4 !py-2.5 !text-[12.5px]">Шинэ бизнес</router-link>
+                <button class="btn-primary cursor-pointer !px-4 !py-2.5 !text-[12.5px]" @click="openAdd">Салбар нэмэх</button>
+            </div>
+        </div>
+
+        <!-- Салбар нэмэх форм -->
+        <div v-if="addOpen" class="card mt-4 p-5">
+            <div class="text-[14px] font-bold text-ink">Шинэ салбар</div>
+            <p v-if="addError" class="mt-2 rounded-lg bg-redtint px-3 py-2 text-[12.5px] font-medium text-red">{{ addError }}</p>
+            <form class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" @submit.prevent="submitAdd">
+                <div v-if="store.businesses.length > 1" class="sm:col-span-2">
+                    <label class="field-label !text-[12px]">Бизнес</label>
+                    <select v-model="addForm.business_id" class="input cursor-pointer" required>
+                        <option v-for="b in store.businesses" :key="b.id" :value="b.id">{{ b.name }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label !text-[12px]">Аймаг / Нийслэл</label>
+                    <select v-model="addForm.city" class="input cursor-pointer" required @change="addForm.district = ''">
+                        <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label !text-[12px]">{{ addForm.city === 'Улаанбаатар' ? 'Дүүрэг' : 'Сум' }}</label>
+                    <select v-model="addForm.district" class="input cursor-pointer" required>
+                        <option value="" disabled>Сонгоно уу</option>
+                        <option v-for="d in addDistricts" :key="d" :value="d">{{ d }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label !text-[12px]">Хаяг</label>
+                    <input v-model="addForm.address" type="text" class="input" required />
+                </div>
+                <div>
+                    <label class="field-label !text-[12px]">Салбарын утас</label>
+                    <input v-model="addForm.phone" type="tel" inputmode="numeric" class="input" required />
+                </div>
+                <div class="flex gap-2 sm:col-span-2">
+                    <button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]" :disabled="addBusy">{{ addBusy ? 'Нэмж байна…' : 'Салбар үүсгэх' }}</button>
+                    <button type="button" class="btn-outline !px-4 !py-2.5 !text-[12.5px]" @click="addOpen = false">Болих</button>
+                </div>
+            </form>
         </div>
 
         <!-- KPI (4b) -->

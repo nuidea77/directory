@@ -3,6 +3,7 @@
 const nav = [
     { name: 'Модерац', route: 'admin' },
     { name: 'Бизнесүүд', route: 'admin-businesses' },
+    { name: 'Сэтгэгдэл, залруулга', route: 'admin-reviews' },
     { name: 'Эрх, орлого', route: 'admin-revenue' },
 ];
 </script>

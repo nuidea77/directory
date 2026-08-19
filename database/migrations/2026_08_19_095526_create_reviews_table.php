@@ -24,10 +24,20 @@ return new class extends Migration
 
             $table->unique(['branch_id', 'user_id']);
         });
+
+        // «Хэрэгтэй» тэмдэглэгээ — хэрэглэгч тутамд нэг удаа
+        Schema::create('review_helpful', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('review_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->timestamp('created_at')->nullable();
+            $table->unique(['review_id', 'user_id']);
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('review_helpful');
         Schema::dropIfExists('reviews');
     }
 };

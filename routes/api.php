@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
+use App\Http\Controllers\Api\V1\CorrectionController;
 use App\Http\Controllers\Api\V1\Console\BranchController;
 use App\Http\Controllers\Api\V1\Console\ConsoleMessageController;
 use App\Http\Controllers\Api\V1\Console\ConsoleReviewController;
@@ -65,6 +66,9 @@ Route::prefix('v1')->group(function () {
         Route::middleware('phone.verified')->group(function () {
             Route::post('branches/{branch}/reviews', [ReviewController::class, 'store'])->middleware('throttle:writes');
             Route::delete('branches/{branch}/reviews', [ReviewController::class, 'destroy']);
+            Route::post('branches/{branch}/reviews/{review}/report', [ReviewController::class, 'report'])->middleware('throttle:writes');
+            Route::post('reviews/{review}/helpful', [ReviewController::class, 'helpful'])->middleware('throttle:writes');
+            Route::post('branches/{branch}/corrections', [CorrectionController::class, 'store'])->middleware('throttle:writes');
 
             // Зурвас (хэрэглэгч тал)
             Route::get('my/messages', [MessageController::class, 'threads']);
@@ -84,6 +88,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('console/branches/{branch}', [BranchController::class, 'destroy']);
             Route::post('console/branches/{branch}/images', [BranchController::class, 'addImages'])->middleware('throttle:writes');
             Route::delete('console/branches/{branch}/images/{image}', [BranchController::class, 'deleteImage']);
+            Route::post('console/branches/{branch}/images/{image}/cover', [BranchController::class, 'setCover']);
 
             Route::get('console/organizations/{organization}/stats', [StatsController::class, 'show']);
             Route::get('console/organizations/{organization}/reviews', [ConsoleReviewController::class, 'index']);
@@ -111,6 +116,8 @@ Route::prefix('v1')->group(function () {
             Route::get('businesses', [AdminController::class, 'businesses']);
             Route::get('reviews', [AdminController::class, 'reviews']);
             Route::post('reviews/{review}/moderate', [AdminController::class, 'moderateReview']);
+            Route::get('corrections', [AdminController::class, 'corrections']);
+            Route::post('corrections/{correction}/moderate', [AdminController::class, 'moderateCorrection']);
         });
     });
 });

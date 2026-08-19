@@ -103,6 +103,11 @@ class OrganizationController extends Controller
 
         if ($request->hasFile('logo')) {
             $request->validate(['logo' => ['image', 'max:2048']]);
+
+            if ($business->logo_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($business->logo_path);
+            }
+
             $business->update(['logo_path' => $request->file('logo')->store('logos', 'public')]);
         }
 

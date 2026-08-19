@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
 
@@ -90,8 +90,34 @@ async function uploadImages(event) {
 }
 
 async function deleteImage(image) {
-    await api.delete(`/console/branches/${branch.value.id}/images/${image.id}`);
-    branch.value.images = branch.value.images.filter((i) => i.id !== image.id);
+    if (!confirm('Энэ зургийг устгах уу?')) return;
+    try {
+        await api.delete(`/console/branches/${branch.value.id}/images/${image.id}`);
+        branch.value.images = branch.value.images.filter((i) => i.id !== image.id);
+    } catch {
+        msg.value = { type: 'error', text: 'Зураг устгахад алдаа гарлаа' };
+    }
+}
+
+async function setCover(image) {
+    try {
+        const data = await api.post(`/console/branches/${branch.value.id}/images/${image.id}/cover`);
+        branch.value = data.data;
+    } catch {
+        msg.value = { type: 'error', text: 'Нүүр зураг солиход алдаа гарлаа' };
+    }
+}
+
+const router2 = useRouter();
+
+async function deleteBranch() {
+    if (!confirm(`«${branch.value.name}» салбарыг бүрмөсөн устгах уу? Сэтгэгдэл, зураг хамт устна.`)) return;
+    try {
+        await api.delete(`/console/branches/${branch.value.id}`);
+        router2.push({ name: 'console' });
+    } catch (e) {
+        msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Устгахад алдаа гарлаа' };
+    }
 }
 
 onMounted(async () => {
@@ -211,7 +237,8 @@ onMounted(async () => {
                     <div class="mt-3 flex flex-wrap gap-2.5">
                         <div v-for="(img, i) in branch.images" :key="img.id" class="group relative h-24 w-[132px] overflow-hidden rounded-[9px]">
                             <img :src="img.url" class="h-full w-full object-cover" />
-                            <span v-if="i === 0" class="absolute bottom-2 left-2 rounded-[4px] bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink">Нүүр зураг</span>
+                            <span v-if="img.is_cover || i === 0" class="absolute bottom-2 left-2 rounded-[4px] bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink">Нүүр зураг</span>
+                            <button v-else class="absolute bottom-2 left-2 hidden cursor-pointer rounded-[4px] bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-brand group-hover:block" @click="setCover(img)">Нүүр болгох</button>
                             <button class="absolute right-1.5 top-1.5 hidden h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-red text-[11px] text-white group-hover:flex" @click="deleteImage(img)">✕</button>
                         </div>
                         <label class="flex h-24 min-w-[180px] flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-[9px] border-[1.5px] border-dashed border-inputline hover:border-brand">
@@ -240,6 +267,7 @@ onMounted(async () => {
                 <div class="mt-5 flex items-center gap-2.5">
                     <button class="btn-primary !px-5" :disabled="busy" @click="save">Хадгалж хяналтад илгээх</button>
                     <router-link :to="{ name: 'console' }" class="btn-outline">Буцах</router-link>
+                    <button class="cursor-pointer text-[12px] font-semibold text-red hover:underline" @click="deleteBranch">Салбар устгах</button>
                     <span class="ml-auto hidden text-[12px] font-medium text-mute lg:block">Хаяг, нэр өөрчлөхөд редакцын хяналт шаардана · бусад засвар шууд гарна</span>
                 </div>
             </div>

@@ -40,6 +40,20 @@ class BranchController extends Controller
         return new BranchResource($branch->load('images'));
     }
 
+    /**
+     * Нүүр зураг сонгох.
+     */
+    public function setCover(Request $request, Branch $branch, \App\Models\BranchImage $image): BranchResource
+    {
+        $this->authorizeOwner($request, $branch->business);
+        abort_unless($image->branch_id === $branch->id, 404);
+
+        $branch->images()->update(['is_cover' => false]);
+        $image->update(['is_cover' => true]);
+
+        return new BranchResource($branch->refresh()->load('images'));
+    }
+
     public function show(Request $request, Branch $branch): BranchResource
     {
         $this->authorizeOwner($request, $branch->business);

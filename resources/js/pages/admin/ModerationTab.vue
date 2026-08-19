@@ -47,11 +47,14 @@ onMounted(fetchData);
         <template v-else>
             <!-- KPI (4a) -->
             <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+                <router-link :to="{ name: 'admin-reviews' }" class="card p-4 transition hover:border-blueline">
+                    <div class="text-[11px] font-semibold text-mute">Гомдолтой сэтгэгдэл</div>
+                    <div class="mt-2 text-2xl font-extrabold tracking-[-.02em]" :class="data.kpis.flagged_reviews ? 'text-red' : 'text-ink'">{{ Number(data.kpis.flagged_reviews).toLocaleString() }}</div>
+                </router-link>
                 <div v-for="k in [
                     ['Хүлээгдэж байгаа', data.kpis.pending, 'text-amber'],
                     ['Өнөөдөр батлагдсан', data.kpis.approved_today, 'text-ink'],
                     ['Татгалзсан', data.kpis.rejected, 'text-ink'],
-                    ['Гомдолтой сэтгэгдэл', data.kpis.flagged_reviews, data.kpis.flagged_reviews ? 'text-red' : 'text-ink'],
                     ['Бүртгэлтэй бизнес', data.kpis.total_businesses, 'text-ink'],
                 ]" :key="k[0]" class="card p-4">
                     <div class="text-[11px] font-semibold text-mute">{{ k[0] }}</div>

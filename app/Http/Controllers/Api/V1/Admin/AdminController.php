@@ -239,6 +239,38 @@ class AdminController extends Controller
         return response()->json(['data' => \App\Http\Resources\ReviewResource::collection($reviews->getCollection())]);
     }
 
+    /**
+     * Хэрэглэгчдийн илгээсэн залруулгууд.
+     */
+    public function corrections(Request $request): JsonResponse
+    {
+        $corrections = \App\Models\Correction::with(['user:id,name', 'branch.business:id,name,slug'])
+            ->where('status', 'pending')
+            ->oldest()
+            ->paginate(20);
+
+        return response()->json([
+            'data' => $corrections->getCollection()->map(fn ($c) => [
+                'id' => $c->id,
+                'text' => $c->text,
+                'user' => $c->user?->name,
+                'branch' => $c->branch ? ($c->branch->business?->name.' — '.$c->branch->name) : null,
+                'branch_id' => $c->branch_id,
+                'created_at' => $c->created_at,
+            ]),
+            'meta' => ['total' => $corrections->total(), 'current_page' => $corrections->currentPage(), 'last_page' => $corrections->lastPage(), 'per_page' => $corrections->perPage()],
+        ]);
+    }
+
+    public function moderateCorrection(Request $request, \App\Models\Correction $correction): JsonResponse
+    {
+        $data = $request->validate(['action' => ['required', 'in:accept,reject']]);
+
+        $correction->update(['status' => $data['action'] === 'accept' ? 'accepted' : 'rejected']);
+
+        return response()->json(['message' => 'Шийдвэрлэлээ.']);
+    }
+
     public function moderateReview(Request $request, Review $review): JsonResponse
     {
         $data = $request->validate(['action' => ['required', 'in:restore,hide']]);

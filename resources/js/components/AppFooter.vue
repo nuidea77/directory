@@ -5,6 +5,8 @@
             <div class="flex gap-5 text-[13px] font-medium text-[#e9e6df]">
                 <router-link :to="{ name: 'add-business' }" class="hover:text-white">Бизнесээ нэмэх</router-link>
                 <router-link :to="{ name: 'pricing' }" class="hover:text-white">Зар</router-link>
+                <router-link :to="{ name: 'terms' }" class="hover:text-white">Нөхцөл</router-link>
+                <router-link :to="{ name: 'privacy' }" class="hover:text-white">Нууцлал</router-link>
                 <a href="tel:70111414" class="hover:text-white">Холбоо барих</a>
             </div>
         </div>

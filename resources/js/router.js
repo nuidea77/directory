@@ -10,6 +10,8 @@ const routes = [
     { path: '/b/:slug', name: 'business', component: () => import('./pages/BusinessPage.vue') },
     { path: '/nearby', name: 'nearby', component: () => import('./pages/NearbyPage.vue') },
     { path: '/pricing', name: 'pricing', component: () => import('./pages/PricingPage.vue') },
+    { path: '/terms', name: 'terms', component: () => import('./pages/TermsPage.vue') },
+    { path: '/privacy', name: 'privacy', component: () => import('./pages/PrivacyPage.vue') },
 
     // Auth
     { path: '/register', name: 'register', component: () => import('./pages/auth/RegisterPage.vue'), meta: { guest: true } },
@@ -53,6 +55,7 @@ const routes = [
             { path: '', name: 'admin', component: () => import('./pages/admin/ModerationTab.vue') },
             { path: 'revenue', name: 'admin-revenue', component: () => import('./pages/admin/RevenueTab.vue') },
             { path: 'businesses', name: 'admin-businesses', component: () => import('./pages/admin/BusinessesTab.vue') },
+            { path: 'reviews', name: 'admin-reviews', component: () => import('./pages/admin/ReviewsModTab.vue') },
         ],
     },
 
