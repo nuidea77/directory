@@ -2,7 +2,6 @@
 
 namespace App\Services\VerifyMn;
 
-use App\Models\Branch;
 use App\Models\PhoneVerification;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -14,7 +13,6 @@ use Illuminate\Support\Str;
  *  - register       → амжилттай болмогц хэрэглэгчийн phone_verified_at тавигдана
  *  - login          → амжилттай болмогц нэг удаагийн token олгох боломж нээгдэнэ
  *  - reset_password → амжилттай болмогц шинэ нууц үг тохируулна
- *  - branch_phone   → бизнесийн салбарын утас баталгаажина
  *
  * verify.mn түлхүүргүй орчинд (local dev) шууд verified болгоно.
  */
@@ -114,8 +112,6 @@ class PhoneVerificationService
             'register' => User::where('phone', $verification->phone)
                 ->whereNull('phone_verified_at')
                 ->update(['phone_verified_at' => now()]),
-            'branch_phone' => Branch::where('id', $verification->meta['branch_id'] ?? 0)
-                ->update(['phone_verified' => true]),
             default => null,
         };
     }

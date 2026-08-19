@@ -26,7 +26,6 @@ class BranchResource extends JsonResource
             'lat' => $this->lat,
             'lng' => $this->lng,
             'phone' => $this->phone,
-            'phone_verified' => $this->phone_verified,
             'email' => $this->email,
             'hours' => $this->hours,
             'amenities' => $this->amenities,

@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Api\V1\Console;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BranchResource;
-use App\Http\Resources\VerificationResource;
 use App\Models\Branch;
 use App\Models\BranchImage;
 use App\Models\Business;
-use App\Services\VerifyMn\PhoneVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -57,11 +55,6 @@ class BranchController extends Controller
 
         // Хаяг өөрчлөгдвөл редакцын хяналт дахин шаардана
         $needsReview = isset($data['address']) && $data['address'] !== $branch->address;
-
-        // Утас өөрчлөгдвөл дахин баталгаажуулна
-        if (isset($data['phone']) && $data['phone'] !== $branch->phone) {
-            $data['phone_verified'] = false;
-        }
 
         $branch->update($data);
 
@@ -120,18 +113,6 @@ class BranchController extends Controller
         $image->delete();
 
         return response()->json(['message' => 'Зураг устгагдлаа.']);
-    }
-
-    /**
-     * Салбарын утсыг verify.mn-ээр баталгаажуулах session эхлүүлэх.
-     */
-    public function verifyPhone(Request $request, Branch $branch, PhoneVerificationService $verifications): JsonResponse
-    {
-        $this->authorizeOwner($request, $branch->business);
-
-        $verification = $verifications->start($branch->phone, 'branch_phone', ['branch_id' => $branch->id]);
-
-        return response()->json(['verification' => new VerificationResource($verification)]);
     }
 
     protected function validateBranch(Request $request, bool $updating = false): array

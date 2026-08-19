@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
-import VerifyPanel from '../../components/VerifyPanel.vue';
 
 // Салбар засах editor (6a): хаяг/байршил, холбоо/цаг, зураг, үйлчилгээ
 const route = useRoute();
@@ -13,7 +12,6 @@ const form = ref(null);
 const msg = ref({ type: '', text: '' });
 const busy = ref(false);
 const uploading = ref(false);
-const verification = ref(null);
 
 const districts = ['Сүхбаатар', 'Чингэлтэй', 'Баянзүрх', 'Хан-Уул', 'Баянгол', 'Сонгинохайрхан', 'Налайх', 'Багануур'];
 const amenityOptions = ['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Баталгаат засвар', 'Гэрээт даатгал', 'Хүлээх танхим', 'Англи хэл', '24/7 дуудлага', 'Урьдчилсан цаг', 'Танхим'];
@@ -25,7 +23,6 @@ const todo = computed(() => {
         { name: 'Цагийн хуваарь', done: !!branch.value.hours, gain: '' },
         { name: '3+ зураг нэмэх', done: (branch.value.images || []).length >= 3, gain: '+18% хандалт' },
         { name: 'Үйлчилгээ, онцлог', done: (branch.value.amenities || []).length > 0, gain: '+9% залгалт' },
-        { name: 'Утас баталгаажуулах', done: branch.value.phone_verified, gain: '' },
     ];
 });
 
@@ -93,15 +90,6 @@ async function deleteImage(image) {
     branch.value.images = branch.value.images.filter((i) => i.id !== image.id);
 }
 
-async function verifyPhone() {
-    const data = await api.post(`/console/branches/${branch.value.id}/verify-phone`);
-    if (data.verification.status === 'verified') {
-        branch.value.phone_verified = true;
-    } else {
-        verification.value = data.verification;
-    }
-}
-
 onMounted(fetchBranch);
 </script>
 
@@ -130,8 +118,7 @@ onMounted(fetchBranch);
             <div class="px-5 py-6 sm:px-7">
                 <div class="flex flex-wrap items-center gap-2.5">
                     <h1 class="text-[22px] font-extrabold tracking-[-.02em] text-ink">{{ branch.name }}</h1>
-                    <span v-if="branch.phone_verified" class="badge-verified">✓ БАТАЛГААЖСАН</span>
-                    <span v-else class="badge-featured">УТАС БАТАЛГААЖААГҮЙ</span>
+                    <span v-if="branch.business?.is_verified" class="badge-verified">✓ БАТАЛГААЖСАН</span>
                     <span class="ml-auto text-[12px] font-medium text-mute">Төлөв: <b class="text-ink">{{ { active: 'Нээлттэй, хайлтад байна', pending: 'Редакцын хяналтад', draft: 'Ноорог', rejected: 'Татгалзсан', hidden: 'Түр хаалттай' }[branch.status] }}</b></span>
                 </div>
 
@@ -181,19 +168,12 @@ onMounted(fetchBranch);
                     <div class="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                         <div>
                             <label class="field-label">Салбарын утас</label>
-                            <div class="flex items-center gap-2 rounded-[9px] border border-inputline px-3.5 py-3">
-                                <input v-model="form.phone" type="tel" inputmode="numeric" class="w-full bg-transparent text-[13px] font-medium text-ink outline-none" />
-                                <span v-if="branch.phone_verified" class="whitespace-nowrap text-[11.5px] font-semibold text-green">✓ Баталгаажсан</span>
-                                <button v-else class="cursor-pointer whitespace-nowrap text-[11.5px] font-semibold text-brand" @click="verifyPhone">Баталгаажуулах</button>
-                            </div>
+                            <input v-model="form.phone" type="tel" inputmode="numeric" class="input" />
                         </div>
                         <div>
                             <label class="field-label">И-мэйл (сонголт)</label>
                             <input v-model="form.email" type="email" class="input" />
                         </div>
-                    </div>
-                    <div v-if="verification && !branch.phone_verified" class="mt-3.5">
-                        <VerifyPanel :verification="verification" @verified="branch.phone_verified = true; verification = null" @expired="verification = null" />
                     </div>
                     <div class="mt-4">
                         <HoursEditor v-model="form.hours">

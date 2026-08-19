@@ -82,7 +82,6 @@ Route::prefix('v1')->group(function () {
             Route::delete('console/branches/{branch}', [BranchController::class, 'destroy']);
             Route::post('console/branches/{branch}/images', [BranchController::class, 'addImages']);
             Route::delete('console/branches/{branch}/images/{image}', [BranchController::class, 'deleteImage']);
-            Route::post('console/branches/{branch}/verify-phone', [BranchController::class, 'verifyPhone'])->middleware('throttle:10,1');
 
             Route::get('console/organizations/{organization}/stats', [StatsController::class, 'show']);
             Route::get('console/organizations/{organization}/reviews', [ConsoleReviewController::class, 'index']);

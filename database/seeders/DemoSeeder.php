@@ -95,7 +95,6 @@ class DemoSeeder extends Seeder
                     'hours' => $hours,
                     'amenities' => ['Зогсоол', 'Картаар', 'Баталгаат засвар', 'Гэрээт даатгал'],
                     'status' => 'active',
-                    'phone_verified' => true,
                 ],
             );
 
@@ -159,7 +158,6 @@ class DemoSeeder extends Seeder
                     'lat' => 47.85 + random_int(0, 900) / 10000,
                     'lng' => 106.85 + random_int(0, 1500) / 10000,
                     'phone' => $sample['phone'],
-                    'phone_verified' => true,
                     'hours' => $hours,
                     'amenities' => collect(['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Танхим'])->random(3)->values()->all(),
                     'status' => 'active',

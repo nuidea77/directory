@@ -65,7 +65,6 @@ onMounted(fetchData);
                             </div>
                             <div class="mt-0.5 text-[11.5px] text-mute">{{ branch.business?.category?.name }} · {{ branch.district }} · {{ branch.phone }}</div>
                         </div>
-                        <span class="w-[90px] text-[11px] font-semibold" :class="branch.phone_verified ? 'text-green' : 'text-red'">{{ branch.phone_verified ? '✓ Утас OK' : '⚠ Утас NOK' }}</span>
                         <div class="flex gap-1.5 text-[11.5px] font-semibold">
                             <button class="cursor-pointer rounded-[7px] bg-brand px-2.5 py-1.5 text-white disabled:opacity-50" :disabled="busyId === branch.id" @click="decide(branch, 'approve')">Батлах</button>
                             <button class="cursor-pointer rounded-[7px] border border-inputline bg-white px-2.5 py-1.5 text-ink disabled:opacity-50" :disabled="busyId === branch.id" @click="decide(branch, 'reject')">Татгалзах</button>

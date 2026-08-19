@@ -30,6 +30,13 @@ async function login() {
             password: form.value.password,
         });
         auth.setSession(data.token, data.user.data ?? data.user);
+
+        // Дугаараа баталгаажуулаагүй хэрэглэгчийг заавал баталгаажуулах хуудас руу
+        if (!auth.user?.phone_verified) {
+            router.push({ name: 'verify' });
+            return;
+        }
+
         done();
     } catch (e) {
         error.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа. Дахин оролдоно уу.';

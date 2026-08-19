@@ -27,7 +27,6 @@ class Branch extends Model
         'lat',
         'lng',
         'phone',
-        'phone_verified',
         'email',
         'hours',
         'amenities',
@@ -38,7 +37,6 @@ class Branch extends Model
     {
         return [
             'is_main' => 'boolean',
-            'phone_verified' => 'boolean',
             'hours' => 'array',
             'amenities' => 'array',
             'lat' => 'float',
@@ -117,7 +115,6 @@ class Branch extends Model
             ! empty($this->hours),
             $this->images()->count() >= 3,
             ! empty($this->amenities),
-            $this->phone_verified,
         ];
 
         return (int) round(collect($checks)->filter()->count() / count($checks) * 100);

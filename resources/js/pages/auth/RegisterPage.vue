@@ -43,11 +43,11 @@ async function register() {
             password: form.value.password,
         });
 
-        auth.setSession(data.token, data.user.data ?? data.user);
-
+        // Токен зөвхөн дугаар баталгаажсаны дараа олгогдоно
         if (data.verification.status === 'verified') {
-            await auth.refresh();
-            router.push({ name: 'home' });
+            // DEV горим: шууд баталгаажсан — токеноо нэг poll-оор авна
+            const polled = await api.get(`/auth/verifications/${data.verification.uuid}`);
+            await onVerified(polled);
             return;
         }
 
@@ -60,9 +60,15 @@ async function register() {
     }
 }
 
-async function onVerified() {
-    await auth.refresh();
-    router.push({ name: 'home' });
+async function onVerified(data) {
+    if (data?.token) {
+        auth.setSession(data.token, data.user?.data ?? data.user);
+        await auth.refresh();
+        router.push({ name: 'home' });
+    } else {
+        // Токен өөр төхөөрөмж дээр олгогдсон бол нэвтрэх хуудас руу
+        router.push({ name: 'login' });
+    }
 }
 </script>
 
@@ -164,7 +170,7 @@ async function onVerified() {
                 <button class="cursor-pointer text-soft" @click="step = 'form'">Дугаараа өөрчлөх</button>
             </div>
             <p class="mt-3.5 text-[11.5px] leading-relaxed text-mute">
-                Мессеж илгээх боломжгүй бол <button class="cursor-pointer font-semibold text-brand" @click="router.push({ name: 'home' })">дараа баталгаажуулж</button>, аккаунтаа хязгаартай (сэтгэгдэл бичихгүй) хэрэглэж болно.
+                Бүртгэлийг идэвхжүүлэхийн тулд дугаараа заавал баталгаажуулна. Мессеж илгээх боломжгүй бол дугаараа өөрчилж дахин оролдоно уу.
             </p>
         </div>
 
@@ -173,7 +179,7 @@ async function onVerified() {
             <h2 class="text-lg font-bold text-ink">Хугацаа дууслаа</h2>
             <p class="mt-2 text-[13px] text-soft">Баталгаажуулалтын хугацаа дууссан байна.</p>
             <button class="btn-primary mt-5 w-full" @click="register">Шинэ код авах</button>
-            <button class="btn-outline mt-2 w-full" @click="router.push({ name: 'home' })">Дараа баталгаажуулах</button>
+            <button class="btn-outline mt-2 w-full" @click="step = 'form'">Мэдээллээ засах</button>
         </div>
     </div>
 </template>

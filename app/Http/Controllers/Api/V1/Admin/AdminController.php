@@ -38,7 +38,6 @@ class AdminController extends Controller
         ];
 
         $dataQuality = [
-            ['name' => 'Утас баталгаажсан', 'pct' => round(Branch::where('phone_verified', true)->count() / $totalBranches * 100)],
             ['name' => 'Координат тэмдэглэсэн', 'pct' => round(Branch::whereNotNull('lat')->count() / $totalBranches * 100)],
             ['name' => 'Цагийн хуваарьтай', 'pct' => round(Branch::whereNotNull('hours')->count() / $totalBranches * 100)],
             ['name' => '3+ зурагтай', 'pct' => round(Branch::has('images', '>=', 3)->count() / $totalBranches * 100)],

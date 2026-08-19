@@ -20,28 +20,46 @@ class AuthController extends Controller
     }
 
     /**
-     * Бүртгүүлэх: хэрэглэгч шууд үүсч токен авна, утас нь дараа нь
-     * verify.mn-ээр баталгаажина (баталгаажаагүй бол сэтгэгдэл, бизнес
-     * нэмэх зэрэг үйлдэл хаалттай).
+     * Бүртгүүлэх: verify.mn баталгаажуулалт ЗААВАЛ — хэрэглэгч үүснэ,
+     * гэхдээ токен зөвхөн дугаар нь баталгаажсаны дараа
+     * (verificationStatus-аас) олгогдоно.
      */
     public function register(Request $request): JsonResponse
     {
+        $existing = User::where('phone', (string) $request->input('phone'))->first();
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'regex:/^[0-9]{8}$/', 'unique:users,phone'],
-            'email' => ['nullable', 'email', 'max:190', 'unique:users,email'],
+            'phone' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
+            'email' => ['nullable', 'email', 'max:190', 'unique:users,email,'.($existing?->id ?? 'NULL')],
             'password' => ['required', 'string', 'min:8', 'max:100'],
         ], [
             'phone.regex' => 'Утасны дугаар 8 оронтой тоо байх ёстой.',
-            'phone.unique' => 'Энэ дугаараар аль хэдийн бүртгүүлсэн байна.',
         ]);
 
-        $user = User::create($data);
+        if ($existing !== null && $existing->hasVerifiedPhone()) {
+            throw ValidationException::withMessages([
+                'phone' => 'Энэ дугаараар аль хэдийн бүртгүүлсэн байна.',
+            ]);
+        }
+
+        if ($existing !== null) {
+            // Баталгаажуулалт дуусаагүй орхигдсон бүртгэл — нууц үг таарвал шинэчилж дахин эхлүүлнэ
+            if (! Hash::check($data['password'], $existing->password)) {
+                throw ValidationException::withMessages([
+                    'phone' => 'Энэ дугаараар эхэлсэн бүртгэл байна. Өмнө оруулсан нууц үгээ ашиглана уу.',
+                ]);
+            }
+
+            $existing->update(['name' => $data['name'], 'email' => $data['email'] ?? $existing->email]);
+            $user = $existing;
+        } else {
+            $user = User::create($data);
+        }
 
         $verification = $this->verifications->start($user->phone, 'register');
 
         return response()->json([
-            'token' => $user->createToken('auth')->plainTextToken,
             'user' => new UserResource($user->refresh()),
             'verification' => new VerificationResource($verification),
         ], 201);
@@ -85,10 +103,8 @@ class AuthController extends Controller
                 $verification->forceFill(['meta' => array_merge($verification->meta ?? [], ['consumed' => true])])->save();
 
                 $payload['user'] = new UserResource($user);
-
-                if ($verification->purpose === 'login') {
-                    $payload['token'] = $user->createToken('auth')->plainTextToken;
-                }
+                // Баталгаажилт дуусмагц нэвтрэх токен олгоно (бүртгэл + мессежээр нэвтрэх)
+                $payload['token'] = $user->createToken('auth')->plainTextToken;
             }
         }
 

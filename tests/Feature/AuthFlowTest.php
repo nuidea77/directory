@@ -52,8 +52,10 @@ class AuthFlowTest extends TestCase
             'password' => 'secret123',
         ]);
 
+        // Токен олгохгүй — зөвхөн баталгаажсаны дараа (verificationStatus) олгоно
         $response->assertCreated()
-            ->assertJsonStructure(['token', 'user', 'verification'])
+            ->assertJsonStructure(['user', 'verification'])
+            ->assertJsonMissingPath('token')
             ->assertJsonPath('verification.status', 'pending')
             ->assertJsonPath('verification.sms_uri', 'sms:144773?body=482916')
             ->assertJsonPath('user.phone_verified', false);
@@ -75,11 +77,45 @@ class AuthFlowTest extends TestCase
 
         $uuid = $start->json('verification.uuid');
 
+        // Баталгаажмагц нэвтрэх токен олгоно (бүртгэлийн урсгал)
         $this->getJson("/api/v1/auth/verifications/{$uuid}")
             ->assertOk()
-            ->assertJsonPath('verification.status', 'verified');
+            ->assertJsonPath('verification.status', 'verified')
+            ->assertJsonStructure(['token', 'user'])
+            ->assertJsonPath('user.phone_verified', true);
 
         $this->assertNotNull(User::where('phone', '99112233')->first()->phone_verified_at);
+
+        // Хоёр дахь poll токен дахин олгохгүй (consumed)
+        $this->getJson("/api/v1/auth/verifications/{$uuid}")->assertOk()->assertJsonMissingPath('token');
+    }
+
+    public function test_reregister_restarts_verification_for_unverified_phone(): void
+    {
+        $this->fakeVerifyMn();
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ])->assertCreated();
+
+        // Ижил нууц үгтэй бол шинэ session эхлүүлнэ (хэрэглэгч давхардахгүй)
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ])->assertCreated()->assertJsonPath('verification.status', 'pending');
+
+        $this->assertSame(1, User::where('phone', '99112233')->count());
+
+        // Буруу нууц үгтэй бол татгалзана
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'oordifferent1',
+        ])->assertStatus(422);
+
+        // Баталгаажсан дугаараар дахин бүртгүүлэхийг хориглоно
+        User::where('phone', '99112233')->update(['phone_verified_at' => now()]);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Энхжин', 'phone' => '99112233', 'password' => 'secret123',
+        ])->assertStatus(422);
     }
 
     public function test_unverified_user_cannot_review_or_message(): void

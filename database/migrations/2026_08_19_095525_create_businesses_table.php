@@ -43,7 +43,6 @@ return new class extends Migration
             $table->decimal('lat', 10, 7)->nullable();
             $table->decimal('lng', 10, 7)->nullable();
             $table->string('phone', 20);
-            $table->boolean('phone_verified')->default(false);
             $table->string('email')->nullable();
             $table->json('hours')->nullable(); // {mon: {from, to, closed}, ...}
             $table->json('amenities')->nullable(); // ["Зогсоол", "Картаар", ...]

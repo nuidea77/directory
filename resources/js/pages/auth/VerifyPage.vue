@@ -55,7 +55,7 @@ onMounted(() => {
             <div class="my-5 h-px bg-divider"></div>
             <div class="flex items-center justify-between text-[12.5px] font-semibold">
                 <button class="cursor-pointer text-brand" @click="start">Шинэ код авах</button>
-                <router-link :to="{ name: 'home' }" class="text-soft">Дараа баталгаажуулах</router-link>
+                <button class="cursor-pointer text-soft" @click="auth.logout().then(() => router.push({ name: 'login' }))">Гарах</button>
             </div>
         </div>
     </div>

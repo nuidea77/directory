@@ -4,11 +4,10 @@ import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import HoursEditor from '../../components/HoursEditor.vue';
-import VerifyPanel from '../../components/VerifyPanel.vue';
 
 /**
- * Бизнес нэмэх шаталсан форм (2c → 3a/5a → 3b):
- * 1. Бизнесийн үндсэн мэдээлэл  2. Салбарууд (хаяг, цаг)  3. Баталгаажуулалт
+ * Бизнес нэмэх шаталсан форм (2c → 3a/5a):
+ * 1. Бизнесийн үндсэн мэдээлэл  2. Салбарууд (хаяг, цаг) → эрх сонгох
  */
 const router = useRouter();
 const auth = useAuthStore();
@@ -46,10 +45,6 @@ const defaultHours = () => ({
 
 const structure = ref('single'); // single | multi
 const branchForms = ref([newBranchForm()]);
-const savedBranches = ref([]);
-
-const verifications = ref({}); // branch_id → verification
-const verifiedBranches = ref({});
 
 const selectedCategory = computed(() => categories.value.find((c) => c.id === Number(info.value.category_id)));
 
@@ -100,43 +95,22 @@ async function submitBranches() {
             }
         }
 
-        savedBranches.value = [];
         for (const form of forms) {
-            const data = await api.post(`/console/businesses/${business.value.id}/branches`, {
+            await api.post(`/console/businesses/${business.value.id}/branches`, {
                 ...form,
                 name: form.district + ' салбар',
                 phone: form.phone.replace(/\s/g, ''),
             });
-            savedBranches.value.push(data.data);
         }
-        step.value = 3;
-        window.scrollTo({ top: 0 });
+
+        // Салбарууд хадгалагдмагц шууд эрх сонгох руу
+        router.push({ name: 'plan-select', params: { orgId: organization.value.id } });
     } catch (e) {
         error.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
     } finally {
         busy.value = false;
     }
 }
-
-async function startVerify(branch) {
-    const data = await api.post(`/console/branches/${branch.id}/verify-phone`);
-    if (data.verification.status === 'verified') {
-        verifiedBranches.value[branch.id] = true;
-    } else {
-        verifications.value[branch.id] = data.verification;
-    }
-}
-
-function finish() {
-    router.push({ name: 'plan-select', params: { orgId: organization.value.id } });
-}
-
-const timeline = computed(() => [
-    { title: 'Улсын бүртгэл шалгагдсан', text: `${info.value.registration_number || '—'} — “${info.value.organization_name}” нэртэй бүртгэгдлээ.`, state: 'done' },
-    { title: 'Утас баталгаажуулж байна', text: 'Салбарын дугаараас verify.mn-ийн дугаарт код илгээмэгц автоматаар батлагдана.', state: Object.keys(verifiedBranches.value).length ? 'done' : 'active' },
-    { title: 'Редакцын хяналт', text: 'Хаяг, зураг, ангиллыг 1–2 ажлын өдөрт хянана.', state: 'pending' },
-    { title: 'Баталгаажсан тэмдэг', text: 'Хайлтад дээгүүр эрэмбэлэгдэж, ✓ тэмдэг нэмэгдэнэ.', state: 'pending' },
-]);
 
 onMounted(async () => {
     if (!auth.user?.phone_verified) {
@@ -163,7 +137,7 @@ onMounted(async () => {
             <div class="border-line px-5 py-8 sm:px-10 lg:border-r">
                 <!-- Шатны заалт -->
                 <div class="flex flex-wrap items-center gap-2.5">
-                    <template v-for="(s, i) in ['Мэдээлэл', 'Салбарууд', 'Баталгаажуулалт']" :key="s">
+                    <template v-for="(s, i) in ['Мэдээлэл', 'Салбарууд']" :key="s">
                         <div class="flex items-center gap-2">
                             <span
                                 class="flex h-6 w-6 items-center justify-center rounded-full text-[11.5px] font-bold"
@@ -171,7 +145,7 @@ onMounted(async () => {
                             >{{ step > i + 1 ? '✓' : i + 1 }}</span>
                             <span class="text-[13px] font-semibold" :class="step >= i + 1 ? 'text-ink' : 'text-ph'">{{ s }}</span>
                         </div>
-                        <div v-if="i < 2" class="h-[1.5px] w-9" :class="step > i + 1 ? 'bg-brand' : 'bg-searchline'"></div>
+                        <div v-if="i < 1" class="h-[1.5px] w-9" :class="step > i + 1 ? 'bg-brand' : 'bg-searchline'"></div>
                     </template>
                 </div>
 
@@ -338,48 +312,17 @@ onMounted(async () => {
                     <div class="mt-7 flex max-w-[600px] items-center gap-2.5">
                         <button class="btn-outline !px-5" @click="step = 1">← Буцах</button>
                         <button class="btn-primary !px-6" :disabled="busy" @click="submitBranches">
-                            {{ busy ? 'Хадгалж байна…' : branchForms.length > 1 ? `${branchForms.length} салбарыг батлах →` : 'Баталгаажуулалт →' }}
+                            {{ busy ? 'Хадгалж байна…' : branchForms.length > 1 ? `${branchForms.length} салбарыг батлах →` : 'Эрх сонгох →' }}
                         </button>
                         <span class="ml-auto hidden text-[12.5px] font-medium text-mute sm:block">Салбар тус бүр тусад нь хянагдана</span>
                     </div>
                 </template>
 
-                <!-- ШАТ 3: Баталгаажуулалт (3b) -->
-                <template v-else>
-                    <div class="mt-7 text-[11px] font-semibold tracking-[.12em] text-brand">3 / 3 ШАТ</div>
-                    <h1 class="mt-2.5 text-[26px] font-extrabold tracking-[-.02em] text-ink">Дугаараас мессеж илгээж баталгаажуулна</h1>
-                    <p class="mt-2 max-w-[470px] text-[14px] leading-relaxed text-soft">
-                        Бид танд код илгээхгүй. Та <b>өөрийн бизнесийн дугаараас</b> кодыг verify.mn-ийн дугаарт мессежээр илгээнэ — дугаар үнэхээр таны хяналтад байгаа нь нотлогдоно.
-                    </p>
-
-                    <div class="mt-5 flex max-w-[520px] flex-col gap-3">
-                        <div v-for="branch in savedBranches" :key="branch.id" class="rounded-xl border border-line p-4">
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-[14px] font-bold text-ink">{{ branch.name }}</span>
-                                <span class="font-mono text-[12px] text-soft">{{ branch.phone }}</span>
-                                <span v-if="verifiedBranches[branch.id]" class="ml-auto text-[12px] font-bold text-green">✓ Баталгаажлаа</span>
-                                <button v-else-if="!verifications[branch.id]" class="btn-primary ml-auto !px-3.5 !py-2 !text-[12px]" @click="startVerify(branch)">Баталгаажуулах</button>
-                            </div>
-                            <div v-if="verifications[branch.id] && !verifiedBranches[branch.id]" class="mt-3">
-                                <VerifyPanel
-                                    :verification="verifications[branch.id]"
-                                    @verified="verifiedBranches[branch.id] = true"
-                                    @expired="delete verifications[branch.id]"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-7 flex max-w-[520px] items-center gap-3">
-                        <button class="btn-primary !px-6" @click="finish">Эрх сонгох →</button>
-                        <button class="btn-outline" @click="finish">Дараа баталгаажуулах</button>
-                    </div>
-                </template>
             </div>
 
             <!-- Баруун sidebar -->
             <aside class="bg-panel px-6 py-8 sm:px-8">
-                <template v-if="step < 3">
+                <template v-if="true">
                     <div class="kicker">ХЭРХЭН ХАРАГДАХ</div>
                     <div class="card mt-3 overflow-hidden bg-white">
                         <div class="img-ph h-[120px]"></div>
@@ -400,7 +343,7 @@ onMounted(async () => {
                     <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
                         <div class="text-[13.5px] font-bold text-ink">Баталгаажуулалт хэрхэн явагддаг</div>
                         <div class="mt-3 flex flex-col gap-2.5">
-                            <div v-for="(v, i) in ['Улсын бүртгэлийн дугаарыг автоматаар шалгана (шууд).', 'Та өөрийн дугаараас verify.mn-д код илгээж дугаарыг баталгаажуулна (бид мессеж илгээхгүй).', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана.']" :key="i" class="flex gap-2.5">
+                            <div v-for="(v, i) in ['Улсын бүртгэлийн дугаарыг автоматаар шалгана (шууд).', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана — энэ хугацаанд ч бүртгэл хайлтад харагдана.']" :key="i" class="flex gap-2.5">
                                 <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">{{ i + 1 }}</span>
                                 <span class="text-[12.5px] leading-normal text-body">{{ v }}</span>
                             </div>
@@ -409,28 +352,7 @@ onMounted(async () => {
                     <p class="mt-4 text-[12px] leading-relaxed text-mute">Бүртгэл үнэгүй (1 жил). Салбар, аналитик, онцлох байршил нь төлбөртэй.</p>
                 </template>
 
-                <template v-else>
-                    <div class="kicker">ХЯНАЛТЫН ЯВЦ</div>
-                    <div class="card mt-3 bg-white p-5">
-                        <div v-for="(t, i) in timeline" :key="t.title" class="flex gap-3.5">
-                            <div class="flex flex-col items-center">
-                                <span
-                                    class="flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] text-[10px] font-bold"
-                                    :class="t.state === 'done' ? 'border-green bg-green text-white' : t.state === 'active' ? 'border-brand bg-bluetint text-brand' : 'border-inputline bg-white text-ph'"
-                                >{{ t.state === 'done' ? '✓' : '' }}</span>
-                                <span v-if="i < timeline.length - 1" class="w-[1.5px] flex-1 bg-divider" style="min-height: 14px"></span>
-                            </div>
-                            <div class="pb-4">
-                                <div class="text-[13.5px] font-bold" :class="t.state === 'pending' ? 'text-ph' : 'text-ink'">{{ t.title }}</div>
-                                <div class="mt-1 max-w-[300px] text-[12.5px] leading-relaxed text-mute">{{ t.text }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
-                        <div class="text-[13.5px] font-bold text-ink">Хяналтын хугацаанд ч бүртгэл ажиллана</div>
-                        <div class="mt-1.5 text-[12.5px] leading-relaxed text-body">Бизнес тань хайлтад шууд харагдана, зөвхөн «Баталгаажсан» тэмдэг л хяналтын дараа нэмэгдэнэ.</div>
-                    </div>
-                </template>
+
             </aside>
         </div>
     </div>
