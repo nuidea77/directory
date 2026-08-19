@@ -42,7 +42,8 @@ onMounted(async () => {
                         <div class="text-[13px] font-bold text-ink">{{ fmt(order.total) }}</div>
                         <div class="mt-0.5 text-[11.5px] font-semibold" :class="statusLabel[order.status]?.[1]">{{ statusLabel[order.status]?.[0] }}</div>
                     </div>
-                    <router-link v-if="order.status === 'pending'" :to="{ name: 'order-pay', params: { id: order.id } }" class="rounded-lg bg-brand px-3.5 py-2 text-[12px] font-bold text-white">Төлөх →</router-link>
+                    <a v-if="order.status === 'pending' && order.invoice_url" :href="order.invoice_url" class="rounded-lg bg-brand px-3.5 py-2 text-[12px] font-bold text-white">byl.mn-ээр төлөх →</a>
+                    <router-link v-else-if="order.status === 'pending'" :to="{ name: 'order-pay', params: { id: order.id } }" class="rounded-lg bg-brand px-3.5 py-2 text-[12px] font-bold text-white">Төлөх →</router-link>
                     <a v-else-if="order.invoice_url" :href="order.invoice_url" target="_blank" rel="noopener" class="text-[12px] font-semibold text-brand">И-баримт</a>
                 </div>
             </div>

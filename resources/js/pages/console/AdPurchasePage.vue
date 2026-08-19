@@ -82,9 +82,15 @@ async function checkout(queue = false) {
             }],
         });
         const order = data.data;
-        router.push(order.status === 'paid'
-            ? { name: 'order-success', params: { id: order.id } }
-            : { name: 'order-pay', params: { id: order.id } });
+
+        if (order.status === 'paid') {
+            router.push({ name: 'order-success', params: { id: order.id } });
+        } else if (order.invoice_url) {
+            // Шууд byl.mn-ийн төлбөрийн хуудас руу (QR, банкны сонголт тэнд бий)
+            window.location.href = order.invoice_url;
+        } else {
+            router.push({ name: 'order-pay', params: { id: order.id } });
+        }
     } catch (e) {
         error.value = e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа';
     } finally {
