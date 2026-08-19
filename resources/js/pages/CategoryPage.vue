@@ -128,7 +128,7 @@ onMounted(async () => {
         <div class="mx-auto flex max-w-7xl gap-2 px-5 pt-4 text-[12.5px] font-medium text-mute sm:px-10">
             <router-link :to="{ name: 'home' }" class="text-brand">Хаана</router-link>
             <span>/</span>
-            <router-link :to="{ name: 'search' }" class="text-brand">Ангилал</router-link>
+            <router-link :to="{ name: 'categories' }" class="text-brand">Ангилал</router-link>
             <span v-if="category">/</span>
             <span v-if="category">{{ category.name }}</span>
         </div>

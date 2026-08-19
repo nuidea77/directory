@@ -5,6 +5,7 @@ const routes = [
     // Нийтийн
     { path: '/', name: 'home', component: () => import('./pages/HomePage.vue') },
     { path: '/search', name: 'search', component: () => import('./pages/CategoryPage.vue') },
+    { path: '/categories', name: 'categories', component: () => import('./pages/CategoriesPage.vue') },
     { path: '/c/:slug', name: 'category', component: () => import('./pages/CategoryPage.vue') },
     { path: '/b/:slug', name: 'business', component: () => import('./pages/BusinessPage.vue') },
     { path: '/nearby', name: 'nearby', component: () => import('./pages/NearbyPage.vue') },

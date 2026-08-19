@@ -25,7 +25,7 @@ async function logout() {
                     <span class="text-lg font-extrabold tracking-[-.01em] text-ink">Хаана<span class="text-brand">.mn</span></span>
                 </router-link>
                 <nav class="hidden items-center gap-6 text-[13.5px] font-medium text-chiptext lg:flex">
-                    <router-link :to="{ name: 'search' }" class="hover:text-ink">Ангилал</router-link>
+                    <router-link :to="{ name: 'categories' }" class="hover:text-ink">Ангилал</router-link>
                     <router-link :to="{ name: 'nearby' }" class="hover:text-ink">Миний ойролцоо</router-link>
                     <router-link :to="{ name: 'pricing' }" class="hover:text-ink">Бизнест</router-link>
                 </nav>
@@ -74,7 +74,7 @@ async function logout() {
 
         <div v-if="mobileOpen" class="border-t border-line bg-white px-5 py-3 md:hidden" @click="mobileOpen = false">
             <nav class="flex flex-col gap-1 text-[13.5px] font-medium">
-                <router-link :to="{ name: 'search' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Ангилал</router-link>
+                <router-link :to="{ name: 'categories' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Ангилал</router-link>
                 <router-link :to="{ name: 'nearby' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний ойролцоо</router-link>
                 <router-link :to="{ name: 'pricing' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бизнест</router-link>
                 <template v-if="auth.isLoggedIn">

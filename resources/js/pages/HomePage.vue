@@ -80,7 +80,7 @@ function filteredFeatured() {
         <section class="mx-auto max-w-7xl px-5 pb-2 pt-9 sm:px-10">
             <div class="flex items-baseline justify-between">
                 <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Ангиллаар үзэх</h2>
-                <router-link :to="{ name: 'search' }" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүх ангилал →</router-link>
+                <router-link :to="{ name: 'categories' }" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүх ангилал →</router-link>
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <router-link

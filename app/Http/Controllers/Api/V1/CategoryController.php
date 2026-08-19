@@ -14,7 +14,7 @@ class CategoryController extends Controller
     {
         $categories = Category::whereNull('parent_id')
             ->withCount('businesses')
-            ->with('children')
+            ->with(['children' => fn ($q) => $q->withCount('businesses')])
             ->orderBy('sort_order')
             ->get();
 
