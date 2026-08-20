@@ -90,6 +90,8 @@ Route::prefix('v1')->group(function () {
             // ---- Төлбөр, сурталчилгаа --------------------------------------
             Route::get('orders', [CheckoutController::class, 'index']);
             Route::post('checkout', [CheckoutController::class, 'store'])->middleware('throttle:writes');
+            // Промо кодыг урьдчилан шалгах (спамаас хамгаалж хязгаартай)
+            Route::post('checkout/quote', [CheckoutController::class, 'quote'])->middleware('throttle:20,1');
             Route::get('orders/{order}', [CheckoutController::class, 'show']);
             Route::delete('orders/{order}', [CheckoutController::class, 'cancel']);
             Route::get('slots', [CheckoutController::class, 'slots']);
@@ -114,6 +116,10 @@ Route::prefix('v1')->group(function () {
             Route::put('categories/{category}', [AdminController::class, 'updateCategory']);
             Route::delete('categories/{category}', [AdminController::class, 'destroyCategory']);
             Route::get('campaigns', [AdminController::class, 'campaigns']);
+            Route::get('promo-codes', [AdminController::class, 'promoCodes']);
+            Route::post('promo-codes', [AdminController::class, 'storePromoCode']);
+            Route::put('promo-codes/{promoCode}', [AdminController::class, 'updatePromoCode']);
+            Route::delete('promo-codes/{promoCode}', [AdminController::class, 'destroyPromoCode']);
         });
     });
 });

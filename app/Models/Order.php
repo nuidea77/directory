@@ -15,6 +15,10 @@ class Order extends Model
         'number',
         'user_id',
         'organization_id',
+        'subtotal',
+        'discount_total',
+        'promo_code_id',
+        'promo_code',
         'total',
         'status',
         'byl_checkout_id',
@@ -49,6 +53,11 @@ class Order extends Model
     public function campaigns(): HasMany
     {
         return $this->hasMany(Campaign::class);
+    }
+
+    public function promo(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(PromoCode::class, 'promo_code_id');
     }
 
     /**

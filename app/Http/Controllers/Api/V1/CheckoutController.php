@@ -35,6 +35,7 @@ class CheckoutController extends Controller
                 collect(config('billing.plans'))->filter(fn ($p, $k) => $k !== 'free' && ($p['is_active'] ?? true))->keys()->all(),
             )],
             'plan_period' => ['nullable', 'in:monthly,yearly'],
+            'promo_code' => ['nullable', 'string', 'max:40'],
             'extra_branches' => ['nullable', 'integer', 'min:0', 'max:100'],
             'campaigns' => ['nullable', 'array', 'max:5'],
             'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],
@@ -66,6 +67,45 @@ class CheckoutController extends Controller
         $order = $this->billing->createOrder($request->user(), $organization, $data);
 
         return response()->json(['data' => new OrderResource($order->load('items'))], 201);
+    }
+
+    /**
+     * Промо кодтой/кодгүй захиалгын дүнг урьдчилан харуулах — хэрэглэгч
+     * төлбөр рүү орохоос өмнө хөнгөлөлтөө батлан харна.
+     */
+    public function quote(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+            'plan' => ['nullable', 'string', 'max:40'],
+            'plan_period' => ['nullable', 'in:monthly,yearly'],
+            'extra_branches' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'campaigns' => ['nullable', 'array', 'max:5'],
+            'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],
+            'campaigns.*.business_id' => ['required', 'integer', 'exists:businesses,id'],
+            'campaigns.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'campaigns.*.district' => ['nullable', 'string', 'max:80'],
+            'campaigns.*.city' => ['nullable', 'string', 'max:80'],
+            'campaigns.*.keyword' => ['nullable', 'string', 'max:80'],
+            'campaigns.*.days' => ['required', 'integer', 'in:7,14,30'],
+            'promo_code' => ['required', 'string', 'max:40'],
+        ]);
+
+        $organization = Organization::findOrFail($data['organization_id']);
+        abort_unless($organization->owner_id === $request->user()->id, 403);
+
+        $quote = $this->billing->quote($request->user(), $organization, $data);
+
+        return response()->json([
+            'subtotal' => $quote['subtotal'],
+            'discount' => $quote['discount'],
+            'total' => $quote['total'],
+            'promo_code' => $quote['promo']?->code,
+            'promo_scope' => $quote['promo']?->scope,
+            'message' => $quote['discount'] > 0
+                ? '«'.$quote['promo']->code.'» код хэрэглэгдлээ — ₮'.number_format($quote['discount']).' хямдарлаа.'
+                : 'Энэ кодоор хөнгөлөлт тооцогдсонгүй.',
+        ]);
     }
 
     /**

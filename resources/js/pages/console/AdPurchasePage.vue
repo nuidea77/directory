@@ -24,6 +24,12 @@ const loadError = ref('');
 const pricingError = ref('');
 const busy = ref(false);
 
+// Промо код — сурталчилгааны ангилалд хүчинтэй кодууд
+const promoInput = ref('');
+const promo = ref(null);
+const promoError = ref('');
+const promoBusy = ref(false);
+
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
 const business = computed(() => store.businesses.find((b) => b.id === selectedBusinessId.value) || store.businesses[0]);
@@ -40,7 +46,8 @@ const discount = computed(() => {
 
 const price = computed(() => adConfig.value?.prices?.[days.value] || 0);
 const discountAmount = computed(() => Math.round(price.value * discount.value));
-const total = computed(() => price.value - discountAmount.value);
+const subtotal = computed(() => price.value - discountAmount.value);
+const total = computed(() => Math.max(0, subtotal.value - (promo.value?.discount || 0)));
 
 // Үнэхээр авах боломжтой зай: төлбөр хүлээж буй болон дараалалд байгаа нь
 // зайг барьдаг тул server-ийн тооцсон free-г шууд ашиглана
@@ -92,23 +99,57 @@ async function fetchSlots() {
     }
 }
 
+function orderPayload() {
+    return {
+        organization_id: store.organization.id,
+        campaigns: [{
+            type: type.value,
+            business_id: business.value.id,
+            branch_id: branch.value?.id,
+            category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
+            category_name: type.value === 'category_featured' ? business.value.category.name : undefined,
+            district: type.value === 'category_featured' ? branch.value.district : undefined,
+            city: type.value === 'home_featured' ? homeCity.value : undefined,
+            keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
+            days: days.value,
+        }],
+    };
+}
+
+// Кодыг серверээр шалгаж хөнгөлөлтийг харуулна
+async function applyPromo() {
+    promoError.value = '';
+    promo.value = null;
+
+    if (!promoInput.value.trim()) return;
+
+    promoBusy.value = true;
+    try {
+        const data = await api.post('/checkout/quote', {
+            ...orderPayload(),
+            promo_code: promoInput.value.trim(),
+        });
+        promo.value = { code: data.promo_code, discount: data.discount };
+    } catch (e) {
+        promoError.value = e instanceof ApiError ? e.firstError() : 'Кодыг шалгахад алдаа гарлаа';
+    } finally {
+        promoBusy.value = false;
+    }
+}
+
+function clearPromo() {
+    promo.value = null;
+    promoInput.value = '';
+    promoError.value = '';
+}
+
 async function checkout() {
     error.value = '';
     busy.value = true;
     try {
         const data = await api.post('/checkout', {
-            organization_id: store.organization.id,
-            campaigns: [{
-                type: type.value,
-                business_id: business.value.id,
-                branch_id: branch.value?.id,
-                category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
-                category_name: type.value === 'category_featured' ? business.value.category.name : undefined,
-                district: type.value === 'category_featured' ? branch.value.district : undefined,
-                city: type.value === 'home_featured' ? homeCity.value : undefined,
-                keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
-                days: days.value,
-            }],
+            ...orderPayload(),
+            promo_code: promo.value?.code || undefined,
         });
         const order = data.data;
 
@@ -128,6 +169,10 @@ async function checkout() {
 }
 
 watch([type, selectedBusinessId, selectedBranchId], fetchSlots);
+// Сонголт/хугацаа өөрчлөгдвөл хөнгөлөлтийг дахин шалгуулна — дүн өөрчлөгдсөн
+watch([type, days, selectedBusinessId, selectedBranchId, keyword], () => {
+    if (promo.value) clearPromo();
+});
 
 async function loadPage() {
     pricingError.value = '';
@@ -331,11 +376,43 @@ onMounted(loadPage);
                         </div>
                         <div class="ml-auto whitespace-nowrap text-[12.5px] font-semibold text-green">−{{ fmt(discountAmount) }}</div>
                     </div>
+                    <!-- Промо кодын хөнгөлөлт -->
+                    <div v-if="promo" class="mt-3 flex items-start gap-2.5">
+                        <div>
+                            <div class="text-[12.5px] font-semibold text-ink">Промо код</div>
+                            <div class="mt-0.5 font-mono text-[11px] text-mute">{{ promo.code }}</div>
+                        </div>
+                        <div class="ml-auto whitespace-nowrap text-[12.5px] font-semibold text-green">−{{ fmt(promo.discount) }}</div>
+                    </div>
+
                     <div class="my-4 h-px bg-divider"></div>
                     <div class="flex items-baseline justify-between">
                         <span class="text-[13.5px] font-bold text-ink">Нийт (НӨАТ орсон)</span>
                         <span class="text-[22px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(total) }}</span>
                     </div>
+                </div>
+
+                <!-- Промо код оруулах -->
+                <div v-if="!slotsFull" class="kicker mt-5">ПРОМО КОД</div>
+                <div v-if="!slotsFull" class="mt-2.5">
+                    <div v-if="!promo" class="flex flex-wrap gap-2">
+                        <input
+                            v-model="promoInput"
+                            type="text"
+                            placeholder="Кодоо оруулна уу"
+                            class="input !py-2.5 uppercase"
+                            @keyup.enter="applyPromo"
+                        />
+                        <button class="btn-outline w-full !py-2.5 !text-[12.5px]" :disabled="promoBusy || !promoInput.trim()" @click="applyPromo">
+                            {{ promoBusy ? 'Шалгаж байна…' : 'Хэрэглэх' }}
+                        </button>
+                    </div>
+                    <div v-else class="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-greenline bg-greentint px-3 py-2.5">
+                        <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green text-[11px] font-bold text-white">✓</span>
+                        <span class="font-mono text-[12.5px] font-bold text-ink">{{ promo.code }}</span>
+                        <button class="ml-auto cursor-pointer text-[12px] font-semibold text-soft hover:text-red" @click="clearPromo">Хасах</button>
+                    </div>
+                    <p v-if="promoError" class="mt-2 text-[12px] font-medium text-red">{{ promoError }}</p>
                 </div>
 
                 <div class="kicker mt-5">ТӨЛБӨРИЙН АРГА</div>

@@ -471,6 +471,123 @@ class AdminController extends Controller
     }
 
     /**
+     * Промо кодууд: жагсаалт + ашиглалтын статистик.
+     */
+    public function promoCodes(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'scope' => ['nullable', 'in:subscription,ad'],
+            'status' => ['nullable', 'in:active,inactive,expired'],
+        ]);
+
+        $codes = \App\Models\PromoCode::query()
+            ->withCount('redemptions')
+            ->withSum('redemptions as discount_given', 'amount')
+            ->when($filters['scope'] ?? null, fn ($q, $sc) => $q->where('scope', $sc))
+            ->when(($filters['status'] ?? null) === 'active', fn ($q) => $q->where('is_active', true)
+                ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+            ->when(($filters['status'] ?? null) === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->when(($filters['status'] ?? null) === 'expired', fn ($q) => $q->whereNotNull('expires_at')->where('expires_at', '<=', now()))
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'kpis' => [
+                'total' => \App\Models\PromoCode::count(),
+                'active' => \App\Models\PromoCode::where('is_active', true)
+                    ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
+                'redemptions' => \App\Models\PromoCodeRedemption::count(),
+                'discount_given' => (int) \App\Models\PromoCodeRedemption::sum('amount'),
+            ],
+            'data' => $codes->map(fn (\App\Models\PromoCode $c) => [
+                'id' => $c->id,
+                'code' => $c->code,
+                'scope' => $c->scope,
+                'scope_name' => $c->scopeLabel(),
+                'type' => $c->type,
+                'value' => $c->value,
+                'value_label' => $c->type === 'percent' ? $c->value.'%' : '₮'.number_format($c->value),
+                'min_amount' => $c->min_amount,
+                'max_uses' => $c->max_uses,
+                'used_count' => $c->used_count,
+                'uses_left' => $c->usesLeft(),
+                'max_uses_per_user' => $c->max_uses_per_user,
+                'starts_at' => $c->starts_at,
+                'expires_at' => $c->expires_at,
+                'is_active' => $c->is_active,
+                'is_expired' => $c->expires_at !== null && $c->expires_at->isPast(),
+                'note' => $c->note,
+                'redemptions_count' => (int) $c->redemptions_count,
+                'discount_given' => (int) ($c->discount_given ?? 0),
+                'created_at' => $c->created_at,
+            ]),
+        ]);
+    }
+
+    public function storePromoCode(Request $request): JsonResponse
+    {
+        $data = $this->validatePromoCode($request);
+        $data['code'] = \App\Models\PromoCode::normalize($data['code']);
+
+        if (\App\Models\PromoCode::where('code', $data['code'])->exists()) {
+            return response()->json(['message' => 'Ийм код аль хэдийн бүртгэлтэй байна.'], 422);
+        }
+
+        $code = \App\Models\PromoCode::create($data);
+
+        return response()->json(['data' => ['id' => $code->id, 'code' => $code->code]], 201);
+    }
+
+    public function updatePromoCode(Request $request, \App\Models\PromoCode $promoCode): JsonResponse
+    {
+        $data = $this->validatePromoCode($request, $promoCode);
+
+        // Кодыг өөрчлөхийг зөвшөөрөхгүй — тараагдсан код солигдвол
+        // хэрэглэгчид ажиллахаа болино
+        unset($data['code']);
+
+        $promoCode->update($data);
+
+        return response()->json(['data' => ['id' => $promoCode->id]]);
+    }
+
+    public function destroyPromoCode(\App\Models\PromoCode $promoCode): JsonResponse
+    {
+        if ($promoCode->redemptions()->exists()) {
+            return response()->json([
+                'message' => 'Ашиглагдсан кодыг устгах боломжгүй — идэвхгүй болгоно уу (санхүүгийн бүртгэл хадгалагдана).',
+            ], 422);
+        }
+
+        $promoCode->delete();
+
+        return response()->json(['message' => 'Устгагдлаа.']);
+    }
+
+    protected function validatePromoCode(Request $request, ?\App\Models\PromoCode $existing = null): array
+    {
+        // Засварлахад код өөрчлөгддөггүй тул огт шалгахгүй — илгээсэн ч
+        // үл хэрэгсэнэ (кирилл үсэг ирвэл дэмий алдаа өгөхгүй)
+        if ($existing !== null) {
+            $request->request->remove('code');
+        }
+
+        return $request->validate([
+            'code' => [$existing ? 'nullable' : 'required', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/'],
+            'scope' => [$existing ? 'sometimes' : 'required', 'in:subscription,ad'],
+            'type' => [$existing ? 'sometimes' : 'required', 'in:percent,fixed'],
+            'value' => [$existing ? 'sometimes' : 'required', 'integer', 'min:1', 'max:100000000'],
+            'min_amount' => ['nullable', 'integer', 'min:0', 'max:100000000'],
+            'max_uses' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'max_uses_per_user' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'starts_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after:starts_at'],
+            'is_active' => ['nullable', 'boolean'],
+            'note' => ['nullable', 'string', 'max:200'],
+        ]);
+    }
+
+    /**
      * Хэрэглэгчдийн илгээсэн залруулгууд.
      */
     public function corrections(Request $request): JsonResponse

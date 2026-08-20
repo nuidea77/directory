@@ -19,6 +19,12 @@ const slotState = ref(null);
 
 const selectedPlan = ref('standard');
 const planPeriod = ref('yearly'); // yearly | monthly
+
+// Промо код — эрхийн бичгийн ангилалд хүчинтэй кодууд
+const promoInput = ref('');
+const promo = ref(null); // { code, discount }
+const promoError = ref('');
+const promoBusy = ref(false);
 const featuredDays = ref(0); // 0 = авахгүй
 const error = ref('');
 const loadError = ref('');
@@ -60,13 +66,15 @@ const featuredPrice = computed(() => {
     return Math.round(base * (1 - discount));
 });
 
-const total = computed(() => {
+const subtotal = computed(() => {
     let sum = 0;
     if (selectedPlan.value !== 'free') sum += planPrice.value;
     if (selectedPlan.value !== 'free') sum += extraBranches.value * branchAddon.value;
     sum += featuredPrice.value;
     return sum;
 });
+
+const total = computed(() => Math.max(0, subtotal.value - (promo.value?.discount || 0)));
 
 const totalBreakdown = computed(() => {
     const parts = [];
@@ -89,6 +97,58 @@ function planCard(p) {
     };
 }
 
+// Одоогийн сонголтоор захиалгын payload
+function orderPayload() {
+    const campaigns = [];
+
+    if (featuredDays.value && business.value) {
+        campaigns.push({
+            type: 'category_featured',
+            business_id: business.value.id,
+            branch_id: mainBranch.value?.id,
+            category_id: business.value.category?.id,
+            category_name: business.value.category?.name,
+            district: mainBranch.value?.district,
+            days: featuredDays.value,
+        });
+    }
+
+    return {
+        organization_id: organization.value.id,
+        plan: selectedPlan.value !== 'free' ? selectedPlan.value : null,
+        plan_period: selectedPlan.value !== 'free' && isMonthly.value ? 'monthly' : 'yearly',
+        extra_branches: selectedPlan.value !== 'free' ? extraBranches.value : 0,
+        campaigns,
+    };
+}
+
+// Кодыг серверээр шалгаж хөнгөлөлтийг харуулна
+async function applyPromo() {
+    promoError.value = '';
+    promo.value = null;
+
+    if (!promoInput.value.trim()) return;
+
+    promoBusy.value = true;
+    try {
+        const data = await api.post('/checkout/quote', {
+            ...orderPayload(),
+            promo_code: promoInput.value.trim(),
+        });
+        promo.value = { code: data.promo_code, discount: data.discount, message: data.message };
+    } catch (e) {
+        promoError.value = e instanceof ApiError ? e.firstError() : 'Кодыг шалгахад алдаа гарлаа';
+    } finally {
+        promoBusy.value = false;
+    }
+}
+
+function clearPromo() {
+    promo.value = null;
+    promoInput.value = '';
+    promoError.value = '';
+}
+
 async function checkout() {
     error.value = '';
 
@@ -99,25 +159,9 @@ async function checkout() {
 
     busy.value = true;
     try {
-        const campaigns = [];
-        if (featuredDays.value && business.value) {
-            campaigns.push({
-                type: 'category_featured',
-                business_id: business.value.id,
-                branch_id: mainBranch.value?.id,
-                category_id: business.value.category?.id,
-                category_name: business.value.category?.name,
-                district: mainBranch.value?.district,
-                days: featuredDays.value,
-            });
-        }
-
         const data = await api.post('/checkout', {
-            organization_id: organization.value.id,
-            plan: selectedPlan.value !== 'free' ? selectedPlan.value : null,
-            plan_period: selectedPlan.value !== 'free' && isMonthly.value ? 'monthly' : 'yearly',
-            extra_branches: selectedPlan.value !== 'free' ? extraBranches.value : 0,
-            campaigns,
+            ...orderPayload(),
+            promo_code: promo.value?.code || undefined,
         });
 
         const order = data.data;
@@ -281,6 +325,37 @@ onMounted(load);
                 <div class="whitespace-nowrap text-[17px] font-extrabold text-ink">{{ featuredDays ? '+' + fmt(featuredPrice) : '—' }}</div>
             </div>
 
+            <!-- Промо код -->
+            <div v-if="selectedPlan !== 'free' || featuredDays" class="mt-4 max-w-[520px] rounded-xl border border-line bg-panel p-[18px]">
+                <div class="text-[13.5px] font-bold text-ink">Промо код</div>
+
+                <div v-if="!promo" class="mt-2.5 flex flex-wrap gap-2">
+                    <input
+                        v-model="promoInput"
+                        type="text"
+                        placeholder="Кодоо оруулна уу"
+                        class="input !w-[220px] uppercase"
+                        @keyup.enter="applyPromo"
+                    />
+                    <button class="btn-outline !px-4 !py-2.5 !text-[12.5px]" :disabled="promoBusy || !promoInput.trim()" @click="applyPromo">
+                        {{ promoBusy ? 'Шалгаж байна…' : 'Хэрэглэх' }}
+                    </button>
+                </div>
+
+                <!-- Хэрэглэгдсэн код -->
+                <div v-else class="mt-2.5 flex flex-wrap items-center gap-2.5 rounded-[10px] border border-greenline bg-greentint px-3.5 py-2.5">
+                    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green text-[11px] font-bold text-white">✓</span>
+                    <span class="font-mono text-[13px] font-bold text-ink">{{ promo.code }}</span>
+                    <span class="text-[12.5px] font-semibold text-green">−{{ fmt(promo.discount) }}</span>
+                    <button class="ml-auto cursor-pointer text-[12px] font-semibold text-soft hover:text-red" @click="clearPromo">Хасах</button>
+                </div>
+
+                <p v-if="promoError" class="mt-2 text-[12.5px] font-medium text-red">{{ promoError }}</p>
+                <p v-else-if="!promo" class="mt-2 text-[11.5px] leading-relaxed text-mute">
+                    Эрхийн бичгийн код энд, сурталчилгааны код зар авах хуудсанд хүчинтэй.
+                </p>
+            </div>
+
             <p v-if="error" class="mt-4 rounded-lg bg-redtint px-4 py-2.5 text-[13px] font-medium text-red">{{ error }}</p>
         </div>
 
@@ -290,8 +365,10 @@ onMounted(load);
                 <div>
                     <div class="text-[12px] font-medium text-mute">Нийт төлөх (НӨАТ орсон)</div>
                     <div class="mt-1 flex flex-wrap items-baseline gap-2">
+                        <span v-if="promo" class="text-[15px] font-semibold text-mute line-through">{{ fmt(subtotal) }}</span>
                         <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(total) }}</span>
                         <span class="text-[12px] font-medium text-mute">{{ totalBreakdown }}</span>
+                        <span v-if="promo" class="text-[12px] font-semibold text-green">· {{ promo.code }} −{{ fmt(promo.discount) }}</span>
                     </div>
                 </div>
                 <div class="ml-auto flex items-center gap-3">

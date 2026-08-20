@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\Campaign;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\PromoCode;
 use App\Models\User;
 use App\Notifications\OrderPaid;
 use App\Services\Byl\BylClient;
@@ -33,6 +34,19 @@ class BillingService
      * } $payload
      */
     public function createOrder(User $user, Organization $organization, array $payload): Order
+    {
+        $quote = $this->quote($user, $organization, $payload);
+
+        return $this->persistOrder($user, $organization, $quote);
+    }
+
+    /**
+     * Захиалгыг бодож гаргана (хадгалахгүй): мөрүүд, дэд дүн, промо
+     * хөнгөлөлт, эцсийн дүн. Урьдчилан харуулах болон үүсгэх хоёуланд.
+     *
+     * @return array{items: array, campaigns: array, subtotal: int, discount: int, total: int, promo: ?PromoCode, promo_error: ?string}
+     */
+    public function quote(User $user, Organization $organization, array $payload): array
     {
         $items = [];
         $total = 0;
@@ -194,11 +208,109 @@ class BillingService
             throw ValidationException::withMessages(['total' => 'Захиалга хоосон байна.']);
         }
 
-        $order = DB::transaction(function () use ($user, $organization, $items, $pendingCampaigns, $total) {
+        // --- Промо код ---------------------------------------------------
+        $subtotal = $total;
+        $discount = 0;
+        $promo = null;
+        $promoError = null;
+
+        if (! empty($payload['promo_code'])) {
+            [$promo, $discount, $promoError] = $this->resolvePromo(
+                (string) $payload['promo_code'],
+                $user,
+                $items,
+            );
+
+            $total = max(0, $subtotal - $discount);
+        }
+
+        return [
+            'items' => $items,
+            'campaigns' => $pendingCampaigns,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total' => $total,
+            'promo' => $promo,
+            'promo_error' => $promoError,
+        ];
+    }
+
+    /**
+     * Промо кодыг шалгаад хөнгөлөлтийг тооцно.
+     * Буруу байвал алдаа шиднэ — хэрэглэгч санамсаргүй бүтэн үнээр
+     * төлчихгүйн тулд (урьдчилан харуулахад алдааг барьж авна).
+     *
+     * @return array{0: PromoCode, 1: int, 2: ?string}
+     */
+    protected function resolvePromo(string $code, User $user, array $items): array
+    {
+        $promo = PromoCode::where('code', PromoCode::normalize($code))->first();
+
+        if ($promo === null || ! $promo->is_active) {
+            throw ValidationException::withMessages(['promo_code' => 'Ийм промо код олдсонгүй.']);
+        }
+
+        if (! $promo->isWithinWindow()) {
+            throw ValidationException::withMessages([
+                'promo_code' => $promo->starts_at?->isFuture()
+                    ? 'Энэ промо код '.$promo->starts_at->format('Y-m-d').'-нээс эхэлнэ.'
+                    : 'Энэ промо кодын хугацаа дууссан байна.',
+            ]);
+        }
+
+        $left = $promo->usesLeft();
+
+        if ($left !== null && $left <= 0) {
+            throw ValidationException::withMessages(['promo_code' => 'Энэ промо кодын хязгаар дүүрсэн байна.']);
+        }
+
+        if ($promo->max_uses_per_user > 0 && $promo->usesByUser($user->id) >= $promo->max_uses_per_user) {
+            throw ValidationException::withMessages(['promo_code' => 'Та энэ промо кодыг аль хэдийн ашигласан байна.']);
+        }
+
+        // Ангилалдаа тохирох мөрүүдийн дүн: эрхийн бичиг (эрх + салбарын
+        // нэмэлт) эсвэл сурталчилгаа
+        $scopeTypes = $promo->scope === 'ad' ? ['campaign'] : ['plan', 'branch_addon'];
+
+        $scopeAmount = collect($items)
+            ->whereIn('type', $scopeTypes)
+            ->sum(fn (array $i) => $i['amount'] - $i['discount']);
+
+        if ($scopeAmount <= 0) {
+            throw ValidationException::withMessages([
+                'promo_code' => $promo->scope === 'ad'
+                    ? 'Энэ код зөвхөн сурталчилгаанд хүчинтэй.'
+                    : 'Энэ код зөвхөн эрхийн бичигт хүчинтэй.',
+            ]);
+        }
+
+        if ($promo->min_amount > 0 && $scopeAmount < $promo->min_amount) {
+            throw ValidationException::withMessages([
+                'promo_code' => 'Энэ код ₮'.number_format($promo->min_amount).'-с дээш захиалгад хүчинтэй.',
+            ]);
+        }
+
+        return [$promo, $promo->discountFor((int) $scopeAmount), null];
+    }
+
+    /**
+     * Бодогдсон захиалгыг хадгалж, byl.mn checkout үүсгэнэ.
+     */
+    protected function persistOrder(User $user, Organization $organization, array $quote): Order
+    {
+        $items = $quote['items'];
+        $pendingCampaigns = $quote['campaigns'];
+        $total = $quote['total'];
+
+        $order = DB::transaction(function () use ($user, $organization, $items, $pendingCampaigns, $total, $quote) {
             $order = Order::create([
                 'number' => Order::generateNumber(),
                 'user_id' => $user->id,
                 'organization_id' => $organization->id,
+                'subtotal' => $quote['subtotal'],
+                'discount_total' => $quote['discount'],
+                'promo_code_id' => $quote['promo']?->id,
+                'promo_code' => $quote['promo']?->code,
                 'total' => $total,
                 'status' => 'pending',
             ]);
@@ -397,7 +509,20 @@ class BillingService
                 $this->campaigns->activateOrQueue($campaign);
             }
 
-            // 4. Худалдан авагчид баримт илгээнэ
+            // 4. Промо кодын ашиглалтыг бүртгэнэ (давхар webhook-д idempotent —
+            // (promo_code_id, order_id) хос дээр unique индекстэй)
+            if ($order->promo_code_id !== null && $order->discount_total > 0) {
+                $redeemed = \App\Models\PromoCodeRedemption::firstOrCreate(
+                    ['promo_code_id' => $order->promo_code_id, 'order_id' => $order->id],
+                    ['user_id' => $order->user_id, 'amount' => $order->discount_total],
+                );
+
+                if ($redeemed->wasRecentlyCreated) {
+                    PromoCode::whereKey($order->promo_code_id)->increment('used_count');
+                }
+            }
+
+            // 5. Худалдан авагчид баримт илгээнэ
             $order->user?->notify(new OrderPaid($order->load('items')));
         });
     }
