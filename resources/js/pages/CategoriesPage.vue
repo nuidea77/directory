@@ -1,4 +1,5 @@
 <script setup>
+import CategoryIcon from '../components/CategoryIcon.vue';
 import { computed, onMounted, ref } from 'vue';
 import { api } from '../api';
 
@@ -53,7 +54,9 @@ onMounted(async () => {
             <div v-else class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="category in categories" :key="category.id" class="card flex flex-col p-5 transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-sm">
                     <div class="flex items-start gap-3">
-                        <div class="h-9 w-9 shrink-0 rounded-[10px] border border-blueline bg-bluetint"></div>
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-blueline bg-bluetint text-brand">
+                            <CategoryIcon :name="category.icon" :size="19" />
+                        </div>
                         <div class="min-w-0">
                             <router-link :to="{ name: 'category', params: { slug: category.slug } }" class="text-[15px] font-bold text-ink hover:text-brand">{{ category.name }}</router-link>
                             <div class="mt-0.5 text-[12px] text-mute">{{ (category.businesses_count || 0).toLocaleString() }} бизнес</div>

@@ -20,6 +20,7 @@ class CategoryController extends Controller
             'name' => $c->name,
             'slug' => $c->slug,
             'description' => $c->description,
+            'icon' => $c->icon,
             'parent_id' => $c->parent_id,
             'businesses_count' => (int) $c->businesses_count,
         ];

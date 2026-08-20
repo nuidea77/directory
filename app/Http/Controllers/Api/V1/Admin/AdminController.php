@@ -300,6 +300,8 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
+            // Lucide icon-ий нэр (kebab-case)
+            'icon' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/'],
             'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -320,10 +322,18 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
+            'icon' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $category->update(array_filter($data, fn ($v) => $v !== null));
+        // icon-ыг зориуд хоосон болгож болно (array_filter null-ыг хаядаг тул тусад нь)
+        $update = array_filter($data, fn ($v) => $v !== null);
+
+        if ($request->exists('icon')) {
+            $update['icon'] = $data['icon'] ?: null;
+        }
+
+        $category->update($update);
         \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
 
         return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $category->refresh()]);

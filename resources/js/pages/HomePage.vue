@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
 import BusinessCard from '../components/BusinessCard.vue';
+import CategoryIcon from '../components/CategoryIcon.vue';
 
 const router = useRouter();
 const categories = ref([]);
@@ -97,16 +98,18 @@ function filteredFeatured() {
         <section class="mx-auto max-w-7xl px-5 pb-2 pt-9 sm:px-10">
             <div class="flex items-baseline justify-between">
                 <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Ангиллаар үзэх</h2>
-                <router-link :to="{ name: 'categories' }" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүх ангилал →</router-link>
+                <router-link :to="{ name: 'categories' }" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүх {{ categories.length }} ангилал →</router-link>
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <router-link
-                    v-for="category in categories"
+                    v-for="category in categories.slice(0, 12)"
                     :key="category.id"
                     :to="{ name: 'category', params: { slug: category.slug }, query: city !== 'Улаанбаатар' ? { city } : {} }"
                     class="rounded-[10px] border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-sm"
                 >
-                    <div class="h-8 w-8 rounded-lg border border-blueline bg-bluetint"></div>
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
+                        <CategoryIcon :name="category.icon" :size="17" />
+                    </div>
                     <div class="mt-3 text-[13.5px] font-semibold text-ink">{{ category.name }}</div>
                     <div class="mt-0.5 text-[12px] text-mute">{{ (category.businesses_count || 0).toLocaleString() }} бизнес</div>
                 </router-link>

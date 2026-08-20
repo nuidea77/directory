@@ -139,6 +139,39 @@ class DirectoryTest extends TestCase
         $this->assertSame($results, $stats);
     }
 
+    public function test_categories_expose_their_icon(): void
+    {
+        Category::factory()->create(['slug' => 'food', 'icon' => 'utensils']);
+
+        $this->getJson('/api/v1/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.icon', 'utensils');
+    }
+
+    public function test_admin_can_change_a_category_icon(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'phone_verified_at' => now()]);
+        $category = Category::factory()->create(['slug' => 'food', 'icon' => 'utensils']);
+
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$category->id}", ['icon' => 'cake'])
+            ->assertOk();
+
+        $this->assertSame('cake', $category->refresh()->icon);
+
+        // Хоосон утга илгээвэл ерөнхий icon руу буцна
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$category->id}", ['icon' => ''])
+            ->assertOk();
+
+        $this->assertNull($category->refresh()->icon);
+
+        // Буруу форматыг хүлээж авахгүй
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$category->id}", ['icon' => 'Not Valid!'])
+            ->assertStatus(422);
+    }
+
     public function test_home_featured_is_scoped_to_the_requested_city(): void
     {
         // Улаанбаатарын бизнес

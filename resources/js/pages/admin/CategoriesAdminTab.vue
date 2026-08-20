@@ -1,12 +1,15 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { api, ApiError } from '../../api';
+import CategoryIcon from '../../components/CategoryIcon.vue';
+import { iconNames } from '../../data/categoryIcons';
 
 // Ангиллын CRUD — үндсэн + дэд ангиллуудыг админаас удирдана
 const categories = ref(null);
 const loadError = ref('');
 const msg = ref({ type: '', text: '' });
-const newCat = ref({ name: '', parent_id: '' });
+const newCat = ref({ name: '', parent_id: '', icon: '' });
+const savingIconId = ref(null);
 
 async function fetchCategories() {
     loadError.value = '';
@@ -24,8 +27,9 @@ async function createCategory() {
         await api.post('/admin/categories', {
             name: newCat.value.name,
             parent_id: newCat.value.parent_id || undefined,
+            icon: newCat.value.icon || undefined,
         });
-        newCat.value = { name: '', parent_id: '' };
+        newCat.value = { name: '', parent_id: '', icon: '' };
         await fetchCategories();
         msg.value = { type: 'ok', text: 'Ангилал үүслээ.' };
     } catch (e) {
@@ -41,6 +45,21 @@ async function renameCategory(cat) {
         await fetchCategories();
     } catch (e) {
         msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа' };
+    }
+}
+
+// Icon-ыг сонгомогц шууд хадгална
+async function saveIcon(cat, icon) {
+    msg.value = { type: '', text: '' };
+    savingIconId.value = cat.id;
+    try {
+        await api.put(`/admin/categories/${cat.id}`, { icon: icon || '' });
+        cat.icon = icon || null;
+        msg.value = { type: 'ok', text: `«${cat.name}» ангиллын icon хадгалагдлаа.` };
+    } catch (e) {
+        msg.value = { type: 'error', text: e instanceof ApiError ? e.firstError() : 'Алдаа гарлаа' };
+    } finally {
+        savingIconId.value = null;
     }
 }
 
@@ -79,6 +98,18 @@ onMounted(fetchCategories);
                         <option v-for="c in categories || []" :key="c.id" :value="c.id">{{ c.name }}</option>
                     </select>
                 </div>
+                <div class="min-w-[170px]">
+                    <label class="field-label !text-[11px]">Icon</label>
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
+                            <CategoryIcon :name="newCat.icon" :size="18" />
+                        </span>
+                        <select v-model="newCat.icon" class="input cursor-pointer !py-2.5">
+                            <option value="">— Ерөнхий —</option>
+                            <option v-for="n in iconNames" :key="n" :value="n">{{ n }}</option>
+                        </select>
+                    </div>
+                </div>
                 <button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Нэмэх</button>
             </form>
         </div>
@@ -93,6 +124,18 @@ onMounted(fetchCategories);
         <div v-else class="card mt-4 overflow-hidden">
             <div v-for="cat in categories" :key="cat.id" class="border-b border-hairline last:border-0">
                 <div class="flex items-center gap-3 px-4 py-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-blueline bg-bluetint text-brand">
+                        <CategoryIcon :name="cat.icon" :size="18" />
+                    </span>
+                    <select
+                        :value="cat.icon || ''"
+                        class="cursor-pointer rounded-[7px] border border-inputline bg-white px-2 py-1.5 text-[11.5px] font-medium text-body outline-none disabled:opacity-50"
+                        :disabled="savingIconId === cat.id"
+                        @change="saveIcon(cat, $event.target.value)"
+                    >
+                        <option value="">— Ерөнхий —</option>
+                        <option v-for="n in iconNames" :key="n" :value="n">{{ n }}</option>
+                    </select>
                     <span class="text-[13.5px] font-bold text-ink">{{ cat.name }}</span>
                     <span class="rounded-full bg-chip px-2 py-0.5 font-mono text-[10.5px] font-semibold text-chiptext">{{ cat.businesses_count || 0 }} бизнес</span>
                     <div class="ml-auto flex gap-2 text-[11.5px] font-semibold">

@@ -11,7 +11,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'description', 'parent_id', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'description', 'icon', 'parent_id', 'sort_order'];
 
     public function parent(): BelongsTo
     {

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api';
 import ImagePh from '../components/ImagePh.vue';
+import CategoryIcon from '../components/CategoryIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -181,7 +182,10 @@ onMounted(async () => {
             <div class="mx-auto max-w-7xl px-5 pb-6 pt-3.5 sm:px-10">
                 <div class="flex flex-wrap items-end justify-between gap-6">
                     <div class="max-w-[600px]">
-                        <h1 class="text-[28px] font-extrabold leading-tight tracking-[-.025em] text-ink sm:text-[34px]">
+                        <h1 class="flex items-center gap-3 text-[28px] font-extrabold leading-tight tracking-[-.025em] text-ink sm:text-[34px]">
+                            <span v-if="category" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blueline bg-bluetint text-brand">
+                                <CategoryIcon :name="category.icon" :size="24" />
+                            </span>
                             {{ category ? category.name : (filters.q ? `“${filters.q}” хайлт` : 'Бүх бизнес') }}
                         </h1>
                         <p v-if="category?.description" class="mt-2 text-[14px] leading-relaxed text-soft">{{ category.description }}</p>

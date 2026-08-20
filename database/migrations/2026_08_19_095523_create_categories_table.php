@@ -13,6 +13,8 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
+            // Lucide icon-ий нэр (ж: utensils, stethoscope) — UI-д ангиллыг ялгана
+            $table->string('icon', 40)->nullable();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
