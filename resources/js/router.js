@@ -49,7 +49,8 @@ const routes = [
     {
         path: '/admin',
         component: () => import('./pages/admin/AdminLayout.vue'),
-        meta: { auth: true, admin: true },
+        // Админ өөрийн толгой, sidebar-тай — нийтийн header/footer давхарлахгүй
+        meta: { auth: true, admin: true, chrome: false },
         children: [
             { path: '', name: 'admin', component: () => import('./pages/admin/ModerationTab.vue') },
             { path: 'revenue', name: 'admin-revenue', component: () => import('./pages/admin/RevenueTab.vue') },
