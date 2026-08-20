@@ -16,7 +16,6 @@ class OrganizationFactory extends Factory
         return [
             'owner_id' => User::factory(),
             'name' => fake()->unique()->company().' ХХК',
-            'registration_number' => (string) fake()->numberBetween(1000000, 9999999),
             'plan' => 'free',
         ];
     }

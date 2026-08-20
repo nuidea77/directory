@@ -28,7 +28,7 @@ const districtOptions = computed(() => locations.value.find((l) => l.city === fo
 const todo = computed(() => {
     if (!branch.value) return [];
     return [
-        { name: 'Хаяг, координат', done: !!(branch.value.address && branch.value.lat), gain: '' },
+        { name: 'Хаяг, байршил', done: !!(branch.value.address && branch.value.lat), gain: '' },
         { name: 'Цагийн хуваарь', done: !!branch.value.hours, gain: '' },
         { name: '3+ зураг нэмэх', done: (branch.value.images || []).length >= 3, gain: '+18% хандалт' },
         { name: 'Үйлчилгээ, онцлог', done: (branch.value.amenities || []).length > 0, gain: '+9% залгалт' },
@@ -273,13 +273,6 @@ onMounted(async () => {
                         <div>
                             <label class="field-label">Хороо</label>
                             <input v-model="form.khoroo" type="text" class="input" />
-                        </div>
-                        <div>
-                            <label class="field-label">Координат</label>
-                            <div class="flex gap-2">
-                                <input v-model.number="form.lat" type="number" step="0.000001" placeholder="47.9102" class="input font-mono !text-[12.5px]" />
-                                <input v-model.number="form.lng" type="number" step="0.000001" placeholder="106.9541" class="input font-mono !text-[12.5px]" />
-                            </div>
                         </div>
                         <div>
                             <label class="field-label">Ориентир</label>

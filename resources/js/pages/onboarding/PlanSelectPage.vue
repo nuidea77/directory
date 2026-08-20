@@ -363,7 +363,7 @@ onMounted(load);
         <div class="border-t border-line">
             <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-5 py-5 sm:px-10">
                 <div>
-                    <div class="text-[12px] font-medium text-mute">Нийт төлөх (НӨАТ орсон)</div>
+                    <div class="text-[12px] font-medium text-mute">Нийт төлөх</div>
                     <div class="mt-1 flex flex-wrap items-baseline gap-2">
                         <span v-if="promo" class="text-[15px] font-semibold text-mute line-through">{{ fmt(subtotal) }}</span>
                         <span class="text-[26px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(total) }}</span>

@@ -33,7 +33,6 @@ class OrganizationController extends Controller
     {
         $data = $request->validate([
             'organization_name' => ['required', 'string', 'max:150'],
-            'registration_number' => ['nullable', 'string', 'max:20'],
             'business_name' => ['required', 'string', 'max:150'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'subcategory' => ['nullable', 'string', 'max:100'],
@@ -46,7 +45,7 @@ class OrganizationController extends Controller
 
         $organization = $request->user()->organizations()->firstOrCreate(
             ['name' => $data['organization_name']],
-            ['registration_number' => $data['registration_number'] ?? null, 'plan' => 'free'],
+            ['plan' => 'free'],
         );
 
         if ($organization->businesses()->count() >= $organization->planLimit('businesses')) {
@@ -129,7 +128,6 @@ class OrganizationController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:150'],
-            'registration_number' => ['nullable', 'string', 'max:20'],
             'auto_renew' => ['sometimes', 'boolean'],
         ]);
 

@@ -4,10 +4,10 @@ import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import BizLogo from '../../components/BizLogo.vue';
 
-// Байгууллагын нийтлэг мэдээлэл (нэр, регистр, лого, ангилал, танилцуулга)
+// Байгууллагын нийтлэг мэдээлэл (нэр, лого, ангилал, танилцуулга)
 const store = useConsoleStore();
 
-const orgForm = ref({ name: '', registration_number: '' });
+const orgForm = ref({ name: '' });
 const bizForm = ref({});
 const msg = ref({ type: '', text: '' });
 const categories = ref([]);
@@ -21,7 +21,6 @@ function syncForms() {
     if (store.organization) {
         orgForm.value = {
             name: store.organization.name,
-            registration_number: store.organization.registration_number || '',
         };
     }
     if (business.value) {
@@ -103,10 +102,6 @@ onMounted(async () => {
                 <div>
                     <label class="field-label">Байгууллагын нэр</label>
                     <input v-model="orgForm.name" type="text" class="input" required />
-                </div>
-                <div>
-                    <label class="field-label">Улсын бүртгэлийн дугаар</label>
-                    <input v-model="orgForm.registration_number" type="text" class="input" />
                 </div>
                 <div class="sm:col-span-2"><button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Хадгалах</button></div>
             </form>

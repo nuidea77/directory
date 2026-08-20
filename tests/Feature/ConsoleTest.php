@@ -22,7 +22,6 @@ class ConsoleTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/v1/console/organizations', [
             'organization_name' => 'Тест ХХК',
-            'registration_number' => '1234567',
             'business_name' => 'Тест Сервис',
             'category_id' => $category->id,
             'price_level' => '₮₮',

@@ -46,7 +46,6 @@ class DemoSeeder extends Seeder
             ['name' => 'Хангай Авто ХХК'],
             [
                 'owner_id' => $owner->id,
-                'registration_number' => '6183492',
                 'plan' => 'business',
                 'plan_term_years' => 2,
                 'plan_started_at' => now()->subDays(148),
@@ -204,7 +203,7 @@ class DemoSeeder extends Seeder
         // Хяналт хүлээж буй бүртгэлүүд (админ демо)
         $pendingOrg = Organization::updateOrCreate(
             ['name' => 'Ням Кофе ХХК'],
-            ['owner_id' => $owner->id, 'plan' => 'free', 'registration_number' => '7712043'],
+            ['owner_id' => $owner->id, 'plan' => 'free'],
         );
 
         $pendingBiz = $pendingOrg->businesses()->updateOrCreate(

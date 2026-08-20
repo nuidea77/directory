@@ -15,7 +15,6 @@ class OrganizationResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'registration_number' => $this->registration_number,
             'plan' => $this->plan,
             'effective_plan' => $effective,
             'plan_name' => $config['name'] ?? 'Үнэгүй',

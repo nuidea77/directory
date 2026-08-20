@@ -106,7 +106,6 @@ onMounted(load);
                         <div class="flex justify-between gap-3"><span class="font-medium text-mute">Төлсөн огноо</span><span class="font-semibold text-ink">{{ order.paid_at ? new Date(order.paid_at).toLocaleString() : '—' }}</span></div>
                         <div class="flex justify-between gap-3"><span class="font-medium text-mute">Төлбөрийн арга</span><span class="font-semibold text-ink">byl.mn</span></div>
                         <div class="flex justify-between gap-3"><span class="font-medium text-mute">Байгууллага</span><span class="font-semibold text-ink">{{ organization?.name }}</span></div>
-                        <div v-if="organization?.registration_number" class="flex justify-between gap-3"><span class="font-medium text-mute">Регистр</span><span class="font-mono font-semibold text-ink">{{ organization.registration_number }}</span></div>
                     </div>
                     <div class="my-4 h-px bg-divider"></div>
                     <div class="flex items-baseline justify-between">

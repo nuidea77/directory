@@ -190,7 +190,7 @@ onMounted(fetchPricing);
                             <div class="mt-1.5 text-[12px] leading-relaxed text-soft">{{ item.a }}</div>
                         </div>
                     </div>
-                    <p class="mt-3 text-[11.5px] leading-relaxed text-mute">Төлбөр: byl.mn (банкны QR, карт). НӨАТ баримт автоматаар.</p>
+                    <p class="mt-3 text-[11.5px] leading-relaxed text-mute">Төлбөр: byl.mn (банкны QR, карт).</p>
                 </div>
             </div>
         </div>

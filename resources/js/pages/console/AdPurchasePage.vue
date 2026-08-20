@@ -387,7 +387,7 @@ onMounted(loadPage);
 
                     <div class="my-4 h-px bg-divider"></div>
                     <div class="flex items-baseline justify-between">
-                        <span class="text-[13.5px] font-bold text-ink">Нийт (НӨАТ орсон)</span>
+                        <span class="text-[13.5px] font-bold text-ink">Нийт төлөх</span>
                         <span class="text-[22px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(total) }}</span>
                     </div>
                 </div>
@@ -420,13 +420,6 @@ onMounted(loadPage);
                     <span class="h-4 w-4 rounded-full border-[5px] border-brand bg-white"></span>
                     <span class="text-[12.5px] font-semibold text-ink">byl.mn QR</span>
                     <span class="ml-auto text-[11px] font-medium text-mute">Банкны аппаар</span>
-                </div>
-
-                <div class="mt-4 rounded-[11px] border border-blueline bg-bluetint p-3.5">
-                    <div class="text-[12.5px] font-bold text-ink">Нэхэмжлэх, НӨАТ</div>
-                    <div class="mt-1.5 text-[12px] leading-relaxed text-body">
-                        {{ store.organization?.registration_number ? `Байгууллагын регистр ${store.organization.registration_number}-т НӨАТ-ын и-баримт автоматаар илгээгдэнэ.` : 'НӨАТ-ын и-баримт автоматаар илгээгдэнэ.' }}
-                    </div>
                 </div>
 
                 <button v-if="total && !slotsFull" class="btn-primary mt-4 w-full !rounded-[10px] !py-3.5" :disabled="busy" @click="checkout()">{{ fmt(total) }} төлөх</button>

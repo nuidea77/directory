@@ -197,7 +197,7 @@ onBeforeUnmount(stop);
                 </div>
                 <div class="my-3.5 h-px bg-divider"></div>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-[13px] font-bold text-ink">Нийт (НӨАТ орсон)</span>
+                    <span class="text-[13px] font-bold text-ink">Нийт төлөх</span>
                     <span class="text-[20px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(order.total) }}</span>
                 </div>
             </div>

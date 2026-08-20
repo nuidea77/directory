@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('number', 30)->unique();
             $table->foreignId('user_id')->constrained()->restrictOnDelete(); // санхүүгийн бичлэг хэрэглэгчтэй хамт устахгүй
             $table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete();
-            $table->unsignedInteger('total'); // MNT, НӨАТ орсон
+            $table->unsignedInteger('total'); // MNT
             $table->string('status', 20)->default('pending'); // pending | paid | void | expired
             $table->unsignedBigInteger('byl_checkout_id')->nullable()->unique();
             $table->string('invoice_url')->nullable(); // byl.mn төлбөрийн хуудасны URL

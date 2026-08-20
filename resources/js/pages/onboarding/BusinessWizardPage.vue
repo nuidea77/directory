@@ -22,7 +22,6 @@ const business = ref(null);
 
 const info = ref({
     organization_name: '',
-    registration_number: '',
     business_name: '',
     category_id: '',
     subcategory: '',
@@ -218,10 +217,6 @@ onMounted(async () => {
                             <label class="field-label !text-[12px]">Байгууллагын нэр (ХХК)</label>
                             <input v-model="info.organization_name" type="text" placeholder="Хангай Авто ХХК" class="input" required maxlength="150" />
                         </div>
-                        <div>
-                            <label class="field-label !text-[12px]">Улсын бүртгэлийн дугаар</label>
-                            <input v-model="info.registration_number" type="text" inputmode="numeric" placeholder="6183492" class="input" maxlength="20" />
-                        </div>
                         <div class="sm:col-span-2">
                             <label class="field-label !text-[12px]">Тайлбар</label>
                             <textarea v-model="info.description" rows="3" maxlength="400" placeholder="Танай бизнес юугаараа онцлог вэ?" class="input resize-none"></textarea>
@@ -374,7 +369,6 @@ onMounted(async () => {
                         <div class="p-4">
                             <div class="flex items-center gap-2">
                                 <span class="text-[15px] font-bold text-ink">{{ info.business_name || 'Бизнесийн нэр' }}</span>
-                                <span v-if="info.registration_number" class="rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[10px] font-semibold text-brand">✓</span>
                             </div>
                             <div class="mt-1 text-[12.5px] text-mute">{{ selectedCategory?.name || 'Ангилал' }}{{ branchForms[0]?.district ? ' · ' + branchForms[0].district : '' }}</div>
                             <div class="mt-2.5 flex items-center gap-2 text-[12px] font-medium text-mute"><b class="text-ink">Шинэ</b> сэтгэгдэл хараахан үгүй</div>
