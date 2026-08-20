@@ -158,6 +158,12 @@ class CheckoutController extends Controller
             'total' => $state['total'],
             'occupied' => $state['occupied'],
             'queued' => $state['queued'],
+            // Төлбөр хүлээж буй зар ч зайг барина — хэрэглэгчид «сул» гэж
+            // харуулаад дараа нь татгалзвал ойлгомжгүй болно
+            'pending' => $state['pending'],
+            'free' => $state['free'],
+            // Зай дүүрсэн бол хэзээ сул болохыг хэрэглэгчид харуулна
+            'next_free_at' => $state['next_free_at'],
             'slots' => collect(range(1, $state['total']))->map(function (int $n) use ($state) {
                 $running = $state['running']->firstWhere('slot', $n);
 

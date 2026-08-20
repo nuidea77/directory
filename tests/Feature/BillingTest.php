@@ -104,6 +104,86 @@ class BillingTest extends TestCase
         $this->assertSame('standard', $this->organization->refresh()->plan);
     }
 
+    public function test_slots_endpoint_reports_next_free_date_when_full(): void
+    {
+        // 3 зайг өөр өөр дуусах огноотойгоор дүүргэнэ
+        foreach ([[1, 5], [2, 12], [3, 25]] as [$slot, $days]) {
+            Campaign::factory()->create([
+                'organization_id' => $this->organization->id,
+                'business_id' => $this->business->id,
+                'type' => 'category_featured',
+                'category_id' => $this->category->id,
+                'district' => 'Баянзүрх',
+                'city' => null,
+                'keyword' => null,
+                'slot' => $slot,
+                'status' => 'active',
+                'starts_at' => now(),
+                'ends_at' => now()->addDays($days),
+            ]);
+        }
+
+        $response = $this->actingAs($this->owner)->getJson('/api/v1/slots?'.http_build_query([
+            'type' => 'category_featured',
+            'category_id' => $this->category->id,
+            'district' => 'Баянзүрх',
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('free', 0)
+            ->assertJsonPath('occupied', 3);
+
+        // Хамгийн эрт дуусах зарын огноог хэрэглэгчид хэлнэ
+        $earliest = \Illuminate\Support\Carbon::parse(Campaign::query()->min('ends_at'));
+
+        // API нь огноог UTC-гээр serialize хийдэг тул ижил бүсэд шилжүүлж жиших
+        $this->assertSame(
+            $earliest->toDateString(),
+            \Illuminate\Support\Carbon::parse($response->json('next_free_at'))
+                ->setTimezone(config('app.timezone'))
+                ->toDateString(),
+        );
+    }
+
+    public function test_full_slot_purchase_error_tells_user_when_it_frees(): void
+    {
+        $this->enableByl();
+
+        foreach ([[1, 5], [2, 12], [3, 25]] as [$slot, $days]) {
+            Campaign::factory()->create([
+                'organization_id' => $this->organization->id,
+                'business_id' => $this->business->id,
+                'type' => 'category_featured',
+                'category_id' => $this->category->id,
+                'district' => 'Баянзүрх',
+                'city' => null,
+                'keyword' => null,
+                'slot' => $slot,
+                'status' => 'active',
+                'starts_at' => now(),
+                'ends_at' => now()->addDays($days),
+            ]);
+        }
+
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/checkout', [
+            'organization_id' => $this->organization->id,
+            'campaigns' => [[
+                'type' => 'category_featured',
+                'business_id' => $this->business->id,
+                'category_id' => $this->category->id,
+                'district' => 'Баянзүрх',
+                'days' => 30,
+            ]],
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString(
+            \Illuminate\Support\Carbon::parse(Campaign::query()->min('ends_at'))->format('Y-m-d'),
+            (string) $response->json('errors.campaigns.0'),
+            'Алдааны мессежид хэзээ сул зай гарахыг бичсэн байх ёстой',
+        );
+    }
+
     public function test_one_order_cannot_claim_more_slots_than_exist(): void
     {
         $this->enableByl();

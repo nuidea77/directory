@@ -147,12 +147,12 @@ class BillingService
             $taken = $slotState['occupied'] + $slotState['queued'] + $slotState['pending'] + $claimedHere;
 
             if ($taken >= $slotState['total']) {
-                $freesAt = $slotState['running']->min('ends_at');
+                // Хэдэн зай, хэзээ сул болохыг тодорхой хэлнэ
+                $freesAt = $slotState['next_free_at'] ?? $slotState['running']->min('ends_at');
 
                 throw ValidationException::withMessages([
-                    'campaigns' => 'Энэ байршилд бүх зай эзлэгдсэн байна ('
-                        .$slotState['total'].' зай).'
-                        .($freesAt ? ' Ойрын зай '.$freesAt->format('Y-m-d').'-нд суларна.' : ''),
+                    'campaigns' => 'Энэ байршилд бүх '.$slotState['total'].' зай эзлэгдсэн байна.'
+                        .($freesAt ? ' Дараагийн сул зай '.$freesAt->format('Y-m-d').'-нд гарна — тэр үед дахин оролдоно уу.' : ''),
                 ]);
             }
 

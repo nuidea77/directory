@@ -225,35 +225,59 @@ class DirectoryController extends Controller
                 ->whereRaw("{$haversine} <= (? + 0.0)", [...$bind, $radius]);
         }
 
-        // Онцлох бизнесүүд дээр гарна
-        $featuredBusinessIds = collect();
+        // Онцлох зарууд: тухайн зар нь БИЗНЕСийг бүхэлд нь биш, зорилтот
+        // САЛБАРыг нь онцолно (Баянзүрхэд авсан зар Хан-Уулын салбарыг
+        // онцлох ёсгүй). branch_id заасан бол зөвхөн тэр салбар.
+        $featuredCampaigns = collect();
 
         if ($category !== null) {
             $district = $request->query('district');
 
-            $featuredBusinessIds = $featuredBusinessIds->merge(
+            $featuredCampaigns = $featuredCampaigns->merge(
                 Campaign::query()->running()
                     ->where('type', 'category_featured')
                     ->where('category_id', $category->id)
                     // Дүүрэг сонгосон бол тухайн дүүргийн БОЛОН улс даяарын
-                    // (district=null) зар хоёулаа онцлогдоно. Дүүрэг сонгоогүй
-                    // үед зөвхөн улс даяарынх — эс бөгөөс нэг дүүргийн зар
-                    // бүх дүүрэгт дээгүүр гарна.
-                    ->where(fn ($q) => $district
-                        ? $q->where('district', $district)->orWhereNull('district')
-                        : $q->whereNull('district'))
+                    // (district=null) зар онцлогдоно — өөр дүүргийнх орохгүй.
+                    // Дүүрэг сонгоогүй (бүх дүүрэг) үед ангиллын идэвхтэй зар
+                    // бүгд онцлогдоно — тэд бүгд ямар нэг дүүрэгт ажиллаж байгаа.
+                    ->when($district, fn ($q) => $q->where(
+                        fn ($w) => $w->where('district', $district)->orWhereNull('district'),
+                    ))
                     ->orderBy('slot')
-                    ->pluck('business_id'),
+                    ->get(['business_id', 'branch_id', 'district']),
             );
         }
 
-        $featuredBusinessIds = $featuredBusinessIds->merge($keywordFeaturedIds);
+        // Түлхүүр үгийн зар нь дүүрэг заадаггүй — бизнесийн бүх салбарт үйлчилнэ
+        $featuredCampaigns = $featuredCampaigns->merge(
+            $keywordFeaturedIds->map(fn ($id) => (object) ['business_id' => $id, 'branch_id' => null, 'district' => null]),
+        );
 
-        $featuredBusinessIds = $featuredBusinessIds->unique()->values();
+        // Зар бүрийн зорилтот салбаруудыг тодорхойлно
+        $featuredBranchIds = collect();
 
-        if ($featuredBusinessIds->isNotEmpty()) {
-            $placeholders = $featuredBusinessIds->map(fn () => '?')->implode(',');
-            $query->orderByRaw("CASE WHEN business_id IN ({$placeholders}) THEN 0 ELSE 1 END", $featuredBusinessIds->all());
+        if ($featuredCampaigns->isNotEmpty()) {
+            $featuredBranchIds = Branch::query()->active()
+                ->where(function (Builder $q) use ($featuredCampaigns) {
+                    foreach ($featuredCampaigns as $c) {
+                        $q->orWhere(function (Builder $w) use ($c) {
+                            $w->where('business_id', $c->business_id);
+
+                            if ($c->branch_id !== null) {
+                                $w->where('id', $c->branch_id);
+                            } elseif ($c->district !== null) {
+                                $w->where('district', $c->district);
+                            }
+                        });
+                    }
+                })
+                ->pluck('id');
+        }
+
+        if ($featuredBranchIds->isNotEmpty()) {
+            $placeholders = $featuredBranchIds->map(fn () => '?')->implode(',');
+            $query->orderByRaw("CASE WHEN branches.id IN ({$placeholders}) THEN 0 ELSE 1 END", $featuredBranchIds->all());
         }
 
         // Бизнес эрхийн «ТОП жагсаалт» — идэвхтэй business эрхтэй байгууллагууд
@@ -291,8 +315,11 @@ class DirectoryController extends Controller
             $branches = $query->paginate($perPage)->withQueryString();
         }
 
-        $branches->getCollection()->each(function (Branch $b) use ($featuredBusinessIds) {
-            $b->business->is_featured = $featuredBusinessIds->contains($b->business_id);
+        // Онцлохыг САЛБАР дээр нь тэмдэглэнэ: eager-load нэг бизнесийн бүх
+        // салбарт ижил business объект оноодог тул business дээр тэмдэглэвэл
+        // сүүлийн салбар өмнөхийг дарж, онцлох тэмдэг алга болдог байсан
+        $branches->getCollection()->each(function (Branch $b) use ($featuredBranchIds) {
+            $b->is_featured = $featuredBranchIds->contains($b->id);
         });
 
         return response()->json([

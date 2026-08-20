@@ -387,8 +387,38 @@ class AdminController extends Controller
             'running_revenue' => (int) Campaign::query()->running()->sum('price'),
         ];
 
+        // Зайн ачаалал: аль ангилал/дүүрэг дүүрсэн, хэзээ сул зай гарахыг
+        // админ шууд харна (өмнө нь зөвхөн задгай жагсаалт байсан)
+        $service = app(CampaignService::class);
+
+        $spaces = Campaign::query()
+            ->holdingSlot()
+            ->with('category:id,name')
+            ->get(['type', 'category_id', 'district', 'city', 'keyword'])
+            ->unique(fn (Campaign $c) => implode('|', [$c->type, $c->category_id, $c->district, $c->city, $c->keyword]))
+            ->map(function (Campaign $c) use ($service) {
+                $state = $service->slotState($c->type, $c->category_id, $c->district, $c->city, $c->keyword);
+
+                return [
+                    'type' => $c->type,
+                    'type_name' => config("billing.ads.{$c->type}.name"),
+                    'target' => implode(' · ', array_filter([
+                        $c->category?->name, $c->district, $c->city, $c->keyword ? '“'.$c->keyword.'”' : null,
+                    ])) ?: 'Бүх байршил',
+                    'total' => $state['total'],
+                    'occupied' => $state['occupied'],
+                    'pending' => $state['pending'],
+                    'queued' => $state['queued'],
+                    'free' => $state['free'],
+                    'next_free_at' => $state['next_free_at'],
+                ];
+            })
+            ->sortBy([['free', 'asc'], ['target', 'asc']])
+            ->values();
+
         return response()->json([
             'kpis' => $kpis,
+            'spaces' => $spaces,
             'data' => $campaigns->getCollection()->map(fn (Campaign $c) => [
                 'id' => $c->id,
                 'type' => $c->type,

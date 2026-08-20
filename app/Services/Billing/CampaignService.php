@@ -127,12 +127,33 @@ class CampaignService
             ->inSlotSpace($type, $categoryId, $district, $city, $keyword)
             ->count();
 
+        // Үнэхээр сул зайн тоо: дараалал ба төлбөр хүлээж буй нь зайг барина
+        $free = max(0, $slots - ($running->count() + $queued + $pending));
+
         return [
             'total' => $slots,
             'occupied' => $running->count(),
             'queued' => $queued,
             'pending' => $pending,
+            'free' => $free,
+            'next_free_at' => $free > 0 ? null : $this->nextFreeAt($running, $queued + $pending),
             'running' => $running,
         ];
+    }
+
+    /**
+     * Зай дүүрсэн үед хэзээ сул зай гарахыг тооцоолно: ажиллаж буй зарууд
+     * дуусах огноогоор эрэмбэлээд, өмнө нь хүлээж буй хүмүүсийн тоогоор
+     * ухарна (тэд эхэлж зайг эзэлнэ).
+     */
+    protected function nextFreeAt(\Illuminate\Support\Collection $running, int $ahead): ?\Illuminate\Support\Carbon
+    {
+        $endings = $running->pluck('ends_at')->filter()->sort()->values();
+
+        if ($endings->isEmpty()) {
+            return null;
+        }
+
+        return $endings->get($ahead) ?? $endings->last();
     }
 }

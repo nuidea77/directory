@@ -308,7 +308,7 @@ onMounted(async () => {
                         :key="branch.id"
                         :to="{ name: 'business', params: { slug: branch.business.slug } }"
                         class="flex gap-4 rounded-xl border p-3.5 transition hover:shadow-sm"
-                        :class="branch.business.is_featured ? 'border-blueline bg-bluepale' : 'border-line bg-white'"
+                        :class="branch.is_featured ? 'border-blueline bg-bluepale' : 'border-line bg-white'"
                         @click="trackView(branch)"
                     >
                         <div class="hidden h-[110px] w-[150px] shrink-0 overflow-hidden rounded-[9px] sm:block">
@@ -319,7 +319,7 @@ onMounted(async () => {
                                 <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * (meta.per_page || 20) + i + 1).padStart(2, '0') }}</span>
                                 <span class="text-[17px] font-bold text-ink">{{ branch.business.name }}</span>
                                 <span v-if="branch.business.is_verified" class="badge-verified">✓</span>
-                                <span v-if="branch.business.is_featured" class="badge-featured">ОНЦЛОХ</span>
+                                <span v-if="branch.is_featured" class="badge-featured">ОНЦЛОХ</span>
                             </div>
                             <div class="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] font-medium text-soft">
                                 <span class="font-bold text-ink">{{ branch.rating_avg.toFixed(1) }}</span>

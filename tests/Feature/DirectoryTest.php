@@ -164,7 +164,8 @@ class DirectoryTest extends TestCase
         $response = $this->getJson('/api/v1/search?category=auto&district='.urlencode('Баянзүрх'));
 
         $this->assertSame('Promoted', $response->json('data.0.business.name'));
-        $this->assertTrue($response->json('data.0.business.is_featured'));
+        // Онцлох нь тухайн САЛБАР дээр тэмдэглэгддэг
+        $this->assertTrue($response->json('data.0.is_featured'));
         $this->assertSame('Plain', $response->json('data.1.business.name'));
     }
 

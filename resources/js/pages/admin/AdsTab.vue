@@ -10,6 +10,12 @@ const page = ref(1);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
+const shortDate = (v) => {
+    if (!v) return '—';
+    const d = new Date(v);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const statusLabel = {
     active: ['ЯВЖ БАЙНА', 'bg-greentint text-green'],
     queued: ['ДАРААЛАЛД', 'bg-amberbadge text-amber'],
@@ -82,6 +88,38 @@ onMounted(fetchData);
                 <div class="card p-4">
                     <div class="text-[11px] font-semibold text-mute">Идэвхтэй зарын орлого</div>
                     <div class="mt-2 text-[20px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(data.kpis.running_revenue) }}</div>
+                </div>
+            </div>
+
+            <!-- Зайн ачаалал: аль байршил дүүрсэн, хэзээ сулрах -->
+            <div v-if="data.spaces?.length" class="card mt-3.5 overflow-hidden">
+                <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
+                    <span class="text-[14px] font-bold text-ink">Зайн ачаалал</span>
+                    <span class="text-[11.5px] text-mute">— дүүрсэн байршилд шинэ зар зарагдахгүй</span>
+                </div>
+                <div class="hidden grid-cols-[1.4fr_1fr_.8fr_1fr] gap-3 border-b border-divider bg-panel px-4 py-2.5 text-[10.5px] font-semibold tracking-[.08em] text-mute lg:grid">
+                    <span>БАЙРШИЛ</span><span>ЭЗЭЛСЭН</span><span>СУЛ</span><span>ДАРААГИЙН СУЛ ЗАЙ</span>
+                </div>
+                <div v-for="sp in data.spaces" :key="sp.type + sp.target" class="grid grid-cols-1 gap-1.5 border-b border-hairline px-4 py-3 last:border-0 lg:grid-cols-[1.4fr_1fr_.8fr_1fr] lg:items-center lg:gap-3">
+                    <div>
+                        <div class="text-[13px] font-bold text-ink">{{ sp.target }}</div>
+                        <div class="mt-0.5 text-[11.5px] text-mute">{{ sp.type_name }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="h-[6px] w-[70px] overflow-hidden rounded-full bg-chip">
+                            <div class="h-full" :class="sp.free === 0 ? 'bg-amber' : 'bg-green'" :style="{ width: Math.min(100, ((sp.occupied + sp.pending + sp.queued) / sp.total) * 100) + '%' }"></div>
+                        </div>
+                        <span class="font-mono text-[12px] font-semibold text-ink">{{ sp.occupied }}/{{ sp.total }}</span>
+                        <span v-if="sp.pending" class="rounded-[4px] bg-amberbadge px-1.5 py-0.5 text-[9.5px] font-semibold text-amber">+{{ sp.pending }} төлбөр хүлээж</span>
+                    </div>
+                    <div>
+                        <span class="rounded-full px-2 py-0.5 text-[10.5px] font-bold" :class="sp.free === 0 ? 'bg-amberbadge text-amber' : 'bg-greentint text-green'">
+                            {{ sp.free === 0 ? 'ДҮҮРСЭН' : sp.free + ' сул' }}
+                        </span>
+                    </div>
+                    <div class="text-[12.5px] font-medium" :class="sp.free === 0 ? 'text-ink' : 'text-mute'">
+                        {{ sp.free === 0 ? shortDate(sp.next_free_at) : 'одоо боломжтой' }}
+                    </div>
                 </div>
             </div>
 

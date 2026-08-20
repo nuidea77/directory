@@ -42,7 +42,24 @@ const price = computed(() => adConfig.value?.prices?.[days.value] || 0);
 const discountAmount = computed(() => Math.round(price.value * discount.value));
 const total = computed(() => price.value - discountAmount.value);
 
-const slotsFree = computed(() => (slots.value ? slots.value.total - slots.value.occupied : 0));
+// Үнэхээр авах боломжтой зай: төлбөр хүлээж буй болон дараалалд байгаа нь
+// зайг барьдаг тул server-ийн тооцсон free-г шууд ашиглана
+const slotsFree = computed(() => slots.value?.free ?? 0);
+const slotsFull = computed(() => !!slots.value && slotsFree.value === 0);
+
+// Огноог YYYY.MM.DD хэлбэрээр — browser бүрд mn-MN locale байдаггүй
+const shortDate = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const nextFreeLabel = computed(() => shortDate(slots.value?.next_free_at));
+
+const daysUntilFree = computed(() => {
+    if (!slots.value?.next_free_at) return null;
+    return Math.max(0, Math.ceil((new Date(slots.value.next_free_at) - Date.now()) / 86400000));
+});
 
 const scopeLabel = computed(() => {
     if (type.value === 'category_featured') return `${business.value?.category?.name || ''} · ${branch.value?.district || ''}`;
@@ -139,7 +156,7 @@ onMounted(loadPage);
             </div>
             <div class="flex items-center gap-2.5">
                 <span class="badge-verified uppercase">{{ store.organization?.plan_name }}</span>
-                <span v-if="store.organization?.plan_expires_at" class="text-[12.5px] font-medium text-soft">Дараагийн төлбөр {{ new Date(store.organization.plan_expires_at).toLocaleDateString() }}</span>
+                <span v-if="store.organization?.plan_expires_at" class="text-[12.5px] font-medium text-soft">Эрх дуусах {{ shortDate(store.organization.plan_expires_at) }}</span>
             </div>
         </div>
 
@@ -147,7 +164,7 @@ onMounted(loadPage);
             <div class="border-line px-5 py-6 sm:px-7 lg:border-r">
                 <h1 class="text-2xl font-extrabold tracking-[-.02em] text-ink">Онцлох байршил худалдан авах</h1>
                 <p class="mt-2 max-w-[600px] text-[13.5px] leading-[1.65] text-soft">
-                    Төрөл, салбар, ангилал сонгоно. <b>Зай тус бүрт хязгаартай</b> — сул зай байхгүй бол дараалалд бүртгүүлнэ. Хугацаа: 7, 14 эсвэл 30 хоног.
+                    Төрөл, салбар, ангилал сонгоно. <b>Ангилал + дүүрэг тус бүрт ердөө {{ slots?.total || 3 }} зай</b> — бүгд эзэлсэн бол зай сулрахыг хүлээнэ. Хугацаа: 7, 14 эсвэл 30 хоног.
                 </p>
 
                 <div v-if="pricingError" class="card mt-5 max-w-[620px] p-10 text-center">
@@ -194,7 +211,32 @@ onMounted(loadPage);
                 </div>
 
                 <!-- Сул зай -->
-                <div class="mb-3 mt-6 text-[15px] font-bold text-ink">Сул зай — {{ scopeLabel }}</div>
+                <div class="mb-3 mt-6 flex flex-wrap items-baseline gap-2">
+                    <span class="text-[15px] font-bold text-ink">Сул зай — {{ scopeLabel }}</span>
+                    <span v-if="slots" class="rounded-full px-2 py-0.5 text-[10.5px] font-bold" :class="slotsFull ? 'bg-amberbadge text-amber' : 'bg-greentint text-green'">
+                        {{ slotsFull ? 'ЗАЙ ДҮҮРСЭН' : slotsFree + ' ЗАЙ СУЛ' }}
+                    </span>
+                </div>
+
+                <!-- Зай дүүрсэн: хэзээ боломжтой болохыг хэлнэ -->
+                <div v-if="slotsFull" class="mb-3 max-w-[620px] rounded-[11px] border-[1.5px] border-amberline bg-ambertint p-4">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber text-[13px] font-bold text-white">!</span>
+                        <span class="text-[13.5px] font-bold text-ink">
+                            {{ scopeLabel }} — бүх {{ slots.total }} зай эзэлсэн байна
+                        </span>
+                    </div>
+                    <div class="mt-2 text-[12.5px] leading-[1.65] text-ambertext">
+                        <template v-if="nextFreeLabel">
+                            Дараагийн сул зай <b>{{ nextFreeLabel }}</b>-нд гарна<template v-if="daysUntilFree !== null"> ({{ daysUntilFree }} хоногийн дараа)</template>. Тэр үед энэ хуудсаар дахин орж худалдан авна уу.
+                        </template>
+                        <template v-else>Зай сулрах хугацаа тодорхойгүй байна.</template>
+                        <template v-if="slots.pending"> Одоогоор {{ slots.pending }} захиалга төлбөр хүлээж байна — цуцлагдвал зай эрт суларч болно.</template>
+                    </div>
+                    <div class="mt-2.5 text-[12px] font-medium text-ambertext">
+                        Өөр дүүрэг эсвэл өөр төрлийн зар (нүүр хуудас, хайлтын үг) сонгож үзээрэй.
+                    </div>
+                </div>
                 <div v-if="slots" class="flex max-w-[620px] flex-col gap-2.5">
                     <div
                         v-for="slot in slots.slots"
@@ -209,12 +251,12 @@ onMounted(loadPage);
                                 <span class="rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold" :class="slot.available ? 'bg-greentint text-green' : 'bg-chip text-mute'">{{ slot.available ? 'СУЛ' : 'ЭЗЭЛСЭН' }}</span>
                             </div>
                             <div class="mt-1 text-[11.5px] text-mute">
-                                {{ slot.available ? scopeLabel : (slot.occupied_until ? new Date(slot.occupied_until).toLocaleDateString() + ' хүртэл эзэлсэн' : 'Эзэлсэн') }}{{ !slot.available && slots.queued ? ` · дараалалд ${slots.queued} бизнес` : '' }}
+                                {{ slot.available ? scopeLabel : (slot.occupied_until ? shortDate(slot.occupied_until) + ' хүртэл эзэлсэн' : 'Эзэлсэн') }}
                             </div>
                         </div>
                         <div class="text-right">
                             <div class="text-[14px] font-bold text-ink">{{ slot.available ? fmt(price) : '—' }}</div>
-                            <div class="mt-0.5 text-[11px] font-medium text-mute">{{ slot.available ? `/ ${days} хоног` : 'дараалал' }}</div>
+                            <div class="mt-0.5 text-[11px] font-medium text-mute">{{ slot.available ? `/ ${days} хоног` : 'эзэлсэн' }}</div>
                         </div>
                     </div>
                 </div>
@@ -256,8 +298,10 @@ onMounted(loadPage);
                 <p v-if="error" class="mt-4 max-w-[620px] rounded-lg bg-redtint px-4 py-2.5 text-[13px] font-medium text-red">{{ error }}</p>
 
                 <div class="mt-5 flex max-w-[620px] flex-wrap items-center gap-2.5">
-                    <button v-if="slotsFree > 0" class="btn-primary !px-6" :disabled="busy || !total" @click="checkout()">Төлбөр рүү</button>
-                    <button v-else class="btn-outline !px-5" :disabled="busy || !total" @click="checkout()">Дараалалд бүртгүүлэх (зай суларвал автоматаар идэвхжинэ)</button>
+                    <button v-if="!slotsFull" class="btn-primary !px-6" :disabled="busy || !total || !slots" @click="checkout()">Төлбөр рүү</button>
+                    <button v-else class="btn-outline !px-5 cursor-not-allowed opacity-60" disabled>
+                        Зай дүүрсэн{{ nextFreeLabel ? ` — ${nextFreeLabel}-нд боломжтой` : '' }}
+                    </button>
                     <span class="ml-auto text-[12px] font-medium text-mute">Хүссэн үедээ цуцлана · хугацаа дуустал үргэлжилнэ</span>
                 </div>
             </div>
@@ -301,7 +345,14 @@ onMounted(loadPage);
                     </div>
                 </div>
 
-                <button v-if="total" class="btn-primary mt-4 w-full !rounded-[10px] !py-3.5" :disabled="busy" @click="checkout()">{{ fmt(total) }} төлөх</button>
+                <button v-if="total && !slotsFull" class="btn-primary mt-4 w-full !rounded-[10px] !py-3.5" :disabled="busy" @click="checkout()">{{ fmt(total) }} төлөх</button>
+                <!-- Зай дүүрсэн бол төлөх боломжгүй — сервер ч татгалзана -->
+                <div v-else-if="slotsFull" class="mt-4 rounded-[10px] border border-amberline bg-ambertint px-4 py-3 text-center">
+                    <div class="text-[12.5px] font-bold text-ink">Энэ байршилд зай дүүрсэн</div>
+                    <div class="mt-1 text-[11.5px] leading-normal text-ambertext">
+                        {{ nextFreeLabel ? `${nextFreeLabel}-нд сул зай гарна` : 'Зай сулрахыг хүлээнэ үү' }}
+                    </div>
+                </div>
                 <p class="mt-3 text-center text-[11.5px] leading-relaxed text-mute">Төлбөр батлагдмагц онцлох байршил 10 минутын дотор нээгдэнэ.</p>
             </aside>
         </div>
