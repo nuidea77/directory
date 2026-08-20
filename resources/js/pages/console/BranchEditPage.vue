@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
 import { cityCenters } from '../../data/cityCenters';
+import { hoursAre247 } from '../../utils/hours';
 import { defineAsyncComponent } from 'vue';
 
 // Leaflet газрын зураг — дарж/чирж байршил сонгоно
@@ -37,25 +38,7 @@ const todo = computed(() => {
 
 // 24/7 нь тусдаа тохиргоо биш — оруулсан цагийн хуваариас өөрөө тооцогдоно
 // (сервер ч мөн `hours`-оос is_24_7-г яг ижил дүрмээр бодно)
-const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const FULL_DAY_TO = ['00:00', '23:59', '24:00'];
-
-// Нэг өдөр бүтэн хоног нээлттэй эсэх
-function isFullDay(day) {
-    if (!day || day.closed) return false;
-    const from = day.from || '';
-    const to = day.to || '';
-    if (!from || !to) return false;
-    if (from === to) return true;
-    return from === '00:00' && FULL_DAY_TO.includes(to);
-}
-
-// Долоо хоногийн өдөр бүр бүтэн хоног нээлттэй бол 24/7
-const is247 = computed(() => {
-    const hours = form.value?.hours;
-    if (!hours) return false;
-    return DAY_KEYS.every((key) => isFullDay(hours[key]));
-});
+const is247 = computed(() => hoursAre247(form.value?.hours));
 
 async function fetchBranch() {
     loadError.value = '';

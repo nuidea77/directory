@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { shortDate } from '../utils/date';
+import { dayLabel } from '../utils/hours';
 import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
@@ -284,7 +285,7 @@ onMounted(fetchBusiness);
                             <div v-for="(label, key) in weekdays" :key="key" class="flex justify-between border-b border-hairline px-4 py-2.5 last:border-0" :class="{ 'bg-bluetint': key === todayKey }">
                                 <span class="text-[13.5px] text-ink" :class="key === todayKey ? 'font-bold' : 'font-medium'">{{ label }}</span>
                                 <span class="text-[13.5px] font-medium text-soft">
-                                    {{ branch?.hours?.[key]?.closed ? 'Амарна' : (branch?.hours?.[key]?.from ? `${branch.hours[key].from} – ${branch.hours[key].to}` : '—') }}
+                                    {{ dayLabel(branch?.hours?.[key]) }}
                                 </span>
                             </div>
                         </div>

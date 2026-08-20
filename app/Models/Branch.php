@@ -95,24 +95,29 @@ class Branch extends Model
         }
 
         foreach (self::WEEKDAYS as $day) {
-            $slot = $hours[$day] ?? null;
-
-            if ($slot === null || ! empty($slot['closed']) || empty($slot['from']) || empty($slot['to'])) {
-                return false;
-            }
-
-            $from = $slot['from'];
-            $to = $slot['to'];
-
-            $fullDay = ($from === '00:00' && in_array($to, ['00:00', '23:59', '24:00'], true))
-                || ($from === $to); // ж: 08:00–08:00 = бүтэн хоног
-
-            if (! $fullDay) {
+            if (! self::isFullDaySlot($hours[$day] ?? null)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * Тухайн нэг өдөр бүтэн хоног (24 цаг) нээлттэй эсэх.
+     * «00:00–00:00», «00:00–23:59» болон from === to бүгд 24 цаг.
+     */
+    public static function isFullDaySlot(?array $slot): bool
+    {
+        if ($slot === null || ! empty($slot['closed']) || empty($slot['from']) || empty($slot['to'])) {
+            return false;
+        }
+
+        $from = $slot['from'];
+        $to = $slot['to'];
+
+        return ($from === '00:00' && in_array($to, ['00:00', '23:59', '24:00'], true))
+            || ($from === $to); // ж: 08:00–08:00 = бүтэн хоног
     }
 
     /**
@@ -124,8 +129,8 @@ class Branch extends Model
         $hours = $this->hours ?? [];
         $time = now()->format('H:i');
 
-        // 24/7 салбарт «00:00 хүртэл» гэж бичих нь төөрөгдөл тул тусад нь шийднэ
-        if (static::computeIs247($hours)) {
+        // Өнөөдөр бүтэн хоног ажиллаж байвал «00:00 хүртэл» гэх нь төөрөгдөл
+        if (static::isFullDaySlot($hours[self::WEEKDAYS[now()->dayOfWeekIso - 1]] ?? null)) {
             return ['open' => true, 'label' => 'Нээлттэй · 24 цаг'];
         }
 

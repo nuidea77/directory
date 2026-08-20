@@ -132,6 +132,31 @@ class DirectoryTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_full_day_hours_are_labelled_24_hours(): void
+    {
+        // Зөвхөн Даваа гарагт 24 цаг ажилладаг салбар
+        $hours = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [
+            $d => $d === 'mon' ? ['from' => '00:00', 'to' => '00:00'] : ['from' => '09:00', 'to' => '18:00'],
+        ])->all();
+
+        $branch = Branch::factory()->create(['hours' => $hours]);
+
+        // Даваа гараг, шөнө дунд ч гэсэн «Нээлттэй · 24 цаг»
+        $this->travelTo(now()->startOfWeek()->setTime(3, 0));
+        $state = $branch->openState();
+        $this->assertTrue($state['open']);
+        $this->assertSame('Нээлттэй · 24 цаг', $state['label']);
+
+        // Мягмар гарагт энгийн хуваарь — 24 цаг гэж бичихгүй
+        $this->travelTo(now()->startOfWeek()->addDay()->setTime(10, 0));
+        $this->assertStringNotContainsString('24 цаг', $branch->openState()['label']);
+
+        // Ганц өдөр 24 цаг байснаар 24/7 болохгүй
+        $this->assertFalse($branch->refresh()->is_24_7);
+
+        $this->travelBack();
+    }
+
     public function test_rejection_reason_is_not_exposed_publicly(): void
     {
         $branch = Branch::factory()->create([

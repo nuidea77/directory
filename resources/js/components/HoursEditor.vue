@@ -1,4 +1,6 @@
 <script setup>
+import { isFullDay as isFullDaySlot } from '../utils/hours';
+
 // Цагийн хуваарийн editor (3a/6a дизайн): өдөр бүр toggle + from/to
 const props = defineProps({
     modelValue: { type: Object, default: () => ({}) },
@@ -15,11 +17,9 @@ function dayValue(key) {
     return props.modelValue?.[key] || { from: '09:00', to: '19:00', closed: key === 'sun' };
 }
 
-// Тухайн өдөр бүтэн хоног нээлттэй эсэх (сервертэй ижил дүрэм: 00:00–00:00/23:59 эсвэл from === to)
+// Тухайн өдөр бүтэн хоног нээлттэй эсэх (сервертэй ижил дүрэм)
 function isFullDay(key) {
-    const d = dayValue(key);
-    if (d.closed || !d.from || !d.to) return false;
-    return d.from === d.to || (d.from === '00:00' && ['23:59', '24:00'].includes(d.to));
+    return isFullDaySlot(dayValue(key));
 }
 
 function update(key, patch) {
