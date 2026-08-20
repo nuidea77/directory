@@ -172,6 +172,44 @@ class DirectoryTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_admin_can_move_and_reorder_categories(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'phone_verified_at' => now()]);
+        $food = Category::factory()->create(['slug' => 'food', 'sort_order' => 0]);
+        $auto = Category::factory()->create(['slug' => 'auto', 'sort_order' => 1]);
+        $child = Category::factory()->create(['slug' => 'food-cafe', 'parent_id' => $food->id]);
+
+        // Дэд ангиллыг өөр эцэг рүү зөөх
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$child->id}", ['parent_id' => $auto->id])
+            ->assertOk();
+
+        $this->assertSame($auto->id, $child->refresh()->parent_id);
+
+        // Эрэмбэ солих
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$auto->id}", ['sort_order' => 0])
+            ->assertOk();
+
+        $this->assertSame(0, $auto->refresh()->sort_order);
+
+        // Өөрийгөө эцэг болгож мөчлөг үүсгэхийг хориглоно
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$auto->id}", ['parent_id' => $auto->id])
+            ->assertStatus(422);
+
+        // Тайлбарыг хоосон болгож болно
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$food->id}", ['description' => 'Хоолны газрууд'])
+            ->assertOk();
+        $this->assertSame('Хоолны газрууд', $food->refresh()->description);
+
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/categories/{$food->id}", ['description' => ''])
+            ->assertOk();
+        $this->assertNull($food->refresh()->description);
+    }
+
     public function test_home_featured_is_scoped_to_the_requested_city(): void
     {
         // Улаанбаатарын бизнес

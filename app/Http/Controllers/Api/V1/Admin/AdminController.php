@@ -324,13 +324,32 @@ class AdminController extends Controller
             'description' => ['nullable', 'string', 'max:500'],
             'icon' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            // Дэд ангиллыг өөр эцэг ангилал руу зөөх (null = үндсэн болгох)
+            'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
-        // icon-ыг зориуд хоосон болгож болно (array_filter null-ыг хаядаг тул тусад нь)
+        // Өөрийгөө болон өөрийн үр удмаа эцэг болгож болохгүй (мөчлөг үүснэ)
+        if ($request->exists('parent_id') && $data['parent_id'] !== null) {
+            $descendantIds = $category->children()->pluck('id')->push($category->id);
+
+            if ($descendantIds->contains((int) $data['parent_id'])) {
+                return response()->json([
+                    'message' => 'Ангиллыг өөрийнх нь дэд ангилал дор зөөх боломжгүй.',
+                ], 422);
+            }
+        }
+
+        // null утгуудыг зориуд хадгалж болно (array_filter тэднийг хаядаг тул тусад нь)
         $update = array_filter($data, fn ($v) => $v !== null);
 
-        if ($request->exists('icon')) {
-            $update['icon'] = $data['icon'] ?: null;
+        foreach (['icon', 'description'] as $nullable) {
+            if ($request->exists($nullable)) {
+                $update[$nullable] = $data[$nullable] ?: null;
+            }
+        }
+
+        if ($request->exists('parent_id')) {
+            $update['parent_id'] = $data['parent_id'] ?: null;
         }
 
         $category->update($update);
