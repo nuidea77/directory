@@ -103,7 +103,7 @@ function filteredFeatured() {
                 <router-link
                     v-for="category in categories"
                     :key="category.id"
-                    :to="{ name: 'category', params: { slug: category.slug } }"
+                    :to="{ name: 'category', params: { slug: category.slug }, query: city !== 'Улаанбаатар' ? { city } : {} }"
                     class="rounded-[10px] border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-sm"
                 >
                     <div class="h-8 w-8 rounded-lg border border-blueline bg-bluetint"></div>
@@ -116,7 +116,7 @@ function filteredFeatured() {
         <!-- Онцлох бизнесүүд -->
         <section class="mx-auto max-w-7xl px-5 py-9 sm:px-10 sm:pb-11">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Онцлох бизнесүүд</h2>
+                <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Онцлох бизнесүүд — {{ city }}</h2>
                 <div class="flex gap-2 text-[12.5px] font-semibold">
                     <button class="chip" :class="{ 'chip-active': featuredFilter === 'all' }" @click="featuredFilter = 'all'">Бүгд</button>
                     <button class="chip" :class="{ 'chip-active': featuredFilter === 'open' }" @click="featuredFilter = 'open'">Нээлттэй</button>
@@ -134,6 +134,14 @@ function filteredFeatured() {
             </div>
             <div v-else-if="filteredFeatured().length" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <BusinessCard v-for="business in filteredFeatured()" :key="business.id" :business="business" />
+            </div>
+            <!-- Тухайн хотод огт бизнес байхгүй бол шүүлтүүрийн хоосноос ялгаж хэлнэ -->
+            <div v-else-if="!featured.length" class="card mt-4 p-10 text-center">
+                <p class="text-[15px] font-bold text-ink">{{ city }}-д бүртгэлтэй бизнес одоогоор алга</p>
+                <p class="mx-auto mt-1.5 max-w-[420px] text-[13px] leading-relaxed text-mute">
+                    Энд бизнесээ анхны байдлаар бүртгүүлж, {{ city }}-ийн нүүр хуудсанд эхэлж харагдаарай.
+                </p>
+                <router-link :to="{ name: 'add-business' }" class="btn-primary mt-4">Бизнес нэмэх</router-link>
             </div>
             <div v-else class="card mt-4 p-10 text-center text-[13px] text-mute">Энэ шүүлтүүрт тохирох бизнес алга</div>
         </section>

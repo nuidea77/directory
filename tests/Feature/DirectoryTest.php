@@ -139,6 +139,57 @@ class DirectoryTest extends TestCase
         $this->assertSame($results, $stats);
     }
 
+    public function test_home_featured_is_scoped_to_the_requested_city(): void
+    {
+        // Улаанбаатарын бизнес
+        $ubBusiness = Business::factory()->create(['name' => 'УБ Бизнес']);
+        Branch::factory()->create(['business_id' => $ubBusiness->id, 'city' => 'Улаанбаатар', 'rating_avg' => 5.0]);
+
+        // Дарханы бизнес
+        $darkhan = Business::factory()->create(['name' => 'Дархан Бизнес']);
+        Branch::factory()->create(['business_id' => $darkhan->id, 'city' => 'Дархан-Уул', 'rating_avg' => 3.0]);
+
+        $ub = $this->getJson('/api/v1/home?city='.urlencode('Улаанбаатар'))->assertOk();
+        $dk = $this->getJson('/api/v1/home?city='.urlencode('Дархан-Уул'))->assertOk();
+
+        $ubNames = collect($ub->json('featured'))->pluck('name');
+        $dkNames = collect($dk->json('featured'))->pluck('name');
+
+        // Хот бүр өөрийн бизнесээ л харуулна — өмнө нь хаанаас орсон ч
+        // Улаанбаатарын жагсаалт ижилхэн гарч байсан
+        $this->assertContains('УБ Бизнес', $ubNames->all());
+        $this->assertNotContains('Дархан Бизнес', $ubNames->all());
+
+        $this->assertContains('Дархан Бизнес', $dkNames->all());
+        $this->assertNotContains('УБ Бизнес', $dkNames->all());
+    }
+
+    public function test_home_featured_campaign_only_runs_in_its_own_city(): void
+    {
+        $darkhan = Business::factory()->create(['name' => 'Дархан Онцлох']);
+        Branch::factory()->create(['business_id' => $darkhan->id, 'city' => 'Дархан-Уул']);
+
+        Campaign::factory()->create([
+            'organization_id' => $darkhan->organization_id,
+            'business_id' => $darkhan->id,
+            'type' => 'home_featured',
+            'category_id' => null,
+            'district' => null,
+            'city' => 'Дархан-Уул',
+            'keyword' => null,
+            'slot' => 1,
+            'status' => 'active',
+            'starts_at' => now(),
+            'ends_at' => now()->addDays(10),
+        ]);
+
+        $dk = collect($this->getJson('/api/v1/home?city='.urlencode('Дархан-Уул'))->json('featured'));
+        $ub = collect($this->getJson('/api/v1/home?city='.urlencode('Улаанбаатар'))->json('featured'));
+
+        $this->assertTrue($dk->firstWhere('name', 'Дархан Онцлох')['is_featured'] ?? false);
+        $this->assertNull($ub->firstWhere('name', 'Дархан Онцлох'));
+    }
+
     public function test_featured_campaign_pins_business_to_top(): void
     {
         $category = Category::factory()->create(['slug' => 'auto']);

@@ -61,9 +61,14 @@ const daysUntilFree = computed(() => {
     return Math.max(0, Math.ceil((new Date(slots.value.next_free_at) - Date.now()) / 86400000));
 });
 
+// Нүүрийн онцлох нь ХОТ тус бүрт тусдаа зайтай — сонгосон салбарын хот.
+// Өмнө нь үргэлж «Улаанбаатар» гэж хатуу бичигдсэн тул хөдөө орон нутгийн
+// бизнес өөрийнхөө хотод зар авах боломжгүй байв.
+const homeCity = computed(() => branch.value?.city || 'Улаанбаатар');
+
 const scopeLabel = computed(() => {
     if (type.value === 'category_featured') return `${business.value?.category?.name || ''} · ${branch.value?.district || ''}`;
-    if (type.value === 'home_featured') return 'Нүүр хуудас · Улаанбаатар';
+    if (type.value === 'home_featured') return `Нүүр хуудас · ${homeCity.value}`;
     return keyword.value ? `«${keyword.value}»` : 'Хайлтын үг';
 });
 
@@ -78,7 +83,7 @@ async function fetchSlots() {
             type: type.value,
             category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
             district: type.value === 'category_featured' ? branch.value.district : undefined,
-            city: type.value === 'home_featured' ? 'Улаанбаатар' : undefined,
+            city: type.value === 'home_featured' ? homeCity.value : undefined,
             keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
         });
         slots.value = data;
@@ -100,7 +105,7 @@ async function checkout() {
                 category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
                 category_name: type.value === 'category_featured' ? business.value.category.name : undefined,
                 district: type.value === 'category_featured' ? branch.value.district : undefined,
-                city: type.value === 'home_featured' ? 'Улаанбаатар' : undefined,
+                city: type.value === 'home_featured' ? homeCity.value : undefined,
                 keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
                 days: days.value,
             }],
@@ -191,10 +196,12 @@ onMounted(loadPage);
                             <option v-for="b in store.businesses" :key="b.id" :value="b.id">{{ b.name }}</option>
                         </select>
                     </div>
-                    <div v-if="type === 'category_featured'">
-                        <label class="field-label">Салбар</label>
+                    <div v-if="type !== 'keyword'">
+                        <label class="field-label">Салбар{{ type === 'home_featured' ? ' (хот тодорхойлно)' : '' }}</label>
                         <select v-model="selectedBranchId" class="input cursor-pointer">
-                            <option v-for="b in business?.branches || []" :key="b.id" :value="b.id">{{ b.district }}</option>
+                            <option v-for="b in business?.branches || []" :key="b.id" :value="b.id">
+                                {{ b.city && b.city !== 'Улаанбаатар' ? b.city + ' · ' : '' }}{{ b.district }}
+                            </option>
                         </select>
                     </div>
                     <div v-if="type === 'category_featured'">

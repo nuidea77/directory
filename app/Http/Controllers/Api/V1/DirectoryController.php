@@ -50,8 +50,11 @@ class DirectoryController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Нүүрийн онцлох — 6 зай (хот тус бүрт), дараа нь өндөр үнэлгээтэйгээр дүүргэнэ
+        // Нүүрийн онцлох — хот тус бүрт 6 зай, дараа нь тухайн хотын өндөр
+        // үнэлгээтэй бизнесүүдээр дүүргэнэ
         $city = (string) $request->query('city', 'Улаанбаатар');
+        $slots = (int) config('billing.ads.home_featured.slots', 6);
+
         $featuredIds = Campaign::query()->running()
             ->where('type', 'home_featured')
             ->where(fn ($q) => $q->where('city', $city)->orWhereNull('city'))
@@ -62,23 +65,35 @@ class DirectoryController extends Controller
         // салбар нийтийн хариултад орж байсан)
         $publicBranches = ['category', 'branches' => fn ($q) => $q->where('status', 'active'), 'branches.images'];
 
+        // Тухайн хотод идэвхтэй салбартай эсэх
+        $inCity = fn ($q) => $q->where('status', 'active')->where('city', $city);
+
         $featured = Business::with($publicBranches)
             ->whereIn('id', $featuredIds)
-            ->whereHas('branches', fn ($q) => $q->where('status', 'active'))
+            ->whereHas('branches', $inCity)
             ->get()
             ->sortBy(fn ($b) => $featuredIds->search($b->id))
             ->values();
 
-        if ($featured->count() < 6) {
-            // Бүх бизнесийг PHP рүү татахгүй — эрэмбийг SQL дээр хийнэ
+        // «Өдөр тутам эргэлдэнэ» — төлбөртэй зарууд өдөр бүр ээлжлэн эхэнд
+        // гарна (өмнө нь үргэлж нэг дараалалтай байсан)
+        if ($featured->count() > 1) {
+            $shift = now()->dayOfYear % $featured->count();
+            $featured = $featured->slice($shift)->concat($featured->take($shift))->values();
+        }
+
+        if ($featured->count() < $slots) {
+            // Бүх бизнесийг PHP рүү татахгүй — эрэмбийг SQL дээр хийнэ.
+            // Зөвхөн тухайн хотын бизнесүүд — өмнө нь хот харгалзахгүй
+            // дүүргэдэг байсан тул нүүр хуудас хот болгонд ижил байв.
             $fill = Business::with($publicBranches)
                 ->whereNotIn('id', $featuredIds)
-                ->whereHas('branches', fn ($q) => $q->where('status', 'active'))
-                ->withAvg(['branches as rating_avg_all' => fn ($q) => $q->where('status', 'active')], 'rating_avg')
-                ->withSum(['branches as reviews_total' => fn ($q) => $q->where('status', 'active')], 'reviews_count')
+                ->whereHas('branches', $inCity)
+                ->withAvg(['branches as rating_avg_all' => $inCity], 'rating_avg')
+                ->withSum(['branches as reviews_total' => $inCity], 'reviews_count')
                 ->orderByDesc('rating_avg_all')
                 ->orderByDesc('reviews_total')
-                ->limit(6 - $featured->count())
+                ->limit($slots - $featured->count())
                 ->get();
 
             $featured = $featured->concat($fill)->values();
@@ -91,12 +106,15 @@ class DirectoryController extends Controller
         $this->markFavorites($request, $featured);
 
         return response()->json([
+            'city' => $city,
             'categories' => CategoryResource::collection($categories),
             'featured' => BusinessResource::collection($featured),
             'stats' => [
                 // Идэвхтэй салбартай, өөрөөр хэлбэл хайлтад олдох бизнесүүд
                 'businesses' => Business::whereHas('branches', fn ($q) => $q->where('status', 'active'))->count(),
                 'branches' => Branch::where('status', 'active')->count(),
+                // Тухайн хотод хэдэн бизнес байгаа (хоосон хотод мэдэгдэнэ)
+                'city_businesses' => Business::whereHas('branches', $inCity)->count(),
             ],
         ]);
     }
