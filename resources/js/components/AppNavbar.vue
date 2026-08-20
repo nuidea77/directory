@@ -27,7 +27,7 @@ async function logout() {
                 <nav class="hidden items-center gap-6 text-[13.5px] font-medium text-chiptext lg:flex">
                     <router-link :to="{ name: 'categories' }" class="hover:text-ink">Ангилал</router-link>
                     <router-link :to="{ name: 'search' }" class="hover:text-ink">Бүх бизнес</router-link>
-                    <router-link :to="{ name: 'nearby' }" class="hover:text-ink">Миний ойролцоо</router-link>
+                    <router-link :to="{ name: 'search', query: { view: 'map', near: '1' } }" class="hover:text-ink">Миний ойролцоо</router-link>
                     <router-link :to="{ name: 'pricing' }" class="hover:text-ink">Бизнест</router-link>
                 </nav>
             </div>
@@ -76,7 +76,7 @@ async function logout() {
             <nav class="flex flex-col gap-1 text-[13.5px] font-medium">
                 <router-link :to="{ name: 'categories' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Ангилал</router-link>
                 <router-link :to="{ name: 'search' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бүх бизнес</router-link>
-                <router-link :to="{ name: 'nearby' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний ойролцоо</router-link>
+                <router-link :to="{ name: 'search', query: { view: 'map', near: '1' } }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний ойролцоо</router-link>
                 <router-link :to="{ name: 'pricing' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бизнест</router-link>
                 <template v-if="auth.isLoggedIn">
                     <router-link :to="{ name: 'account' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний булан</router-link>

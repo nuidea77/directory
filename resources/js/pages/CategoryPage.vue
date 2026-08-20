@@ -1,8 +1,11 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api';
 import ImagePh from '../components/ImagePh.vue';
+
+// Leaflet-тэй тул lazy-load — жагсаалтаар үзэхэд bundle ачаалахгүй
+const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 import CategoryIcon from '../components/CategoryIcon.vue';
 
 const route = useRoute();
@@ -30,12 +33,68 @@ const filters = ref({
     price: '',
     rating: '',
     open_now: false,
+    open_24_7: false,
     verified: false,
     amenity: '',
     sub: '',
     sort: 'rating',
     page: 1,
 });
+
+// Жагсаалт / газрын зураг таб (URL-д хадгалагдана)
+const view = ref('list');
+
+// «Миний ойролцоо» — байршил авмагц зайгаар эрэмбэлж, радиусаар шүүнэ
+const coords = ref(null);
+const radius = ref(2);
+const locating = ref(false);
+const locationError = ref('');
+const selectedId = ref(null);
+
+const nearMode = computed(() => coords.value !== null);
+const selected = computed(() => branches.value.find((b) => b.id === selectedId.value));
+
+// Газрын зурагт координаттай салбарууд
+const mapMarkers = computed(() => branches.value
+    .map((b, i) => ({ id: b.id, lat: b.lat, lng: b.lng, label: i + 1 }))
+    .filter((m) => m.lat !== null && m.lat !== undefined));
+
+function askLocation() {
+    locationError.value = '';
+
+    if (!navigator.geolocation) {
+        locationError.value = 'Таны хөтөч байршил дэмжихгүй байна.';
+        return;
+    }
+
+    locating.value = true;
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            coords.value = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            locating.value = false;
+            view.value = 'map';
+            filters.value.sort = 'distance';
+            apply();
+        },
+        () => {
+            locating.value = false;
+            locationError.value = 'Байршил авах боломжгүй байна. Хөтчийн зөвшөөрлөө шалгана уу.';
+        },
+        { timeout: 8000 },
+    );
+}
+
+function clearLocation() {
+    coords.value = null;
+    locationError.value = '';
+    if (filters.value.sort === 'distance') filters.value.sort = 'rating';
+    apply();
+}
+
+function setRadius(r) {
+    radius.value = r;
+    apply();
+}
 
 const isCategory = computed(() => route.name === 'category');
 
@@ -47,6 +106,8 @@ const pageWindow = computed(() => {
 });
 
 function syncFromRoute() {
+    view.value = route.query.view === 'map' ? 'map' : 'list';
+
     filters.value = {
         q: route.query.q || '',
         category: route.query.category || '',
@@ -55,6 +116,7 @@ function syncFromRoute() {
         price: route.query.price || '',
         rating: route.query.rating || '',
         open_now: route.query.open_now === '1',
+        open_24_7: route.query.open_24_7 === '1',
         verified: route.query.verified === '1',
         amenity: route.query.amenity || '',
         sub: route.query.sub || '',
@@ -87,13 +149,20 @@ async function fetchResults() {
             price: filters.value.price,
             rating: filters.value.rating,
             open_now: filters.value.open_now ? 1 : undefined,
+            open_24_7: filters.value.open_24_7 ? 1 : undefined,
             verified: filters.value.verified ? 1 : undefined,
             amenity: filters.value.amenity,
             sort: filters.value.sort,
             page: filters.value.page,
+            // «Ойролцоо» горимд зайгаар шүүж, эрэмбэлнэ
+            lat: coords.value?.lat,
+            lng: coords.value?.lng,
+            radius: coords.value ? radius.value : undefined,
+            per_page: view.value === 'map' ? 50 : undefined,
         });
         branches.value = data.data;
         meta.value = data.meta;
+        selectedId.value = branches.value[0]?.id || null;
     } catch {
         loadError.value = 'Илэрц ачаалахад алдаа гарлаа.';
     } finally {
@@ -114,7 +183,9 @@ function apply(page = 1) {
             price: filters.value.price || undefined,
             rating: filters.value.rating || undefined,
             open_now: filters.value.open_now ? '1' : undefined,
+            open_24_7: filters.value.open_24_7 ? '1' : undefined,
             verified: filters.value.verified ? '1' : undefined,
+            view: view.value === 'map' ? 'map' : undefined,
             amenity: filters.value.amenity || undefined,
             sub: filters.value.sub || undefined,
             sort: filters.value.sort !== 'rating' ? filters.value.sort : undefined,
@@ -124,7 +195,7 @@ function apply(page = 1) {
 }
 
 function clearFilters() {
-    filters.value = { ...filters.value, category: '', city: '', district: '', price: '', rating: '', open_now: false, amenity: '', sub: '' };
+    filters.value = { ...filters.value, category: '', city: '', district: '', price: '', rating: '', open_now: false, open_24_7: false, amenity: '', sub: '' };
     apply();
 }
 
@@ -163,6 +234,9 @@ watch(() => route.fullPath, async () => {
 onMounted(async () => {
     syncFromRoute();
     await loadAll();
+
+    // /nearby-аас чиглүүлж ирвэл байршлыг шууд асууна
+    if (route.query.near === '1' && !coords.value) askLocation();
 });
 </script>
 
@@ -272,6 +346,7 @@ onMounted(async () => {
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ОНЦЛОГ</div>
                 <div class="flex flex-wrap gap-1.5">
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.open_now ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.open_now = !filters.open_now; apply()">Одоо нээлттэй</button>
+                    <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.open_24_7 ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.open_24_7 = !filters.open_24_7; apply()">24/7 ажилладаг</button>
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.verified ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.verified = !filters.verified; apply()">✓ Баталгаажсан</button>
                     <button v-for="a in amenityOptions" :key="a" class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.amenity === a ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.amenity = filters.amenity === a ? '' : a; apply()">{{ a }}</button>
                 </div>
@@ -285,17 +360,60 @@ onMounted(async () => {
 
             <!-- Үр дүн -->
             <main class="px-5 py-5 sm:px-10">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-3">
                     <div class="text-[14px] font-bold text-ink">
                         {{ meta.total.toLocaleString() }} бизнес
                         <span v-if="filters.district || filters.price || filters.rating" class="font-medium text-mute">· {{ [filters.district, filters.price, filters.rating ? filters.rating + '+' : ''].filter(Boolean).join(', ') }}</span>
                     </div>
-                    <select v-model="filters.sort" class="cursor-pointer rounded-lg border border-inputline bg-white px-3 py-2 text-[12.5px] font-medium text-soft outline-none" @change="apply()">
+
+                    <!-- Жагсаалт / газрын зураг -->
+                    <div class="inline-flex gap-1 rounded-[9px] border border-searchline bg-white p-1">
+                        <button
+                            class="cursor-pointer rounded-[6px] px-3 py-1.5 text-[12px] font-bold"
+                            :class="view === 'list' ? 'bg-ink text-white' : 'text-soft'"
+                            @click="view = 'list'; apply(meta.current_page)"
+                        >Жагсаалт</button>
+                        <button
+                            class="cursor-pointer rounded-[6px] px-3 py-1.5 text-[12px] font-bold"
+                            :class="view === 'map' ? 'bg-ink text-white' : 'text-soft'"
+                            @click="view = 'map'; apply()"
+                        >Газрын зураг</button>
+                    </div>
+
+                    <!-- Миний ойролцоо -->
+                    <button
+                        v-if="!nearMode"
+                        class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-inputline bg-white px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-panel disabled:opacity-60"
+                        :disabled="locating"
+                        @click="askLocation"
+                    >
+                        <span class="h-2.5 w-2.5 rounded-full border-[2.5px] border-brand"></span>
+                        {{ locating ? 'Байршил тогтоож байна…' : 'Миний ойролцоо' }}
+                    </button>
+
+                    <select v-model="filters.sort" class="ml-auto cursor-pointer rounded-lg border border-inputline bg-white px-3 py-2 text-[12.5px] font-medium text-soft outline-none" @change="apply()">
                         <option value="rating">Эрэмбэ: Үнэлгээгээр</option>
                         <option value="reviews">Сэтгэгдлээр</option>
                         <option value="newest">Шинэ эхэндээ</option>
+                        <option v-if="nearMode" value="distance">Ойрхноос холуур</option>
                     </select>
                 </div>
+
+                <!-- Байршлын мөр: радиус сонголт -->
+                <div v-if="nearMode" class="mt-3 flex flex-wrap items-center gap-2.5 rounded-[10px] border border-blueline bg-bluetint px-3.5 py-2.5">
+                    <span class="text-[12.5px] font-semibold text-brand">Миний байршлаас</span>
+                    <div class="flex gap-1.5 text-[11.5px] font-semibold">
+                        <button
+                            v-for="r in [0.5, 2, 5, 20]"
+                            :key="r"
+                            class="cursor-pointer rounded-[7px] border px-2.5 py-1"
+                            :class="radius === r ? 'border-brand bg-brand text-white' : 'border-blueline bg-white text-brand'"
+                            @click="setRadius(r)"
+                        >{{ r < 1 ? r * 1000 + ' м' : r + ' км' }}</button>
+                    </div>
+                    <button class="ml-auto cursor-pointer text-[12px] font-semibold text-soft hover:text-red" @click="clearLocation">Байршил хаах</button>
+                </div>
+                <p v-if="locationError" class="mt-2 text-[12.5px] font-medium text-red">{{ locationError }}</p>
 
                 <div v-if="loading" class="mt-4 space-y-3">
                     <div v-for="i in 5" :key="i" class="card h-36 animate-pulse bg-panel"></div>
@@ -306,6 +424,72 @@ onMounted(async () => {
                     <button class="btn-primary mt-4" @click="loadAll">Дахин оролдох</button>
                 </div>
 
+                <!-- ГАЗРЫН ЗУРГААР -->
+                <div v-else-if="view === 'map'" class="mt-4">
+                    <div v-if="branches.length" class="grid grid-cols-1 gap-3 lg:grid-cols-[300px_1fr]">
+                        <!-- Зүүн талын товч жагсаалт -->
+                        <div class="max-h-[560px] overflow-y-auto rounded-xl border border-line bg-white">
+                            <button
+                                v-for="(branch, i) in branches"
+                                :key="branch.id"
+                                class="flex w-full cursor-pointer items-start gap-2.5 border-b border-hairline px-3.5 py-3 text-left last:border-0"
+                                :class="selectedId === branch.id ? 'bg-bluetint' : 'hover:bg-panel'"
+                                @click="selectedId = branch.id"
+                            >
+                                <span class="mt-0.5 flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold" :class="selectedId === branch.id ? 'bg-brand text-white' : 'bg-chip text-chiptext'">{{ i + 1 }}</span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex flex-wrap items-center gap-1.5">
+                                        <span class="text-[13px] font-bold text-ink">{{ branch.business.name }}</span>
+                                        <span v-if="branch.is_24_7" class="rounded-[4px] bg-greentint px-1.5 py-0.5 text-[9.5px] font-bold text-green">24/7</span>
+                                        <span v-if="branch.is_featured" class="badge-featured">ОНЦЛОХ</span>
+                                    </span>
+                                    <span class="mt-0.5 block text-[11.5px] text-mute">
+                                        {{ branch.rating_avg.toFixed(1) }} · {{ branch.district }}
+                                        <template v-if="branch.distance_km !== undefined"> · {{ branch.distance_km }} км</template>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+
+                        <!-- Газрын зураг -->
+                        <div class="relative overflow-hidden rounded-xl border border-line">
+                            <MapView
+                                :markers="mapMarkers"
+                                :selected-id="selectedId"
+                                :center="coords ? [coords.lat, coords.lng] : undefined"
+                                :circle="coords ? { lat: coords.lat, lng: coords.lng, radius: radius * 1000 } : null"
+                                height="560px"
+                                @select="(id) => (selectedId = id)"
+                            />
+
+                            <!-- Сонгосон салбарын карт -->
+                            <router-link
+                                v-if="selected"
+                                :to="{ name: 'business', params: { slug: selected.business.slug } }"
+                                class="absolute bottom-3 left-3 z-[500] w-[290px] rounded-xl border border-line bg-white p-3.5 shadow-lg"
+                                @click="trackView(selected)"
+                            >
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[13.5px] font-bold text-ink">{{ selected.business.name }}</span>
+                                    <span v-if="selected.is_24_7" class="rounded-[4px] bg-greentint px-1.5 py-0.5 text-[9.5px] font-bold text-green">24/7</span>
+                                </div>
+                                <div class="mt-1 text-[11.5px] text-mute">{{ selected.address }}</div>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] font-medium">
+                                    <span class="font-bold text-ink">{{ selected.rating_avg.toFixed(1) }}</span>
+                                    <span class="font-semibold" :class="selected.is_open ? 'text-green' : 'text-amberdark'">{{ selected.open_label }}</span>
+                                    <span v-if="selected.distance_km !== undefined" class="text-mute">{{ selected.distance_km }} км</span>
+                                </div>
+                            </router-link>
+                        </div>
+                    </div>
+
+                    <div v-else class="card p-16 text-center">
+                        <p class="text-[15px] font-bold text-ink">Илэрц олдсонгүй</p>
+                        <p class="mt-1.5 text-[13px] text-mute">{{ nearMode ? 'Радиусаа өргөсгөж үзнэ үү.' : 'Шүүлтүүрээ өөрчилж дахин оролдоно уу.' }}</p>
+                    </div>
+                </div>
+
+                <!-- ЖАГСААЛТААР -->
                 <div v-else-if="branches.length" class="mt-4 flex flex-col gap-3">
                     <router-link
                         v-for="(branch, i) in branches"
@@ -323,7 +507,9 @@ onMounted(async () => {
                                 <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * (meta.per_page || 20) + i + 1).padStart(2, '0') }}</span>
                                 <span class="text-[17px] font-bold text-ink">{{ branch.business.name }}</span>
                                 <span v-if="branch.business.is_verified" class="badge-verified">✓</span>
+                                <span v-if="branch.is_24_7" class="rounded-full bg-greentint px-2 py-0.5 text-[10px] font-bold text-green">24/7</span>
                                 <span v-if="branch.is_featured" class="badge-featured">ОНЦЛОХ</span>
+                                <span v-if="branch.distance_km !== undefined" class="text-[11.5px] font-semibold text-brand">{{ branch.distance_km }} км</span>
                             </div>
                             <div class="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] font-medium text-soft">
                                 <span class="font-bold text-ink">{{ branch.rating_avg.toFixed(1) }}</span>

@@ -38,6 +38,7 @@ class BranchResource extends JsonResource
             'rejection_reason' => $this->when($private, fn () => $this->rejection_reason),
             // Тухайн салбар онцлох зартай эсэх (хайлтын илэрцэд)
             'is_featured' => $this->when(isset($this->is_featured), fn () => (bool) $this->is_featured),
+            'is_24_7' => (bool) $this->is_24_7,
             'is_open' => $open['open'],
             'open_label' => $open['label'],
             'rating_avg' => (float) $this->rating_avg,

@@ -133,6 +133,7 @@ class DirectoryController extends Controller
             'price' => ['nullable', 'in:₮,₮₮,₮₮₮'],
             'rating' => ['nullable', 'numeric', 'min:1', 'max:5'],
             'open_now' => ['nullable', 'boolean'],
+            'open_24_7' => ['nullable', 'boolean'],
             'verified' => ['nullable', 'boolean'],
             'amenity' => ['nullable', 'string', 'max:50'],
             'sort' => ['nullable', 'in:rating,newest,reviews,distance'],
@@ -215,6 +216,11 @@ class DirectoryController extends Controller
 
         if ($rating = $request->query('rating')) {
             $query->where('rating_avg', '>=', (float) $rating);
+        }
+
+        // 24/7 ажилладаг — SQL багана тул хуудаслалтын тоо зөв гарна
+        if ($request->boolean('open_24_7')) {
+            $query->where('is_24_7', true);
         }
 
         if ($request->boolean('verified')) {

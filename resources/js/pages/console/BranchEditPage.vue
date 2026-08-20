@@ -35,6 +35,46 @@ const todo = computed(() => {
     ];
 });
 
+// 24/7 (бүтэн цагийн) горим — сервер `hours`-оос is_24_7-г ижил дүрмээр тооцдог
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const FULL_DAY_TO = ['00:00', '23:59', '24:00'];
+const DEFAULT_DAY = { from: '09:00', to: '18:00', closed: false };
+
+// Нэг өдөр бүтэн хоног нээлттэй эсэх (сервертэй ижил дүрэм — энэ файлд ганц газар)
+function isFullDay(day) {
+    if (!day || day.closed) return false;
+    const from = day.from || '';
+    const to = day.to || '';
+    if (!from || !to) return false;
+    if (from === to) return true;
+    return from === '00:00' && FULL_DAY_TO.includes(to);
+}
+
+function hoursAre247(hours) {
+    if (!hours) return false;
+    return DAY_KEYS.every((key) => isFullDay(hours[key]));
+}
+
+const is247 = ref(false);
+// 24/7 асаахын өмнөх хуваарийг санаж, унтраахад буцаана
+const hoursBefore247 = ref(null);
+
+function set247(on) {
+    is247.value = on;
+    if (on) {
+        hoursBefore247.value = JSON.parse(JSON.stringify(form.value.hours || {}));
+        const next = {};
+        for (const key of DAY_KEYS) next[key] = { from: '00:00', to: '00:00', closed: false };
+        form.value.hours = next;
+        return;
+    }
+    const prev = hoursBefore247.value;
+    const usable = prev && !hoursAre247(prev) ? prev : null;
+    const next = {};
+    for (const key of DAY_KEYS) next[key] = usable?.[key] ? { ...usable[key] } : { ...DEFAULT_DAY };
+    form.value.hours = next;
+}
+
 async function fetchBranch() {
     loadError.value = '';
     try {
@@ -54,6 +94,8 @@ async function fetchBranch() {
             hours: branch.value.hours || {},
             amenities: branch.value.amenities || [],
         };
+        is247.value = hoursAre247(form.value.hours);
+        hoursBefore247.value = null;
     } catch {
         loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
     }
@@ -269,9 +311,28 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="mt-4">
-                        <HoursEditor v-model="form.hours">
-                            <template #title><span class="field-label !mb-0">Цагийн хуваарь</span></template>
-                        </HoursEditor>
+                        <div class="flex items-start gap-3 rounded-xl border border-line bg-panel px-4 py-3">
+                            <button
+                                type="button"
+                                role="switch"
+                                :aria-checked="is247"
+                                aria-label="24/7 ажиллана"
+                                class="relative mt-0.5 h-[21px] w-[38px] shrink-0 cursor-pointer rounded-full transition"
+                                :class="is247 ? 'bg-brand' : 'bg-[#dcdad4]'"
+                                @click="set247(!is247)"
+                            >
+                                <span class="absolute top-0.5 h-[17px] w-[17px] rounded-full bg-white shadow transition-all" :style="{ left: is247 ? '19px' : '2px' }"></span>
+                            </button>
+                            <div>
+                                <div class="text-[13px] font-semibold text-ink">24/7 ажиллана</div>
+                                <p class="mt-0.5 text-[12px] font-medium text-mute">24/7 салбар хайлтын жагсаалтад «24/7» тэмдэгтэй харагдаж, хэрэглэгчид шүүлтүүрээр шүүж олох боломжтой.</p>
+                            </div>
+                        </div>
+                        <div class="mt-3.5 transition-opacity" :class="is247 ? 'pointer-events-none opacity-50' : ''" :inert="is247">
+                            <HoursEditor v-model="form.hours">
+                                <template #title><span class="field-label !mb-0">Цагийн хуваарь</span></template>
+                            </HoursEditor>
+                        </div>
                     </div>
                 </div>
 

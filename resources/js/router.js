@@ -8,7 +8,9 @@ const routes = [
     { path: '/categories', name: 'categories', component: () => import('./pages/CategoriesPage.vue') },
     { path: '/c/:slug', name: 'category', component: () => import('./pages/CategoryPage.vue') },
     { path: '/b/:slug', name: 'business', component: () => import('./pages/BusinessPage.vue') },
-    { path: '/nearby', name: 'nearby', component: () => import('./pages/NearbyPage.vue') },
+    // Ойролцоо нь одоо хайлтын хуудасны газрын зургийн горим — хуучин
+    // холбоос, хавчуургууд ажиллах ёстой тул чиглүүлнэ
+    { path: '/nearby', name: 'nearby', redirect: { name: 'search', query: { view: 'map', near: '1' } } },
     { path: '/pricing', name: 'pricing', component: () => import('./pages/PricingPage.vue') },
     { path: '/terms', name: 'terms', component: () => import('./pages/TermsPage.vue') },
     { path: '/privacy', name: 'privacy', component: () => import('./pages/PrivacyPage.vue') },

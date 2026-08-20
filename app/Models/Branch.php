@@ -38,6 +38,7 @@ class Branch extends Model
     {
         return [
             'is_main' => 'boolean',
+            'is_24_7' => 'boolean',
             'hours' => 'array',
             'amenities' => 'array',
             'lat' => 'float',
@@ -80,6 +81,38 @@ class Branch extends Model
             'reviews_count' => (int) $stats->cnt,
             'rating_avg' => round((float) $stats->avg, 2),
         ])->save();
+    }
+
+    /**
+     * 24/7 эсэх: 7 хоногийн өдөр бүр бүтэн хоногоор нээлттэй.
+     * «00:00–00:00» (шөнө дамжсан бүтэн хоног) болон «00:00–23:59»
+     * хоёуланг нь 24 цаг гэж үзнэ.
+     */
+    public static function computeIs247(?array $hours): bool
+    {
+        if (empty($hours)) {
+            return false;
+        }
+
+        foreach (self::WEEKDAYS as $day) {
+            $slot = $hours[$day] ?? null;
+
+            if ($slot === null || ! empty($slot['closed']) || empty($slot['from']) || empty($slot['to'])) {
+                return false;
+            }
+
+            $from = $slot['from'];
+            $to = $slot['to'];
+
+            $fullDay = ($from === '00:00' && in_array($to, ['00:00', '23:59', '24:00'], true))
+                || ($from === $to); // ж: 08:00–08:00 = бүтэн хоног
+
+            if (! $fullDay) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -149,6 +182,13 @@ class Branch extends Model
 
     protected static function booted(): void
     {
+        // Цагийн хуваарь өөрчлөгдөх бүрд 24/7 тугийг дахин бодно
+        static::saving(function (Branch $branch) {
+            if ($branch->isDirty('hours') || ! $branch->exists) {
+                $branch->is_24_7 = static::computeIs247($branch->hours);
+            }
+        });
+
         // Салбар устахад зургийн файлууд дискнээс хамт устана
         static::deleting(function (Branch $branch) {
             $paths = $branch->images()->get(['path', 'thumb_path'])

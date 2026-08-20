@@ -66,6 +66,49 @@ class DirectoryTest extends TestCase
         \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
     }
 
+    public function test_24_7_flag_is_computed_from_hours(): void
+    {
+        $full = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '00:00', 'to' => '00:00']])->all();
+        $almost = $full;
+        $almost['sun'] = ['closed' => true]; // ням гарагт хаалттай
+
+        $day = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '09:00', 'to' => '18:00']])->all();
+
+        $always = Branch::factory()->create(['hours' => $full]);
+        $notQuite = Branch::factory()->create(['hours' => $almost]);
+        $normal = Branch::factory()->create(['hours' => $day]);
+
+        $this->assertTrue($always->refresh()->is_24_7);
+        $this->assertFalse($notQuite->refresh()->is_24_7, 'Ням гарагт хаалттай бол 24/7 биш');
+        $this->assertFalse($normal->refresh()->is_24_7);
+
+        // 00:00–23:59 хэлбэрийг ч 24 цаг гэж үзнэ
+        $normal->update(['hours' => collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '00:00', 'to' => '23:59']])->all()]);
+        $this->assertTrue($normal->refresh()->is_24_7, 'Цагийн хуваарь солиход туг дахин бодогдоно');
+
+        // Буцаад энгийн болгоход туг арилна
+        $normal->update(['hours' => $day]);
+        $this->assertFalse($normal->refresh()->is_24_7);
+    }
+
+    public function test_search_can_filter_by_24_7(): void
+    {
+        $full = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '00:00', 'to' => '00:00']])->all();
+        $day = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '09:00', 'to' => '18:00']])->all();
+
+        Branch::factory()->create(['hours' => $full, 'name' => 'Шөнөжингөө']);
+        Branch::factory()->count(2)->create(['hours' => $day]);
+
+        $all = $this->getJson('/api/v1/search')->assertOk();
+        $only = $this->getJson('/api/v1/search?open_24_7=1')->assertOk();
+
+        $this->assertSame(3, $all->json('meta.total'));
+        // Хуудаслалтын тоо ч зөв (SQL багана тул)
+        $this->assertSame(1, $only->json('meta.total'));
+        $this->assertSame('Шөнөжингөө', $only->json('data.0.name'));
+        $this->assertTrue($only->json('data.0.is_24_7'));
+    }
+
     public function test_overnight_hours_are_reported_open(): void
     {
         // 18:00–02:00 гэх мэт шөнө дамжсан цагийг «хаалттай» гэж үздэг байсан
