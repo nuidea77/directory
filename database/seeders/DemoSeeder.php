@@ -77,6 +77,9 @@ class DemoSeeder extends Seeder
             },
         ])->all();
 
+        // 24 цагийн салбаруудын хуваарь — is_24_7-г Branch модель өөрөө үүнээс тооцно
+        $hours247 = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '00:00', 'to' => '00:00']])->all();
+
         $branchData = [
             ['name' => 'Сүхбаатар салбар', 'district' => 'Сүхбаатар', 'khoroo' => '1-р хороо', 'address' => 'Их тойруу 42', 'lat' => 47.9184, 'lng' => 106.9177, 'phone' => '70112233', 'is_main' => true],
             ['name' => 'Баянзүрх салбар', 'district' => 'Баянзүрх', 'khoroo' => '13-р хороо', 'address' => 'Энхтайваны өргөн чөлөө 68, “Гранд” төвийн 1-р давхар', 'lat' => 47.9102, 'lng' => 106.9541, 'phone' => '95001122', 'is_main' => false],
@@ -114,12 +117,14 @@ class DemoSeeder extends Seeder
                 'desc' => 'Үс засалт, будалт, арьс арчилгааны цогц үйлчилгээ.'],
             ['org' => 'Кофе Хаус ХХК', 'name' => 'Кофе Хаус 21', 'slug' => 'coffee-house-21', 'category' => 'restaurants', 'sub' => 'Кафе, бэйкери', 'district' => 'Сүхбаатар', 'address' => 'Олимпын гудамж 12', 'phone' => '88001177', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'Ажиллахад тохиромжтой, суудал бүрт залгууртай кафе. Шинэ цэс, үнийн жагсаалттай.'],
-            ['org' => 'Хаан Бууз ХХК', 'name' => 'Хаан Буузны газар', 'slug' => 'khaan-buuz', 'category' => 'restaurants', 'sub' => 'Монгол хоол', 'district' => 'Сүхбаатар', 'address' => 'Сеүлийн гудамж 5', 'phone' => '99113322', 'price' => '₮', 'verified' => true,
+            ['org' => 'Хаан Бууз ХХК', 'name' => 'Хаан Буузны газар', 'slug' => 'khaan-buuz', 'category' => 'restaurants', 'sub' => 'Монгол хоол', 'district' => 'Сүхбаатар', 'address' => 'Сеүлийн гудамж 5', 'phone' => '99113322', 'price' => '₮', 'verified' => true, 'open24' => true,
                 'desc' => 'Түргэн үйлчилгээтэй үндэсний хоолны газар. Хүргэлт, авч явах үйлчилгээтэй.'],
             ['org' => 'Түмэн Мотор ХХК', 'name' => 'Түмэн Мотор', 'slug' => 'tumen-motor', 'category' => 'auto', 'sub' => 'Авто засвар', 'district' => 'Баянгол', 'address' => 'Амарсанаагийн гудамж 9', 'phone' => '99887711', 'price' => '₮₮', 'verified' => false,
                 'desc' => 'Явах эд анги, дугуйн засвар, оношилгоо.'],
             ['org' => 'Урт Цагаан ХХК', 'name' => 'Урт Цагаан', 'slug' => 'urt-tsagaan', 'category' => 'restaurants', 'sub' => 'Монгол хоол', 'district' => 'Чингэлтэй', 'address' => 'Бага тойруу 18', 'phone' => '77884411', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'Уламжлалт монгол хоолны ресторан.'],
+            ['org' => 'Сүлд Фарм ХХК', 'name' => 'Сүлд Эмийн Сан', 'slug' => 'suld-emiin-san', 'category' => 'health', 'sub' => 'Эмийн сан', 'district' => 'Баянзүрх', 'address' => 'Энхтайваны өргөн чөлөө 55', 'phone' => '70009911', 'price' => '₮', 'verified' => true, 'open24' => true,
+                'desc' => '24 цагийн эмийн сан. Жороор олгох эм, анхны тусламжийн хэрэгсэл, эмчийн зөвлөгөө.'],
             ['org' => 'Смарт Скул ХХК', 'name' => 'Смарт Скул', 'slug' => 'smart-school', 'category' => 'education', 'sub' => 'Хэлний сургалт', 'district' => 'Чингэлтэй', 'address' => 'Барилгачдын талбай 3', 'phone' => '70110099', 'price' => '₮₮', 'verified' => false,
                 'desc' => 'Программчлал, англи хэлний эрчимжүүлсэн сургалт.'],
         ];
@@ -156,7 +161,7 @@ class DemoSeeder extends Seeder
                     'lat' => 47.85 + random_int(0, 900) / 10000,
                     'lng' => 106.85 + random_int(0, 1500) / 10000,
                     'phone' => $sample['phone'],
-                    'hours' => $hours,
+                    'hours' => ($sample['open24'] ?? false) ? $hours247 : $hours,
                     'amenities' => collect(['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Танхим'])->random(3)->values()->all(),
                     'status' => 'active',
                 ],

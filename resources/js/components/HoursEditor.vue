@@ -15,6 +15,13 @@ function dayValue(key) {
     return props.modelValue?.[key] || { from: '09:00', to: '19:00', closed: key === 'sun' };
 }
 
+// Тухайн өдөр бүтэн хоног нээлттэй эсэх (сервертэй ижил дүрэм: 00:00–00:00/23:59 эсвэл from === to)
+function isFullDay(key) {
+    const d = dayValue(key);
+    if (d.closed || !d.from || !d.to) return false;
+    return d.from === d.to || (d.from === '00:00' && ['23:59', '24:00'].includes(d.to));
+}
+
 function update(key, patch) {
     emit('update:modelValue', { ...props.modelValue, [key]: { ...dayValue(key), ...patch } });
 }
@@ -73,6 +80,8 @@ defineExpose({ copyWeekdays });
                     />
                 </div>
                 <span v-if="dayValue(key).closed" class="ml-auto text-[12px] font-medium text-mute">Амарна</span>
+                <span v-else-if="isFullDay(key)" class="ml-auto rounded-full bg-greentint px-2 py-0.5 text-[11px] font-bold text-green">24 цаг</span>
+                <button v-else type="button" class="ml-auto cursor-pointer text-[12px] font-semibold text-brand hover:underline" @click="update(key, { from: '00:00', to: '00:00' })">24 цаг</button>
             </div>
         </div>
     </div>

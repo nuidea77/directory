@@ -124,6 +124,11 @@ class Branch extends Model
         $hours = $this->hours ?? [];
         $time = now()->format('H:i');
 
+        // 24/7 салбарт «00:00 хүртэл» гэж бичих нь төөрөгдөл тул тусад нь шийднэ
+        if (static::computeIs247($hours)) {
+            return ['open' => true, 'label' => 'Нээлттэй · 24 цаг'];
+        }
+
         $dayAt = function (int $isoDay) use ($hours): ?array {
             $slot = $hours[self::WEEKDAYS[$isoDay - 1]] ?? null;
 
@@ -182,11 +187,9 @@ class Branch extends Model
 
     protected static function booted(): void
     {
-        // Цагийн хуваарь өөрчлөгдөх бүрд 24/7 тугийг дахин бодно
+        // 24/7 нь гараар тавих тохиргоо биш — хадгалах бүрд цагийн хуваариас бодогдоно
         static::saving(function (Branch $branch) {
-            if ($branch->isDirty('hours') || ! $branch->exists) {
-                $branch->is_24_7 = static::computeIs247($branch->hours);
-            }
+            $branch->is_24_7 = static::computeIs247($branch->hours);
         });
 
         // Салбар устахад зургийн файлууд дискнээс хамт устана
