@@ -1,6 +1,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { shortDate } from '../../utils/date';
 import { api } from '../../api';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 
 // Бизнесүүд: эрхийн төрөл, хүлээгдэж буй төлбөр/сурталчилгаа/модерац,
 // ангилал, байршил (аймаг/нийслэл → сум/дүүрэг) шүүлтүүртэй жагсаалт
@@ -39,10 +42,11 @@ const districtOptions = computed(() => {
     return city ? city.districts : [];
 });
 
-const planBadge = {
-    free: 'bg-chip text-soft',
-    standard: 'bg-bluetint text-brand',
-    business: 'bg-greentint text-green',
+// Эрхийн төрөл → AdminBadge-ийн өнгө
+const planTone = {
+    free: 'neutral',
+    standard: 'brand',
+    business: 'good',
 };
 
 let searchTimer = null;
@@ -88,15 +92,14 @@ onMounted(async () => {
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3.5">
-                <h1 class="text-[15px] font-bold text-ink">Бизнесүүд</h1>
-                <span v-if="data" class="rounded-full bg-chip px-2 py-0.5 font-mono text-[10.5px] font-bold text-soft">{{ data.meta.total }}</span>
-            </div>
-        </div>
+        <AdminPageHeader
+            title="Бизнесүүд"
+            description="Бүртгэлтэй бизнесүүдийг нэр, эрхийн төрөл, ангилал, байршлаар шүүж, хүлээгдэж буй төлбөр, сурталчилгаа, модерацыг нь хянана."
+            :meta="data ? [{ label: data.meta.total + ' бизнес' }] : []"
+        />
 
         <!-- Шүүлтүүр -->
-        <div class="card mt-4 flex flex-wrap items-center gap-2 p-3">
+        <div class="card flex flex-wrap items-center gap-2 p-3">
             <input
                 v-model="filters.q"
                 type="search"
@@ -164,16 +167,16 @@ onMounted(async () => {
 
                     <!-- Эрх -->
                     <div>
-                        <span class="rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-bold" :class="planBadge[b.plan]">{{ b.plan_name }}</span>
-                        <div v-if="b.plan_expires_at" class="mt-1 text-[10.5px] text-mute">{{ new Date(b.plan_expires_at).toLocaleDateString() }} хүртэл</div>
+                        <AdminBadge :tone="planTone[b.plan]">{{ b.plan_name }}</AdminBadge>
+                        <div v-if="b.plan_expires_at" class="mt-1 text-[10.5px] text-mute">{{ shortDate(b.plan_expires_at) }} хүртэл</div>
                     </div>
 
                     <!-- Хүлээгдэж буй -->
-                    <div class="flex flex-wrap gap-1.5 text-[10.5px] font-bold">
-                        <span v-if="b.pending_orders_count" class="rounded-[5px] bg-amberbadge px-1.5 py-0.5 text-amber">₮ төлбөр {{ b.pending_orders_count }}</span>
-                        <span v-if="b.pending_ads_count" class="rounded-[5px] bg-bluetint px-1.5 py-0.5 text-brand">Сурталчилгаа {{ b.pending_ads_count }}</span>
-                        <span v-if="b.pending_branches_count" class="rounded-[5px] bg-ambertint px-1.5 py-0.5 text-amberdark">Модерац {{ b.pending_branches_count }}</span>
-                        <span v-if="!b.pending_orders_count && !b.pending_ads_count && !b.pending_branches_count" class="font-medium text-mute">—</span>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <AdminBadge v-if="b.pending_orders_count" tone="warn">₮ төлбөр {{ b.pending_orders_count }}</AdminBadge>
+                        <AdminBadge v-if="b.pending_ads_count" tone="brand">Сурталчилгаа {{ b.pending_ads_count }}</AdminBadge>
+                        <AdminBadge v-if="b.pending_branches_count" tone="warn">Модерац {{ b.pending_branches_count }}</AdminBadge>
+                        <span v-if="!b.pending_orders_count && !b.pending_ads_count && !b.pending_branches_count" class="text-[10.5px] font-medium text-mute">—</span>
                     </div>
                 </div>
 

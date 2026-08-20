@@ -1,6 +1,11 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+import { Megaphone, ListOrdered, Clock, CalendarClock, Coins } from 'lucide-vue-next';
+import { shortDate } from '../../utils/date';
 import { api } from '../../api';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminStat from '../../components/admin/AdminStat.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 
 // Сурталчилгааны тойм: хэдэн зар явж байгаа, дуусах хугацаа, дараалал
 const data = ref(null);
@@ -10,11 +15,6 @@ const page = ref(1);
 
 const fmt = (n) => '₮' + Number(n).toLocaleString();
 
-const shortDate = (v) => {
-    if (!v) return '—';
-    const d = new Date(v);
-    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-};
 
 const statusLabel = {
     active: ['ЯВЖ БАЙНА', 'bg-greentint text-green'],
@@ -48,9 +48,12 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center gap-3">
-            <h1 class="text-[15px] font-bold text-ink">Сурталчилгаа (зарууд)</h1>
-            <select v-model="filters.status" class="ml-auto cursor-pointer rounded-[8px] border border-inputline bg-white px-2.5 py-2 text-[12.5px] font-semibold text-ink outline-none">
+        <AdminPageHeader
+            title="Сурталчилгаа"
+            description="Худалдагдсан онцлох байршлууд, тэдгээрийн хугацаа, үр дүн. Зайн ачаалал хэсэгт аль байршил дүүрснийг харна."
+        >
+            <template #actions>
+            <select v-model="filters.status" class="cursor-pointer rounded-[8px] border border-inputline bg-white px-2.5 py-2 text-[12.5px] font-semibold text-ink outline-none">
                 <option value="">Бүх төлөв</option>
                 <option value="active">Явж байгаа</option>
                 <option value="queued">Дараалалд</option>
@@ -64,31 +67,24 @@ onMounted(fetchData);
                 <option value="home_featured">Нүүрийн онцлох</option>
                 <option value="keyword">Хайлтын үг</option>
             </select>
-        </div>
+            </template>
+        </AdminPageHeader>
 
-        <div v-if="loadError" class="card mt-4 p-10 text-center">
+        <div v-if="loadError" class="card p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
             <button class="btn-primary mt-4" @click="fetchData">Дахин оролдох</button>
         </div>
 
-        <div v-else-if="!data" class="card mt-4 h-64 animate-pulse"></div>
+        <div v-else-if="!data" class="card h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- KPI -->
-            <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-                <div v-for="k in [
-                    ['Явж байгаа зар', data.kpis.active, 'text-green'],
-                    ['Дараалалд', data.kpis.queued, data.kpis.queued ? 'text-amber' : 'text-ink'],
-                    ['Төлбөр хүлээж буй', data.kpis.pending_payment, 'text-ink'],
-                    ['7 хоногт дуусах', data.kpis.expiring_7d, data.kpis.expiring_7d ? 'text-amber' : 'text-ink'],
-                ]" :key="k[0]" class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">{{ k[0] }}</div>
-                    <div class="mt-2 text-2xl font-extrabold tracking-[-.02em]" :class="k[2]">{{ Number(k[1]).toLocaleString() }}</div>
-                </div>
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">Идэвхтэй зарын орлого</div>
-                    <div class="mt-2 text-[20px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(data.kpis.running_revenue) }}</div>
-                </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <AdminStat label="Явж байгаа зар" :value="Number(data.kpis.active)" tone="good" :icon="Megaphone" />
+                <AdminStat label="Дараалалд" :value="Number(data.kpis.queued)" :tone="data.kpis.queued ? 'warn' : 'default'" :icon="ListOrdered" />
+                <AdminStat label="Төлбөр хүлээж буй" :value="Number(data.kpis.pending_payment)" :icon="Clock" />
+                <AdminStat label="7 хоногт дуусах" :value="Number(data.kpis.expiring_7d)" :tone="data.kpis.expiring_7d ? 'warn' : 'default'" :icon="CalendarClock" hint="Сунгалт санал болгох" />
+                <AdminStat label="Идэвхтэй зарын орлого" :value="fmt(data.kpis.running_revenue)" tone="good" :icon="Coins" />
             </div>
 
             <!-- Зайн ачаалал: аль байршил дүүрсэн, хэзээ сулрах -->
@@ -110,12 +106,10 @@ onMounted(fetchData);
                             <div class="h-full" :class="sp.free === 0 ? 'bg-amber' : 'bg-green'" :style="{ width: Math.min(100, ((sp.occupied + sp.pending + sp.queued) / sp.total) * 100) + '%' }"></div>
                         </div>
                         <span class="font-mono text-[12px] font-semibold text-ink">{{ sp.occupied }}/{{ sp.total }}</span>
-                        <span v-if="sp.pending" class="rounded-[4px] bg-amberbadge px-1.5 py-0.5 text-[9.5px] font-semibold text-amber">+{{ sp.pending }} төлбөр хүлээж</span>
+                        <AdminBadge v-if="sp.pending" tone="warn">+{{ sp.pending }} төлбөр хүлээж</AdminBadge>
                     </div>
                     <div>
-                        <span class="rounded-full px-2 py-0.5 text-[10.5px] font-bold" :class="sp.free === 0 ? 'bg-amberbadge text-amber' : 'bg-greentint text-green'">
-                            {{ sp.free === 0 ? 'ДҮҮРСЭН' : sp.free + ' сул' }}
-                        </span>
+                        <AdminBadge :tone="sp.free === 0 ? 'warn' : 'good'">{{ sp.free === 0 ? 'ДҮҮРСЭН' : sp.free + ' сул' }}</AdminBadge>
                     </div>
                     <div class="text-[12.5px] font-medium" :class="sp.free === 0 ? 'text-ink' : 'text-mute'">
                         {{ sp.free === 0 ? shortDate(sp.next_free_at) : 'одоо боломжтой' }}
@@ -139,7 +133,7 @@ onMounted(fetchData);
                     <div><span class="rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold" :class="statusLabel[c.status]?.[1]">{{ statusLabel[c.status]?.[0] }}</span></div>
                     <div class="text-[11.5px] text-body">
                         <template v-if="c.ends_at">
-                            {{ new Date(c.ends_at).toLocaleDateString() }} хүртэл
+                            {{ shortDate(c.ends_at) }} хүртэл
                             <div class="font-semibold" :class="c.days_left <= 3 ? 'text-amberdark' : 'text-mute'">{{ c.days_left }} хоног үлдсэн</div>
                         </template>
                         <span v-else class="text-mute">{{ c.days }} хоног (эхлээгүй)</span>

@@ -1,8 +1,18 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import { Flag, Clock, CheckCircle2, XCircle, Store } from 'lucide-vue-next';
 import { api } from '../../api';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminStat from '../../components/admin/AdminStat.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 
 // Модерацын тойм (4a): KPI, хүлээгдэж буй бүртгэл, дата чанар
+// Огноог YYYY.MM.DD — browser бүрд mn-MN locale байдаггүй
+const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+})();
+
 const data = ref(null);
 const loadError = ref('');
 const busyId = ref(null);
@@ -41,36 +51,38 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3.5">
-                <h1 class="text-[15px] font-bold text-ink">Модерацын тойм</h1>
-                <span class="text-[12.5px] font-medium text-mute">{{ new Date().toLocaleDateString() }}</span>
-            </div>
-        </div>
+        <AdminPageHeader
+            title="Модерацын тойм"
+            description="Шинээр бүртгүүлсэн салбаруудыг батлах, татгалзах. Татгалзсан шалтгаан эзэнд харагдана."
+        >
+            <template #actions>
+                <span class="text-[12.5px] font-medium text-mute">{{ today }}</span>
+                <button class="btn-outline !px-3.5 !py-2 !text-[12.5px]" @click="fetchData">Шинэчлэх</button>
+            </template>
+        </AdminPageHeader>
 
-        <div v-if="loadError" class="card mt-5 p-10 text-center">
+        <div v-if="loadError" class="card p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
             <button class="btn-primary mt-4" @click="fetchData">Дахин оролдох</button>
         </div>
 
-        <div v-else-if="!data" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-else-if="!data" class="card h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- KPI (4a) -->
-            <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-                <router-link :to="{ name: 'admin-reviews' }" class="card p-4 transition hover:border-blueline">
-                    <div class="text-[11px] font-semibold text-mute">Гомдолтой сэтгэгдэл</div>
-                    <div class="mt-2 text-2xl font-extrabold tracking-[-.02em]" :class="data.kpis.flagged_reviews ? 'text-red' : 'text-ink'">{{ Number(data.kpis.flagged_reviews).toLocaleString() }}</div>
-                </router-link>
-                <div v-for="k in [
-                    ['Хүлээгдэж байгаа', data.kpis.pending, 'text-amber'],
-                    ['Өнөөдөр батлагдсан', data.kpis.approved_today, 'text-ink'],
-                    ['Татгалзсан', data.kpis.rejected, 'text-ink'],
-                    ['Бүртгэлтэй бизнес', data.kpis.total_businesses, 'text-ink'],
-                ]" :key="k[0]" class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">{{ k[0] }}</div>
-                    <div class="mt-2 text-2xl font-extrabold tracking-[-.02em]" :class="k[2]">{{ Number(k[1]).toLocaleString() }}</div>
-                </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <AdminStat
+                    label="Гомдолтой сэтгэгдэл"
+                    :value="Number(data.kpis.flagged_reviews)"
+                    :tone="data.kpis.flagged_reviews ? 'bad' : 'default'"
+                    :icon="Flag"
+                    :to="{ name: 'admin-reviews' }"
+                    hint="Шалгах шаардлагатай"
+                />
+                <AdminStat label="Хүлээгдэж байгаа" :value="Number(data.kpis.pending)" :tone="data.kpis.pending ? 'warn' : 'good'" :icon="Clock" hint="Редакцын хяналтад" />
+                <AdminStat label="Өнөөдөр батлагдсан" :value="Number(data.kpis.approved_today)" tone="good" :icon="CheckCircle2" />
+                <AdminStat label="Татгалзсан" :value="Number(data.kpis.rejected)" :icon="XCircle" />
+                <AdminStat label="Бүртгэлтэй бизнес" :value="Number(data.kpis.total_businesses)" :icon="Store" />
             </div>
 
             <div class="mt-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-[1fr_272px]">
@@ -78,14 +90,14 @@ onMounted(fetchData);
                 <div class="card overflow-hidden">
                     <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                         <span class="text-[14px] font-bold text-ink">Хүлээгдэж байгаа бүртгэл</span>
-                        <span class="rounded-full bg-amberbadge px-2 py-0.5 font-mono text-[10.5px] font-bold text-amber">{{ data.queue_total }}</span>
+                        <AdminBadge :tone="data.queue_total ? 'warn' : 'neutral'" mono>{{ data.queue_total }}</AdminBadge>
                     </div>
                     <div v-for="branch in data.queue" :key="branch.id" class="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3 last:border-0">
                         <div class="img-ph h-[26px] w-[26px] shrink-0 rounded-md"></div>
                         <div class="min-w-[170px] flex-1">
                             <div class="flex items-center gap-2">
                                 <span class="whitespace-nowrap text-[13px] font-bold text-ink">{{ branch.business?.name }} — {{ branch.name }}</span>
-                                <span class="rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[9.5px] font-semibold text-brand">ШИНЭ</span>
+                                <AdminBadge tone="brand">ШИНЭ</AdminBadge>
                             </div>
                             <div class="mt-0.5 text-[11.5px] text-mute">{{ branch.business?.category?.name }} · {{ branch.district }} · {{ branch.phone }}</div>
                         </div>

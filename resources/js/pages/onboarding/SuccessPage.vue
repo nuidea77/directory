@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { shortDate } from '../../utils/date';
 import { api } from '../../api';
 
 // Төлбөр амжилттай (10c): баримт + нээгдсэн эрх + дараагийн 3 үйлдэл
@@ -129,7 +130,7 @@ onMounted(load);
                     <div v-if="organization?.plan_expires_at" class="mt-4 rounded-[10px] border border-amberline bg-ambertint p-3.5">
                         <div class="text-[12px] font-bold text-ink">{{ organization.plan_name }} эрх</div>
                         <div class="mt-1 text-[11.5px] leading-normal text-ambertext">
-                            {{ new Date(organization.plan_started_at).toLocaleDateString() }} – {{ new Date(organization.plan_expires_at).toLocaleDateString() }} · дуусахаас өмнө сунгах сануулга илгээнэ.
+                            {{ shortDate(organization.plan_started_at) }} – {{ shortDate(organization.plan_expires_at) }} · дуусахаас өмнө сунгах сануулга илгээнэ.
                         </div>
                     </div>
                 </div>

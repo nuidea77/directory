@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+import { shortDate } from '../../utils/date';
 import { api } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 
@@ -71,7 +72,7 @@ onMounted(() => fetchReviews());
                 <div class="flex items-center gap-2.5">
                     <span class="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-blueline bg-bluetint text-[12px] font-bold text-brand">{{ review.user?.name?.charAt(0) }}</span>
                     <span class="text-[13px] font-bold text-ink">{{ review.user?.name }}</span>
-                    <span class="text-[11.5px] font-medium text-mute">{{ review.branch?.name }} · {{ new Date(review.created_at).toLocaleDateString() }}</span>
+                    <span class="text-[11.5px] font-medium text-mute">{{ review.branch?.name }} · {{ shortDate(review.created_at) }}</span>
                     <span class="ml-auto text-[12.5px] font-bold text-ink">★ {{ review.rating }}.0</span>
                 </div>
                 <p class="mt-2.5 text-[13px] leading-[1.65] text-body">{{ review.comment }}</p>

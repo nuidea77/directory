@@ -1,6 +1,10 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import { Building2, FileClock, Megaphone, TicketPercent, Wallet } from 'lucide-vue-next';
 import { api } from '../../api';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminStat from '../../components/admin/AdminStat.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 
 // Эрх, сурталчилгаа, орлого (9b)
 const data = ref(null);
@@ -22,10 +26,11 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex items-center gap-3.5">
-            <h1 class="text-[15px] font-bold text-ink">Эрх, сурталчилгаа</h1>
-            <span class="text-[12.5px] font-medium text-mute">Сүүлийн 30 хоног</span>
-        </div>
+        <AdminPageHeader
+            title="Эрх, орлого"
+            description="Эрхийн бичиг болон онцлох зайн орлого, төлбөртэй байгууллагын тоо, эрхийн бичгийн тархалт, онцлох зайн ашиглалтыг харуулна."
+            :meta="[{ label: 'Сүүлийн 30 хоног' }]"
+        />
 
         <div v-if="loadError" class="card mt-5 p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
@@ -36,28 +41,23 @@ onMounted(fetchData);
 
         <template v-else>
             <!-- KPI -->
-            <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">30 хоногийн орлого</div>
-                    <div class="mt-2 text-[20px] font-extrabold tracking-[-.02em] text-ink">{{ fmt(data.kpis.revenue_30d) }}</div>
-                    <div v-if="data.kpis.revenue_delta !== null" class="mt-1 text-[11px] font-semibold" :class="data.kpis.revenue_delta >= 0 ? 'text-green' : 'text-red'">{{ (data.kpis.revenue_delta >= 0 ? '+' : '') + data.kpis.revenue_delta }}%</div>
-                </div>
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">Төлбөртэй байгууллага</div>
-                    <div class="mt-2 text-[20px] font-extrabold text-ink">{{ data.kpis.paid_organizations }}</div>
-                </div>
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">Эрхийн орлого</div>
-                    <div class="mt-2 text-[20px] font-extrabold text-ink">{{ fmt(data.kpis.plan_revenue) }}</div>
-                </div>
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">Онцлох зайн орлого</div>
-                    <div class="mt-2 text-[20px] font-extrabold text-ink">{{ fmt(data.kpis.ad_revenue) }}</div>
-                </div>
-                <div class="card p-4">
-                    <div class="text-[11px] font-semibold text-mute">Хүлээгдэж буй нэхэмжлэх</div>
-                    <div class="mt-2 text-[20px] font-extrabold" :class="data.kpis.pending_orders ? 'text-amber' : 'text-ink'">{{ data.kpis.pending_orders }}</div>
-                </div>
+            <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                <AdminStat
+                    label="30 хоногийн орлого"
+                    :value="fmt(data.kpis.revenue_30d)"
+                    :hint="data.kpis.revenue_delta !== null ? (data.kpis.revenue_delta >= 0 ? '+' : '') + data.kpis.revenue_delta + '%' : ''"
+                    :tone="data.kpis.revenue_delta === null ? 'default' : data.kpis.revenue_delta >= 0 ? 'good' : 'bad'"
+                    :icon="Wallet"
+                />
+                <AdminStat label="Төлбөртэй байгууллага" :value="data.kpis.paid_organizations" :icon="Building2" />
+                <AdminStat label="Эрхийн орлого" :value="fmt(data.kpis.plan_revenue)" :icon="TicketPercent" />
+                <AdminStat label="Онцлох зайн орлого" :value="fmt(data.kpis.ad_revenue)" :icon="Megaphone" />
+                <AdminStat
+                    label="Хүлээгдэж буй нэхэмжлэх"
+                    :value="data.kpis.pending_orders"
+                    :tone="data.kpis.pending_orders ? 'warn' : 'default'"
+                    :icon="FileClock"
+                />
             </div>
 
             <div class="mt-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-[1fr_1fr]">
@@ -84,8 +84,13 @@ onMounted(fetchData);
                             <div class="truncate text-[12.5px] font-bold text-ink">{{ v.label || v.type_name }}</div>
                             <div class="mt-0.5 text-[11px] text-mute">{{ v.type_name }}</div>
                         </div>
-                        <div class="w-16 font-mono text-[12px] text-soft">{{ v.occupied }} / {{ v.slots }}</div>
-                        <div class="w-16 text-[12px] font-semibold" :class="v.queued ? 'text-amber' : 'text-mute'">{{ v.queued ? v.queued + ' хүлээж' : '—' }}</div>
+                        <div class="w-16">
+                            <AdminBadge mono>{{ v.occupied }} / {{ v.slots }}</AdminBadge>
+                        </div>
+                        <div class="w-16">
+                            <AdminBadge v-if="v.queued" tone="warn">{{ v.queued }} хүлээж</AdminBadge>
+                            <span v-else class="text-[12px] font-semibold text-mute">—</span>
+                        </div>
                         <div class="w-24 text-right text-[12.5px] font-bold text-ink">{{ fmt(v.monthly_revenue) }}</div>
                     </div>
                     <div v-if="!data.inventory.length" class="p-8 text-center text-[13px] text-mute">Идэвхтэй онцлох зай алга</div>

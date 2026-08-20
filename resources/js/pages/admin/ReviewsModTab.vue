@@ -1,6 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import { shortDate } from '../../utils/date';
 import { api } from '../../api';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 
 // Гомдолтой сэтгэгдэл + хэрэглэгчдийн залруулгын модерац
 const reviews = ref(null);
@@ -51,21 +54,24 @@ onMounted(fetchAll);
 
 <template>
     <div class="p-5 sm:p-7">
-        <h1 class="text-[15px] font-bold text-ink">Сэтгэгдэл ба залруулга</h1>
+        <AdminPageHeader
+            title="Сэтгэгдэл ба залруулга"
+            description="Гомдол ирсэн сэтгэгдлийг сэргээх эсвэл нуух, хэрэглэгчдээс ирсэн бүртгэлийн залруулгын хүсэлтийг хүлээн авах эсвэл татгалзах модерацын хуудас."
+        />
 
-        <div v-if="loadError" class="card mt-5 p-10 text-center">
+        <div v-if="loadError" class="card p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
             <button class="btn-primary mt-4" @click="fetchAll">Дахин оролдох</button>
         </div>
 
-        <div v-else-if="!reviews" class="card mt-5 h-64 animate-pulse"></div>
+        <div v-else-if="!reviews" class="card h-64 animate-pulse"></div>
 
         <template v-else>
             <!-- Гомдолтой сэтгэгдлүүд -->
-            <div class="card mt-4 overflow-hidden">
+            <div class="card overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                     <span class="text-[14px] font-bold text-ink">Гомдолтой сэтгэгдэл</span>
-                    <span class="rounded-full bg-redtint px-2 py-0.5 font-mono text-[10.5px] font-bold text-red">{{ reviewsTotal }}</span>
+                    <AdminBadge tone="bad" mono>{{ reviewsTotal }}</AdminBadge>
                 </div>
                 <div v-for="r in reviews" :key="r.id" class="border-b border-hairline px-4 py-3 last:border-0">
                     <div class="flex flex-wrap items-center gap-2 text-[12.5px]">
@@ -86,12 +92,12 @@ onMounted(fetchAll);
             <div class="card mt-4 overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                     <span class="text-[14px] font-bold text-ink">Залруулгын хүсэлт</span>
-                    <span class="rounded-full bg-amberbadge px-2 py-0.5 font-mono text-[10.5px] font-bold text-amber">{{ corrections?.length || 0 }}</span>
+                    <AdminBadge tone="warn" mono>{{ corrections?.length || 0 }}</AdminBadge>
                 </div>
                 <div v-for="c in corrections" :key="c.id" class="border-b border-hairline px-4 py-3 last:border-0">
                     <div class="flex flex-wrap items-center gap-2 text-[12.5px]">
                         <span class="font-bold text-ink">{{ c.branch }}</span>
-                        <span class="text-mute">· {{ c.user }} · {{ new Date(c.created_at).toLocaleDateString() }}</span>
+                        <span class="text-mute">· {{ c.user }} · {{ shortDate(c.created_at) }}</span>
                     </div>
                     <p class="mt-1.5 text-[13px] leading-relaxed text-body">{{ c.text }}</p>
                     <div class="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold">

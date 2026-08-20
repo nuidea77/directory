@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { shortDate } from '../utils/date';
 import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
@@ -320,7 +321,7 @@ onMounted(fetchBusiness);
                                     <span class="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-blueline bg-bluetint text-[13px] font-bold text-brand">{{ review.user?.name?.charAt(0) }}</span>
                                     <div>
                                         <div class="text-[13.5px] font-bold text-ink">{{ review.user?.name }}</div>
-                                        <div class="mt-0.5 text-[11.5px] text-mute">{{ new Date(review.created_at).toLocaleDateString() }}</div>
+                                        <div class="mt-0.5 text-[11.5px] text-mute">{{ shortDate(review.created_at) }}</div>
                                     </div>
                                     <div class="ml-auto text-[13px] font-semibold text-ink">{{ stars(review.rating) }}</div>
                                 </div>

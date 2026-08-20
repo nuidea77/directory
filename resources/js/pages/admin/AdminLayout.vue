@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ShieldCheck, Store, MessageSquare, Megaphone, BadgeCheck, LayoutGrid, TrendingUp } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/auth';
 
 // Админ layout (4a/9b): хар sidebar + өөрийн толгой
@@ -11,13 +12,13 @@ const router = useRouter();
 const mobileNavOpen = ref(false);
 
 const nav = [
-    { name: 'Модерац', route: 'admin' },
-    { name: 'Бизнесүүд', route: 'admin-businesses' },
-    { name: 'Сэтгэгдэл, залруулга', route: 'admin-reviews' },
-    { name: 'Сурталчилгаа', route: 'admin-ads' },
-    { name: 'Эрхийн бичиг', route: 'admin-plans' },
-    { name: 'Ангилал', route: 'admin-categories' },
-    { name: 'Эрх, орлого', route: 'admin-revenue' },
+    { name: 'Модерац', route: 'admin', icon: ShieldCheck },
+    { name: 'Бизнесүүд', route: 'admin-businesses', icon: Store },
+    { name: 'Сэтгэгдэл, залруулга', route: 'admin-reviews', icon: MessageSquare },
+    { name: 'Сурталчилгаа', route: 'admin-ads', icon: Megaphone },
+    { name: 'Эрхийн бичиг', route: 'admin-plans', icon: BadgeCheck },
+    { name: 'Ангилал', route: 'admin-categories', icon: LayoutGrid },
+    { name: 'Эрх, орлого', route: 'admin-revenue', icon: TrendingUp },
 ];
 
 const currentName = computed(() => nav.find((n) => n.route === route.name)?.name || 'Админ');
@@ -44,10 +45,10 @@ async function logout() {
                     v-for="item in nav"
                     :key="item.route"
                     :to="{ name: item.route }"
-                    class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
-                    :class="$route.name === item.route ? 'bg-white/10 text-white' : 'text-darktext hover:bg-white/5'"
+                    class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold transition"
+                    :class="$route.name === item.route ? 'bg-white/10 text-white' : 'text-darktext hover:bg-white/5 hover:text-white'"
                 >
-                    <span class="h-4 w-4 rounded-[5px]" :class="$route.name === item.route ? 'bg-brand' : 'bg-[#3d454e]'"></span>
+                    <component :is="item.icon" :size="16" :stroke-width="1.9" :class="$route.name === item.route ? 'text-bluelight' : 'text-[#7c848e]'" aria-hidden="true" />
                     {{ item.name }}
                 </router-link>
             </nav>
@@ -92,15 +93,21 @@ async function logout() {
                     v-for="item in nav"
                     :key="item.route"
                     :to="{ name: item.route }"
-                    class="border-b border-hairline px-4 py-2.5 text-[13px] font-semibold last:border-0"
+                    class="flex items-center gap-2.5 border-b border-hairline px-4 py-2.5 text-[13px] font-semibold last:border-0"
                     :class="$route.name === item.route ? 'bg-bluetint text-brand' : 'text-body'"
                     @click="mobileNavOpen = false"
-                >{{ item.name }}</router-link>
+                >
+                    <component :is="item.icon" :size="16" :stroke-width="1.9" aria-hidden="true" />
+                    {{ item.name }}
+                </router-link>
                 <router-link :to="{ name: 'home' }" class="px-4 py-2.5 text-[13px] font-semibold text-mute" @click="mobileNavOpen = false">← Сайт руу буцах</router-link>
             </nav>
 
+            <!-- Өргөн дэлгэцэнд контент хэт сунахгүй -->
             <div class="min-w-0 flex-1">
-                <router-view />
+                <div class="mx-auto max-w-[1400px]">
+                    <router-view />
+                </div>
             </div>
         </div>
     </div>

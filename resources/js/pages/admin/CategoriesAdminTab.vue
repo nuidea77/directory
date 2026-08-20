@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { api, ApiError } from '../../api';
 import CategoryIcon from '../../components/CategoryIcon.vue';
+import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
+import AdminBadge from '../../components/admin/AdminBadge.vue';
 import { iconNames } from '../../data/categoryIcons';
 
 /**
@@ -177,23 +179,29 @@ onMounted(fetchCategories);
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center gap-3">
-            <h1 class="text-[15px] font-bold text-ink">Бизнесүүдийн ангилал</h1>
-            <span v-if="categories" class="text-[12px] font-medium text-mute">
-                {{ totals.parents }} үндсэн · {{ totals.children }} дэд · {{ totals.businesses }} бизнес
-            </span>
-            <input
-                v-model="query"
-                type="search"
-                placeholder="Ангилал хайх…"
-                class="ml-auto w-[240px] rounded-[8px] border border-inputline bg-white px-3 py-2 text-[12.5px] outline-none focus:border-brand"
-            />
-        </div>
+        <AdminPageHeader
+            title="Бизнесүүдийн ангилал"
+            description="Ангиллын нэр, icon, тайлбар, эрэмбийг удирдана. Дэд ангиллыг өөр ангилал руу зөөж болно."
+            :meta="categories ? [
+                { label: `${totals.parents} үндсэн` },
+                { label: `${totals.children} дэд` },
+                { label: `${totals.businesses} бизнес` },
+            ] : []"
+        >
+            <template #actions>
+                <input
+                    v-model="query"
+                    type="search"
+                    placeholder="Ангилал хайх…"
+                    class="w-[240px] rounded-[8px] border border-inputline bg-white px-3 py-2 text-[12.5px] outline-none focus:border-brand"
+                />
+            </template>
+        </AdminPageHeader>
 
-        <p v-if="msg.text" class="mt-3 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
+        <p v-if="msg.text" class="rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
         <!-- Шинэ ангилал -->
-        <div class="card mt-4 p-4">
+        <div class="card mt-3 p-4">
             <form class="flex flex-wrap items-end gap-3" @submit.prevent="createCategory">
                 <div class="min-w-[200px] flex-1">
                     <label class="field-label !text-[11px]">Нэр</label>
@@ -246,9 +254,9 @@ onMounted(fetchCategories);
                         <span class="ml-2 font-mono text-[11px] text-faint">{{ cat.slug }}</span>
                     </button>
 
-                    <span class="rounded-full bg-chip px-2 py-0.5 font-mono text-[10.5px] font-semibold text-chiptext">{{ cat.businesses_count || 0 }} бизнес</span>
-                    <span v-if="cat.children?.length" class="rounded-full bg-bluetint px-2 py-0.5 font-mono text-[10.5px] font-semibold text-brand">{{ cat.children.length }} дэд</span>
-                    <span v-if="!cat.icon" class="rounded-full bg-amberbadge px-2 py-0.5 text-[10.5px] font-semibold text-amber">icon-гүй</span>
+                    <AdminBadge mono>{{ cat.businesses_count || 0 }} бизнес</AdminBadge>
+                    <AdminBadge v-if="cat.children?.length" tone="brand" mono>{{ cat.children.length }} дэд</AdminBadge>
+                    <AdminBadge v-if="!cat.icon" tone="warn">icon-гүй</AdminBadge>
 
                     <div class="ml-auto flex items-center gap-2 text-[11.5px] font-semibold">
                         <!-- Эрэмбэ (хайлтгүй үед л) -->
@@ -298,7 +306,7 @@ onMounted(fetchCategories);
                         <div v-for="child in cat.children" :key="child.id" class="flex flex-wrap items-center gap-2.5 rounded-lg border border-line bg-white px-3 py-2">
                             <span class="text-[12.5px] font-semibold text-body">{{ child.name }}</span>
                             <span class="font-mono text-[10.5px] text-faint">{{ child.slug }}</span>
-                            <span class="rounded-full bg-chip px-2 py-0.5 font-mono text-[10px] font-semibold text-chiptext">{{ child.businesses_count || 0 }}</span>
+                            <AdminBadge mono>{{ child.businesses_count || 0 }}</AdminBadge>
 
                             <div class="ml-auto flex items-center gap-2 text-[11.5px] font-semibold">
                                 <!-- Өөр ангилал руу зөөх -->
