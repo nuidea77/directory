@@ -157,6 +157,38 @@ class DirectoryTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_home_returns_themed_sections(): void
+    {
+        $food = Category::factory()->create(['slug' => 'restaurants', 'name' => 'Хоол, ресторан']);
+        $business = Business::factory()->create(['category_id' => $food->id, 'price_level' => '₮₮']);
+
+        $full = collect(Branch::WEEKDAYS)->mapWithKeys(fn ($d) => [$d => ['from' => '00:00', 'to' => '00:00']])->all();
+        Branch::factory()->create([
+            'business_id' => $business->id,
+            'city' => 'Улаанбаатар',
+            'hours' => $full,
+            'rating_avg' => 4.8,
+            'reviews_count' => 12,
+        ]);
+
+        \Illuminate\Support\Facades\Cache::forget('home:sections:v1:Улаанбаатар');
+
+        $sections = collect($this->getJson('/api/v1/home')->assertOk()->json('sections'));
+
+        $this->assertNotEmpty($sections);
+        $this->assertEqualsCanonicalizing(
+            ['eat', 'date', 'open_24_7', 'newest'],
+            $sections->pluck('key')->all(),
+        );
+
+        // 24/7 блокод тухайн салбар орсон байх ёстой
+        $open247 = $sections->firstWhere('key', 'open_24_7');
+        $this->assertSame($business->name, $open247['items'][0]['name']);
+        $this->assertTrue($open247['items'][0]['is_24_7']);
+
+        \Illuminate\Support\Facades\Cache::forget('home:sections:v1:Улаанбаатар');
+    }
+
     public function test_rejection_reason_is_not_exposed_publicly(): void
     {
         $branch = Branch::factory()->create([

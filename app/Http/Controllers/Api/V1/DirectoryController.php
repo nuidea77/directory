@@ -12,6 +12,7 @@ use App\Models\Campaign;
 use App\Models\Category;
 use App\Services\Billing\CampaignService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -109,6 +110,8 @@ class DirectoryController extends Controller
             'city' => $city,
             'categories' => CategoryResource::collection($categories),
             'featured' => BusinessResource::collection($featured),
+            // Сэдэвчилсэн блокууд (хаана хооллох, болзох, 24 цаг, шинэ)
+            'sections' => $this->homeSections($city),
             'stats' => [
                 // Идэвхтэй салбартай, өөрөөр хэлбэл хайлтад олдох бизнесүүд
                 'businesses' => Business::whereHas('branches', fn ($q) => $q->where('status', 'active'))->count(),
@@ -117,6 +120,97 @@ class DirectoryController extends Controller
                 'city_businesses' => Business::whereHas('branches', $inCity)->count(),
             ],
         ]);
+    }
+
+    /**
+     * Нүүрийн сэдэвчилсэн блокууд — «Хаана хооллох вэ?», «Болзоход тохиромжтой»
+     * гэх мэт. Хот тус бүрт 10 минут cache (агуулга нь өдөрт хэд хэдэн удаа
+     * л өөрчлөгддөг), зөвхөн ЦЭВЭР массив хадгална.
+     */
+    protected function homeSections(string $city): array
+    {
+        return Cache::remember("home:sections:v1:{$city}", 600, function () use ($city) {
+            $ids = fn (string $slug) => optional(Category::where('slug', $slug)->first())->descendantIds() ?? [];
+
+            $rows = function (callable $tune, int $limit) use ($city) {
+                $query = Branch::query()->active()
+                    ->where('city', $city)
+                    ->whereHas('business')
+                    ->with(['business.category', 'images']);
+
+                $tune($query);
+
+                return $query->limit($limit)->get()->map(fn (Branch $b) => [
+                    'id' => $b->id,
+                    'slug' => $b->business->slug,
+                    'name' => $b->business->name,
+                    'logo_url' => $b->business->logo_path
+                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->business->logo_path)
+                        : null,
+                    'is_verified' => (bool) $b->business->is_verified,
+                    'category' => $b->business->category?->name,
+                    'district' => $b->district,
+                    'address' => $b->address,
+                    'price_level' => $b->business->price_level,
+                    'rating_avg' => (float) $b->rating_avg,
+                    'reviews_count' => (int) $b->reviews_count,
+                    'is_24_7' => (bool) $b->is_24_7,
+                    'cover_url' => $b->images->first()
+                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->images->first()->thumb_path ?: $b->images->first()->path)
+                        : null,
+                ])->all();
+            };
+
+            $byRating = fn ($q) => $q->orderByDesc('rating_avg')->orderByDesc('reviews_count');
+
+            $eatIds = $ids('restaurants');
+            $funIds = array_merge($ids('entertainment'), $ids('arts'));
+
+            $sections = [
+                [
+                    'key' => 'eat',
+                    'title' => 'Хаана хооллох вэ?',
+                    'subtitle' => 'Хамгийн өндөр үнэлгээтэй хоолны газрууд',
+                    'link' => ['name' => 'category', 'slug' => 'restaurants'],
+                    'items' => $rows(function ($q) use ($eatIds, $byRating) {
+                        $q->whereHas('business.categories', fn ($c) => $c->whereIn('categories.id', $eatIds));
+                        $byRating($q);
+                    }, 9),
+                ],
+                [
+                    'key' => 'date',
+                    'title' => 'Болзоход тохиромжтой',
+                    'subtitle' => 'Уур амьсгалтай ресторан, кафе, зугаа цэнгэл',
+                    'link' => ['name' => 'search', 'query' => ['category' => 'restaurants', 'rating' => 4]],
+                    'items' => $rows(function ($q) use ($eatIds, $funIds, $byRating) {
+                        $q->whereHas('business.categories', fn ($c) => $c->whereIn('categories.id', array_merge($eatIds, $funIds)))
+                            ->whereHas('business', fn ($b) => $b->whereIn('price_level', ['₮₮', '₮₮₮']))
+                            ->where('rating_avg', '>=', 4);
+                        $byRating($q);
+                    }, 9),
+                ],
+                [
+                    'key' => 'open_24_7',
+                    'title' => '24 цагаар нээлттэй',
+                    'subtitle' => 'Шөнө ч хаалгаа хаадаггүй газрууд',
+                    'link' => ['name' => 'search', 'query' => ['open_24_7' => 1]],
+                    'items' => $rows(function ($q) use ($byRating) {
+                        $q->where('is_24_7', true);
+                        $byRating($q);
+                    }, 6),
+                ],
+                [
+                    'key' => 'newest',
+                    'title' => 'Шинээр нэмэгдсэн',
+                    'subtitle' => 'Сүүлд бүртгүүлсэн бизнесүүд',
+                    'link' => ['name' => 'search', 'query' => ['sort' => 'new']],
+                    'items' => $rows(fn ($q) => $q->orderByDesc('id'), 4),
+                ],
+            ];
+
+            // Хоосон блокыг үзүүлэхгүй
+            return array_values(array_filter($sections, fn ($s) => count($s['items']) > 0));
+        });
     }
 
     /**
