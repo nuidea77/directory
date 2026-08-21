@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
+import VerifiedBadge from '../../components/VerifiedBadge.vue';
 import { cityCenters } from '../../data/cityCenters';
 import { hoursAre247 } from '../../utils/hours';
 import { defineAsyncComponent } from 'vue';
@@ -202,7 +203,7 @@ onMounted(async () => {
             <div class="px-5 py-6 sm:px-7">
                 <div class="flex flex-wrap items-center gap-2.5">
                     <h1 class="text-[22px] font-extrabold tracking-[-.02em] text-ink">{{ branch.name }}</h1>
-                    <span v-if="branch.business?.is_verified" class="badge-verified">✓ БАТАЛГААЖСАН</span>
+                    <VerifiedBadge v-if="branch.business?.is_verified" :size="18" />
                     <span class="ml-auto text-[12px] font-medium text-mute">Төлөв: <b class="text-ink">{{ { active: 'Нээлттэй, хайлтад байна', pending: 'Редакцын хяналтад', draft: 'Ноорог', rejected: 'Татгалзсан', hidden: 'Түр хаалттай' }[branch.status] }}</b></span>
                 </div>
 

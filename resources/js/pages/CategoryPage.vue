@@ -7,13 +7,31 @@ import ImagePh from '../components/ImagePh.vue';
 // Leaflet-тэй тул lazy-load — жагсаалтаар үзэхэд bundle ачаалахгүй
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 import CategoryIcon from '../components/CategoryIcon.vue';
+import VerifiedBadge from '../components/VerifiedBadge.vue';
+import { flattenCategories, optionLabel } from '../utils/categories';
 
 const route = useRoute();
 const router = useRouter();
 
 const category = ref(null);
 const catStats = ref(null);
+const ancestors = ref([]);
 const categories = ref([]);
+const categoryOptions = computed(() => flattenCategories(categories.value));
+
+// Сонгосон дэд ангилал (2-р түвшин) — 3-р түвшний chip-үүдийг үүнээс гаргана
+const activeSub = computed(() => {
+    const kids = category.value?.children || [];
+    return kids.find((c) => c.slug === filters.value.sub)
+        || kids.find((c) => (c.children || []).some((g) => g.slug === filters.value.sub))
+        || null;
+});
+const subChildren = computed(() => activeSub.value?.children || []);
+
+// Chip дээрх тоо: өөрийн + дэд ангиллуудынх (жагсаалт тэднийг ч харуулдаг)
+function subTotal(cat) {
+    return (cat.businesses_count || 0) + (cat.children || []).reduce((s, c) => s + subTotal(c), 0);
+}
 const branches = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const loading = ref(true);
@@ -128,11 +146,13 @@ function syncFromRoute() {
 async function fetchCategory() {
     category.value = null;
     catStats.value = null;
+    ancestors.value = [];
 
     if (isCategory.value) {
         const data = await api.get(`/categories/${route.params.slug}`);
         category.value = data.data;
         catStats.value = data.stats;
+        ancestors.value = data.ancestors || [];
         document.title = `${category.value.name} | Хаана.mn`;
     }
 }
@@ -247,6 +267,10 @@ onMounted(async () => {
             <router-link :to="{ name: 'home' }" class="text-brand">Хаана</router-link>
             <span>/</span>
             <router-link :to="{ name: 'categories' }" class="text-brand">Ангилал</router-link>
+            <template v-for="a in ancestors" :key="a.id">
+                <span>/</span>
+                <router-link :to="{ name: 'category', params: { slug: a.slug } }" class="text-brand">{{ a.name }}</router-link>
+            </template>
             <span v-if="category">/</span>
             <span v-if="category">{{ category.name }}</span>
         </div>
@@ -281,11 +305,32 @@ onMounted(async () => {
                     <button
                         v-for="sub in category.children"
                         :key="sub.id"
-                        class="chip !bg-white !text-ink ring-1 ring-searchline"
-                        :class="{ '!bg-ink !text-white !ring-ink': filters.sub === sub.slug }"
+                        class="chip ring-1"
+                        :class="activeSub?.id === sub.id ? '!bg-ink !text-white ring-ink' : '!bg-white !text-ink ring-searchline'"
                         @click="filters.sub = sub.slug; apply()"
                     >
-                        {{ sub.name }} <span class="font-mono text-[11px] text-faint" :class="{ 'text-white/60': filters.sub === sub.slug }">{{ sub.businesses_count }}</span>
+                        {{ sub.name }}
+                        <span class="font-mono text-[11px] text-faint" :class="{ 'text-white/60': activeSub?.id === sub.id }">{{ subTotal(sub) }}</span>
+                        <span v-if="sub.children?.length" class="ml-0.5 text-[11px] opacity-50">›</span>
+                    </button>
+                </div>
+
+                <!-- 3 дахь түвшин: сонгосон дэд ангиллын дотоод ангиллууд -->
+                <div v-if="subChildren.length" class="mt-2 flex flex-wrap items-center gap-2 border-l-2 border-line pl-3">
+                    <span class="text-[11.5px] font-semibold text-mute">{{ activeSub.name }}:</span>
+                    <button
+                        class="chip !py-1 !text-[11.5px]"
+                        :class="filters.sub === activeSub.slug ? '!bg-brand !text-white' : '!bg-white !text-ink ring-1 ring-searchline'"
+                        @click="filters.sub = activeSub.slug; apply()"
+                    >Бүгд</button>
+                    <button
+                        v-for="g in subChildren"
+                        :key="g.id"
+                        class="chip !py-1 !text-[11.5px]"
+                        :class="filters.sub === g.slug ? '!bg-brand !text-white' : '!bg-white !text-ink ring-1 ring-searchline'"
+                        @click="filters.sub = g.slug; apply()"
+                    >
+                        {{ g.name }} <span class="font-mono text-[10.5px]" :class="filters.sub === g.slug ? 'text-white/60' : 'text-faint'">{{ subTotal(g) }}</span>
                     </button>
                 </div>
 
@@ -309,7 +354,7 @@ onMounted(async () => {
                     <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">АНГИЛАЛ</div>
                     <select v-model="filters.category" class="input cursor-pointer !py-2 !text-[12.5px]" @change="apply()">
                         <option value="">Бүх ангилал</option>
-                        <option v-for="c in categories" :key="c.slug" :value="c.slug">{{ c.name }} ({{ c.businesses_count }})</option>
+                        <option v-for="c in categoryOptions" :key="c.slug" :value="c.slug">{{ optionLabel(c) }} ({{ c.businesses_total ?? c.businesses_count }})</option>
                     </select>
                 </template>
 
@@ -506,7 +551,7 @@ onMounted(async () => {
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * (meta.per_page || 20) + i + 1).padStart(2, '0') }}</span>
                                 <span class="text-[17px] font-bold text-ink">{{ branch.business.name }}</span>
-                                <span v-if="branch.business.is_verified" class="badge-verified">✓</span>
+                                <VerifiedBadge v-if="branch.business.is_verified" :size="17" />
                                 <span v-if="branch.is_24_7" class="rounded-full bg-greentint px-2 py-0.5 text-[10px] font-bold text-green">24/7</span>
                                 <span v-if="branch.is_featured" class="badge-featured">ОНЦЛОХ</span>
                                 <span v-if="branch.distance_km !== undefined" class="text-[11.5px] font-semibold text-brand">{{ branch.distance_km }} км</span>

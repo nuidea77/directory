@@ -7,6 +7,7 @@ import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
 import BizLogo from '../components/BizLogo.vue';
+import VerifiedBadge from '../components/VerifiedBadge.vue';
 
 // Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
@@ -215,7 +216,7 @@ onMounted(fetchBusiness);
                             <div class="flex flex-wrap items-center gap-2.5">
                                 <BizLogo v-if="business.logo_url" :business="business" size="h-11 w-11 rounded-[11px] text-lg" />
                                 <h1 class="text-[26px] font-extrabold leading-tight tracking-[-.02em] text-ink sm:text-[30px]">{{ business.name }}</h1>
-                                <span v-if="business.is_verified" class="badge-verified !text-[11px]">✓ Баталгаажсан</span>
+                                <VerifiedBadge v-if="business.is_verified" :size="22" />
                             </div>
                             <div class="mt-2.5 flex flex-wrap items-center gap-2.5 text-[13.5px] font-medium text-soft">
                                 <span class="font-bold text-ink">{{ (business.rating_avg || 0).toFixed(1) }}</span>

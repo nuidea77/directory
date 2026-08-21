@@ -306,13 +306,24 @@ class AdminController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        // Гүн 3-аас хэтрэхгүй: үндсэн → дэд → дэд дэд
+        if (($data['parent_id'] ?? null) !== null) {
+            $parent = \App\Models\Category::findOrFail($data['parent_id']);
+
+            if ($parent->depth() >= \App\Models\Category::MAX_DEPTH) {
+                return response()->json([
+                    'message' => 'Ангиллын мод хамгийн ихдээ '.\App\Models\Category::MAX_DEPTH.' түвшинтэй байна.',
+                ], 422);
+            }
+        }
+
         $category = \App\Models\Category::create([
             ...$data,
             'slug' => $this->categorySlug($data['name']),
             'sort_order' => $data['sort_order'] ?? ((int) \App\Models\Category::max('sort_order') + 1),
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
+        \App\Models\Category::flushCache();
 
         return response()->json(['message' => 'Ангилал үүслээ.', 'data' => $category], 201);
     }
@@ -329,12 +340,20 @@ class AdminController extends Controller
         ]);
 
         // Өөрийгөө болон өөрийн үр удмаа эцэг болгож болохгүй (мөчлөг үүснэ)
-        if ($request->exists('parent_id') && $data['parent_id'] !== null) {
-            $descendantIds = $category->children()->pluck('id')->push($category->id);
-
-            if ($descendantIds->contains((int) $data['parent_id'])) {
+        if ($request->exists('parent_id') && ($data['parent_id'] ?? null) !== null) {
+            if (in_array((int) $data['parent_id'], $category->descendantIds(), true)) {
                 return response()->json([
                     'message' => 'Ангиллыг өөрийнх нь дэд ангилал дор зөөх боломжгүй.',
+                ], 422);
+            }
+
+            // Зөөсний дараа мод 3 түвшнээс гүнзгийрэхгүй байх ёстой
+            $parent = \App\Models\Category::findOrFail($data['parent_id']);
+            $subtreeDepth = $this->subtreeDepth($category);
+
+            if ($parent->depth() + $subtreeDepth > \App\Models\Category::MAX_DEPTH) {
+                return response()->json([
+                    'message' => 'Ангиллын мод хамгийн ихдээ '.\App\Models\Category::MAX_DEPTH.' түвшинтэй байна.',
                 ], 422);
             }
         }
@@ -353,7 +372,7 @@ class AdminController extends Controller
         }
 
         $category->update($update);
-        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
+        \App\Models\Category::flushCache();
 
         return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $category->refresh()]);
     }
@@ -361,18 +380,37 @@ class AdminController extends Controller
     public function destroyCategory(Request $request, \App\Models\Category $category): JsonResponse
     {
         // Бизнестэй эсвэл бизнестэй дэд ангилалтай бол устгахгүй (cascade-аас хамгаална)
-        $hasBusinesses = $category->businesses()->exists()
-            || \App\Models\Business::whereIn('category_id', $category->children()->pluck('id'))->exists();
+        $treeIds = $category->descendantIds();
 
-        if ($hasBusinesses) {
+        if (\App\Models\Business::whereIn('category_id', $treeIds)->exists()) {
             return response()->json(['message' => 'Энэ ангилалд бизнес бүртгэлтэй тул устгах боломжгүй. Эхлээд бизнесүүдийг өөр ангилалд шилжүүлнэ үү.'], 422);
         }
 
-        $category->children()->delete();
-        $category->delete();
-        \Illuminate\Support\Facades\Cache::forget('categories:index:v2');
+        // Бүх түвшний дэд ангилал хамт устана
+        \App\Models\Category::whereIn('id', $treeIds)->delete();
+        \App\Models\Category::flushCache();
 
         return response()->json(['message' => 'Ангилал устгагдлаа.']);
+    }
+
+    /**
+     * Тухайн ангиллын дэд модны өндөр (өөрөө = 1).
+     */
+    protected function subtreeDepth(\App\Models\Category $category): int
+    {
+        $maps = \App\Models\Category::treeMaps()['children'];
+
+        $walk = function (int $id, int $level) use (&$walk, $maps): int {
+            $max = $level;
+
+            foreach ($maps[$id] ?? [] as $childId) {
+                $max = max($max, $walk($childId, $level + 1));
+            }
+
+            return $max;
+        };
+
+        return $walk($category->id, 1);
     }
 
     protected function categorySlug(string $name): string

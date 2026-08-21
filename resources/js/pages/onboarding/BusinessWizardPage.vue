@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import HoursEditor from '../../components/HoursEditor.vue';
+import { flattenCategories, optionLabel } from '../../utils/categories';
 
 /**
  * Бизнес нэмэх шаталсан форм (2c → 3a/5a):
@@ -48,9 +49,26 @@ const defaultHours = () => ({
 });
 
 const structure = ref('single'); // single | multi
+
+// Ангилал 3 түвшинтэй: үндсэн → дэд → дэд дэд (ж. Боловсрол → Хэлний сургалт → Англи хэл).
+// Хамгийн гүн сонголт нь бизнесийн category_id болно.
+const mainCategoryId = ref('');
+const mainCategory = computed(() => categories.value.find((c) => c.id === Number(mainCategoryId.value)));
+const subOptions = computed(() => flattenCategories(mainCategory.value?.children || [], 2));
+
+watch(mainCategoryId, (id) => {
+    info.value.category_id = id;
+    info.value.subcategory = '';
+});
+
+function pickSubcategory(id) {
+    const sub = subOptions.value.find((c) => c.id === Number(id));
+    info.value.category_id = sub ? sub.id : mainCategoryId.value;
+    info.value.subcategory = sub ? sub.name : '';
+}
 const branchForms = ref([newBranchForm()]);
 
-const selectedCategory = computed(() => categories.value.find((c) => c.id === Number(info.value.category_id)));
+const selectedCategory = computed(() => mainCategory.value);
 
 function newBranchForm() {
     return {
@@ -201,16 +219,16 @@ onMounted(async () => {
                         </div>
                         <div>
                             <label class="field-label !text-[12px]">Ангилал</label>
-                            <select v-model="info.category_id" class="input cursor-pointer" required>
+                            <select v-model="mainCategoryId" class="input cursor-pointer" required>
                                 <option value="" disabled>Сонгоно уу</option>
                                 <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                             </select>
                         </div>
                         <div>
                             <label class="field-label !text-[12px]">Дэд ангилал</label>
-                            <select v-model="info.subcategory" class="input cursor-pointer">
-                                <option value="">Сонгоно уу</option>
-                                <option v-for="sub in selectedCategory?.children || []" :key="sub.id" :value="sub.name">{{ sub.name }}</option>
+                            <select :value="info.subcategory ? String(info.category_id) : ''" class="input cursor-pointer" :disabled="!subOptions.length" @change="pickSubcategory($event.target.value)">
+                                <option value="">{{ subOptions.length ? 'Сонгоно уу (сонголттой)' : 'Дэд ангилал алга' }}</option>
+                                <option v-for="sub in subOptions" :key="sub.id" :value="sub.id">{{ optionLabel(sub) }}</option>
                             </select>
                         </div>
                         <div>

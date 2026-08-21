@@ -163,7 +163,8 @@ class DirectoryController extends Controller
             ->whereHas('business');
 
         if ($category !== null) {
-            $ids = [$category->id, ...$category->children()->pluck('id')->all()];
+            // Бүх түвшний дэд ангилал (эцэг сонговол дэд дэд нь ч илэрнэ)
+            $ids = $category->descendantIds();
             $query->whereHas('business', fn ($q) => $q->whereIn('category_id', $ids));
         }
 

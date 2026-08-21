@@ -125,8 +125,11 @@ class DemoSeeder extends Seeder
                 'desc' => 'Уламжлалт монгол хоолны ресторан.'],
             ['org' => 'Сүлд Фарм ХХК', 'name' => 'Сүлд Эмийн Сан', 'slug' => 'suld-emiin-san', 'category' => 'health', 'sub' => 'Эмийн сан', 'district' => 'Баянзүрх', 'address' => 'Энхтайваны өргөн чөлөө 55', 'phone' => '70009911', 'price' => '₮', 'verified' => true, 'open24' => true,
                 'desc' => '24 цагийн эмийн сан. Жороор олгох эм, анхны тусламжийн хэрэгсэл, эмчийн зөвлөгөө.'],
-            ['org' => 'Смарт Скул ХХК', 'name' => 'Смарт Скул', 'slug' => 'smart-school', 'category' => 'education', 'sub' => 'Хэлний сургалт', 'district' => 'Чингэлтэй', 'address' => 'Барилгачдын талбай 3', 'phone' => '70110099', 'price' => '₮₮', 'verified' => false,
-                'desc' => 'Программчлал, англи хэлний эрчимжүүлсэн сургалт.'],
+            // 3 дахь түвшний ангилалд бүртгэлтэй жишээ бизнесүүд
+            ['org' => 'Смарт Скул ХХК', 'name' => 'Смарт Скул', 'slug' => 'smart-school', 'category' => 'education-1-1', 'sub' => 'Англи хэл', 'district' => 'Чингэлтэй', 'address' => 'Барилгачдын талбай 3', 'phone' => '70110099', 'price' => '₮₮', 'verified' => false,
+                'desc' => 'IELTS, ярианы англи хэлний эрчимжүүлсэн сургалт.'],
+            ['org' => 'Сакура Эдьюкейшн ХХК', 'name' => 'Сакура Япон Хэл', 'slug' => 'sakura-japanese', 'category' => 'education-1-2', 'sub' => 'Япон хэл', 'district' => 'Сүхбаатар', 'address' => 'Их сургуулийн гудамж 7', 'phone' => '99012345', 'price' => '₮₮', 'verified' => true,
+                'desc' => 'JLPT N5–N1 бэлтгэл, Япон руу суралцахад дэмжлэг үзүүлнэ.'],
         ];
 
         foreach ($samples as $sample) {

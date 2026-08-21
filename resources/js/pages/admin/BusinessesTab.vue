@@ -4,11 +4,14 @@ import { shortDate } from '../../utils/date';
 import { api } from '../../api';
 import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
 import AdminBadge from '../../components/admin/AdminBadge.vue';
+import VerifiedBadge from '../../components/VerifiedBadge.vue';
+import { flattenCategories, optionLabel } from '../../utils/categories';
 
 // Бизнесүүд: эрхийн төрөл, хүлээгдэж буй төлбөр/сурталчилгаа/модерац,
 // ангилал, байршил (аймаг/нийслэл → сум/дүүрэг) шүүлтүүртэй жагсаалт
 const data = ref(null);
 const categories = ref([]);
+const categoryOptions = computed(() => flattenCategories(categories.value));
 const locations = ref([]);
 const loading = ref(false);
 const page = ref(1);
@@ -114,7 +117,7 @@ onMounted(async () => {
             </select>
             <select v-model="filters.category_id" class="cursor-pointer rounded-[8px] border border-inputline bg-white px-2.5 py-2 text-[12.5px] font-semibold text-ink outline-none">
                 <option value="">Бүх ангилал</option>
-                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
             </select>
             <select v-model="filters.city" class="cursor-pointer rounded-[8px] border border-inputline bg-white px-2.5 py-2 text-[12.5px] font-semibold text-ink outline-none">
                 <option value="">Аймаг / Нийслэл</option>
@@ -146,7 +149,7 @@ onMounted(async () => {
                         <div class="min-w-0">
                             <div class="flex items-center gap-1.5">
                                 <router-link :to="{ name: 'business', params: { slug: b.slug } }" class="truncate text-[13px] font-bold text-ink hover:text-brand">{{ b.name }}</router-link>
-                                <span v-if="b.is_verified" class="shrink-0 text-[11px] text-green">✓</span>
+                                <VerifiedBadge v-if="b.is_verified" :size="14" />
                             </div>
                             <div class="text-[11px] text-mute">{{ b.branches_count }} салбар</div>
                         </div>

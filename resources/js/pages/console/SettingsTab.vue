@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import BizLogo from '../../components/BizLogo.vue';
+import { flattenCategories, optionLabel } from '../../utils/categories';
 
 // Байгууллагын нийтлэг мэдээлэл (нэр, лого, ангилал, танилцуулга)
 const store = useConsoleStore();
@@ -11,6 +12,7 @@ const orgForm = ref({ name: '' });
 const bizForm = ref({});
 const msg = ref({ type: '', text: '' });
 const categories = ref([]);
+const categoryOptions = computed(() => flattenCategories(categories.value));
 const selectedBusinessId = ref(null);
 const logoFile = ref(null);
 const logoUploading = ref(false);
@@ -137,7 +139,7 @@ onMounted(async () => {
                 <div>
                     <label class="field-label">Ангилал</label>
                     <select v-model="bizForm.category_id" class="input cursor-pointer">
-                        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
                     </select>
                 </div>
                 <div>

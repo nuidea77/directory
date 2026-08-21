@@ -51,7 +51,7 @@ class DirectoryTest extends TestCase
         // Production-д CACHE_STORE=database/file — cache-д Eloquent объект
         // хадгалбал unserialize эвдэрч 500 өгдөг байсан (regression)
         config(['cache.default' => 'file']);
-        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v3');
 
         $category = Category::factory()->create(['slug' => 'food']);
         Business::factory()->create(['category_id' => $category->id]);
@@ -63,7 +63,7 @@ class DirectoryTest extends TestCase
             ->assertJsonPath('data.0.slug', 'food')
             ->assertJsonPath('data.0.businesses_count', 1);
 
-        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v2');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('categories:index:v3');
     }
 
     public function test_24_7_flag_is_computed_from_hours(): void
