@@ -20,7 +20,7 @@ class OrganizationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $organizations = $request->user()->organizations()
-            ->with(['businesses.category', 'businesses.branches.images'])
+            ->with(['businesses.category', 'businesses.categories', 'businesses.branches.images'])
             ->get();
 
         return response()->json(['data' => OrganizationResource::collection($organizations)]);
@@ -35,6 +35,10 @@ class OrganizationController extends Controller
             'organization_name' => ['required', 'string', 'max:150'],
             'business_name' => ['required', 'string', 'max:150'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
+            // Нэмэлт ангиллууд — нэг бизнес олон ангилалд харагдана
+            'category_ids' => ['nullable', 'array', 'max:'.Business::MAX_CATEGORIES],
+            // Хоосон массивыг multipart-аар илгээхэд [null] болж ирдэг тул nullable
+            'category_ids.*' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:2000'],
             'website' => ['nullable', 'string', 'max:190'],
@@ -70,14 +74,16 @@ class OrganizationController extends Controller
             'is_verified' => ! empty($organization->planConfig()['verified_badge']),
         ]);
 
+        $business->syncCategories($data['category_ids'] ?? []);
+
         if ($request->hasFile('logo')) {
             $request->validate(['logo' => ['image', 'max:2048']]);
             $business->update(['logo_path' => $request->file('logo')->store('logos', 'public')]);
         }
 
         return response()->json([
-            'organization' => new OrganizationResource($organization->load('businesses.category')),
-            'business' => new BusinessResource($business->load('category')),
+            'organization' => new OrganizationResource($organization->load(['businesses.category', 'businesses.categories'])),
+            'business' => new BusinessResource($business->load(['category', 'categories'])),
         ], 201);
     }
 
@@ -88,6 +94,9 @@ class OrganizationController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:150'],
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
+            'category_ids' => ['nullable', 'array', 'max:'.Business::MAX_CATEGORIES],
+            // Хоосон массивыг multipart-аар илгээхэд [null] болж ирдэг тул nullable
+            'category_ids.*' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:2000'],
             'website' => ['nullable', 'string', 'max:190'],
@@ -101,7 +110,14 @@ class OrganizationController extends Controller
             $data['slug'] = $this->uniqueSlug(Business::class, $data['name'], $business->id);
         }
 
+        $categoryIds = $data['category_ids'] ?? null;
+        unset($data['category_ids']);
+
         $business->update($data);
+
+        if ($categoryIds !== null || $request->exists('category_ids')) {
+            $business->syncCategories($categoryIds ?? []);
+        }
 
         if ($request->hasFile('logo')) {
             $request->validate(['logo' => ['image', 'max:2048']]);
@@ -113,7 +129,7 @@ class OrganizationController extends Controller
             $business->update(['logo_path' => $request->file('logo')->store('logos', 'public')]);
         }
 
-        return new BusinessResource($business->refresh()->load(['category', 'branches.images']));
+        return new BusinessResource($business->refresh()->load(['category', 'categories', 'branches.images']));
     }
 
     public function destroyBusiness(Request $request, Business $business): JsonResponse

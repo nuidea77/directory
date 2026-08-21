@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/auth';
 import HoursEditor from '../../components/HoursEditor.vue';
 import { cityCenters } from '../../data/cityCenters';
 import { flattenCategories, optionLabel } from '../../utils/categories';
+import CategoryPicker from '../../components/CategoryPicker.vue';
 
 /**
  * Бизнес нэмэх шаталсан форм (2c → 3a/5a):
@@ -25,6 +26,7 @@ const business = ref(null);
 const info = ref({
     business_name: '',
     category_id: '',
+    category_ids: [],
     subcategory: '',
     description: '',
     website: '',
@@ -63,12 +65,15 @@ const subOptions = computed(() => flattenCategories(mainCategory.value?.children
 watch(mainCategoryId, (id) => {
     info.value.category_id = id;
     info.value.subcategory = '';
+    // Үндсэн ангилал нэмэлт жагсаалтад давхардахгүй
+    info.value.category_ids = info.value.category_ids.filter((x) => Number(x) !== Number(id));
 });
 
 function pickSubcategory(id) {
     const sub = subOptions.value.find((c) => c.id === Number(id));
     info.value.category_id = sub ? sub.id : mainCategoryId.value;
     info.value.subcategory = sub ? sub.name : '';
+    info.value.category_ids = info.value.category_ids.filter((x) => Number(x) !== Number(info.value.category_id));
 }
 const branchForms = ref([newBranchForm()]);
 
@@ -268,6 +273,11 @@ onMounted(async () => {
                                 <option value="">{{ subOptions.length ? 'Сонгоно уу (сонголттой)' : 'Дэд ангилал алга' }}</option>
                                 <option v-for="sub in subOptions" :key="sub.id" :value="sub.id">{{ optionLabel(sub) }}</option>
                             </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Нэмэлт ангилал <span class="font-normal text-mute">— бизнес хэд хэдэн ангилалд харагдаж болно</span></label>
+                            <CategoryPicker v-model="info.category_ids" :categories="categories" :primary-id="info.category_id" />
+                            <p class="mt-1 text-[11.5px] text-mute">Ж: гоо сайхны салон нь «Үсчин», «Хумсны засал» ангилалд ч харагдана.</p>
                         </div>
                         <div class="sm:col-span-2">
                             <label class="field-label !text-[12px]">Тайлбар</label>

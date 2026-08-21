@@ -113,8 +113,10 @@ class DemoSeeder extends Seeder
                 'desc' => 'Хотоос 60 км. Байгальд хоносон гэрийн бааз, зунжингаа дүүрэн.'],
             ['org' => 'Цагаан Хас ХХК', 'name' => 'Цагаан Хас Хууль', 'slug' => 'tsagaan-khas', 'category' => 'legal', 'sub' => 'Өмгөөлөл', 'district' => 'Чингэлтэй', 'address' => 'Бага тойруу 18', 'phone' => '75759090', 'price' => '₮₮₮', 'verified' => true,
                 'desc' => 'Иргэний болон аж ахуйн эрх зүйн мэргэшсэн хуулийн фирм.'],
+            // Олон ангилалтай жишээ: гоо сайхан + үсчин + хумсны засал
             ['org' => 'Гоо Студио ХХК', 'name' => 'Гоо Студио 21', 'slug' => 'goo-studio-21', 'category' => 'beauty', 'sub' => 'Гоо сайхны салон', 'district' => 'Баянгол', 'address' => 'Амарсанаагийн гудамж 9', 'phone' => '88003344', 'price' => '₮₮', 'verified' => false,
-                'desc' => 'Үс засалт, будалт, арьс арчилгааны цогц үйлчилгээ.'],
+                'extra_categories' => ['beauty-1', 'beauty-4'],
+                'desc' => 'Үс засалт, будалт, хумсны засал, арьс арчилгааны цогц үйлчилгээ.'],
             ['org' => 'Кофе Хаус ХХК', 'name' => 'Кофе Хаус 21', 'slug' => 'coffee-house-21', 'category' => 'restaurants', 'sub' => 'Кафе, бэйкери', 'district' => 'Сүхбаатар', 'address' => 'Олимпын гудамж 12', 'phone' => '88001177', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'Ажиллахад тохиромжтой, суудал бүрт залгууртай кафе. Шинэ цэс, үнийн жагсаалттай.'],
             ['org' => 'Хаан Бууз ХХК', 'name' => 'Хаан Буузны газар', 'slug' => 'khaan-buuz', 'category' => 'restaurants', 'sub' => 'Монгол хоол', 'district' => 'Сүхбаатар', 'address' => 'Сеүлийн гудамж 5', 'phone' => '99113322', 'price' => '₮', 'verified' => true, 'open24' => true,
@@ -150,6 +152,11 @@ class DemoSeeder extends Seeder
                     'price_level' => $sample['price'],
                     'is_verified' => $sample['verified'],
                 ],
+            );
+
+            // Нэмэлт ангиллууд (нэг бизнес олон ангилалд харагдана)
+            $business->syncCategories(
+                Category::whereIn('slug', $sample['extra_categories'] ?? [])->pluck('id')->all(),
             );
 
             $branch = $business->branches()->updateOrCreate(

@@ -4,6 +4,7 @@ import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import BizLogo from '../../components/BizLogo.vue';
 import { flattenCategories, optionLabel } from '../../utils/categories';
+import CategoryPicker from '../../components/CategoryPicker.vue';
 
 // Байгууллагын нийтлэг мэдээлэл (нэр, лого, ангилал, танилцуулга)
 const store = useConsoleStore();
@@ -29,6 +30,9 @@ function syncForms() {
         bizForm.value = {
             name: business.value.name,
             category_id: business.value.category?.id || '',
+            category_ids: (business.value.categories || [])
+                .map((c) => c.id)
+                .filter((id) => id !== business.value.category?.id),
             description: business.value.description || '',
             website: business.value.website || '',
             email: business.value.email || '',
@@ -57,7 +61,15 @@ async function saveBusiness() {
         const fd = new FormData();
         // Хоосон болгосон талбарыг ч илгээнэ — эс бөгөөс устгасан вэб сайт,
         // тайлбар зэрэг хадгалагдахгүй хуучнаараа үлддэг (backend-д nullable)
-        Object.entries(bizForm.value).forEach(([k, v]) => fd.append(k, v ?? ''));
+        Object.entries(bizForm.value).forEach(([k, v]) => {
+            // Нэмэлт ангиллууд массив тул тус бүрээр нь илгээнэ
+            if (Array.isArray(v)) {
+                if (!v.length) fd.append(`${k}[]`, '');
+                else v.forEach((item) => fd.append(`${k}[]`, item));
+                return;
+            }
+            fd.append(k, v ?? '');
+        });
         if (logoFile.value) fd.append('logo', logoFile.value);
 
         await api.postForm(`/console/businesses/${business.value.id}`, fd);
@@ -138,10 +150,14 @@ import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
                     <input v-model="bizForm.name" type="text" class="input" required />
                 </div>
                 <div>
-                    <label class="field-label">Ангилал</label>
+                    <label class="field-label">Үндсэн ангилал</label>
                     <select v-model="bizForm.category_id" class="input cursor-pointer">
                         <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
                     </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="field-label">Нэмэлт ангилал <span class="font-normal text-mute">— олон ангилалд харагдана</span></label>
+                    <CategoryPicker v-model="bizForm.category_ids" :categories="categories" :primary-id="bizForm.category_id" />
                 </div>
                 <div>
                     <label class="field-label">Үнийн зэрэглэл</label>

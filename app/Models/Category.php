@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
@@ -38,9 +39,21 @@ class Category extends Model
         return $this->children()->with('allChildren');
     }
 
+    /**
+     * Энэ ангиллыг ҮНДСЭН ангилалаа болгосон бизнесүүд.
+     */
     public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);
+    }
+
+    /**
+     * Энэ ангилалд харагдах БҮХ бизнес — үндсэн ба нэмэлт ангилалаар.
+     * Тоолол, хайлт, устгалын хамгаалалт бүгд үүн дээр тулгуурлана.
+     */
+    public function allBusinesses(): BelongsToMany
+    {
+        return $this->belongsToMany(Business::class);
     }
 
     /**

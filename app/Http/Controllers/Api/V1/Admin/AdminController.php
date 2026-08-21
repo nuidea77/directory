@@ -175,7 +175,7 @@ class AdminController extends Controller
                 'campaigns as pending_ads_count' => fn ($q) => $q->whereIn('status', ['pending_payment', 'queued']),
             ])
             ->when($filters['q'] ?? null, fn ($q, $term) => $q->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'))
-            ->when($filters['category_id'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
+            ->when($filters['category_id'] ?? null, fn ($q, $id) => $q->whereHas('categories', fn ($c) => $c->where('categories.id', $id)))
             ->when($filters['city'] ?? null, fn ($q, $city) => $q->whereHas('branches', fn ($b) => $b->where('city', $city)))
             ->when($filters['district'] ?? null, fn ($q, $d) => $q->whereHas('branches', fn ($b) => $b->where('district', $d)))
             ->when($filters['plan'] ?? null, fn ($q, $plan) => $q->whereHas('organization', fn ($org) => $plan === 'free'
@@ -382,7 +382,11 @@ class AdminController extends Controller
         // Бизнестэй эсвэл бизнестэй дэд ангилалтай бол устгахгүй (cascade-аас хамгаална)
         $treeIds = $category->descendantIds();
 
-        if (\App\Models\Business::whereIn('category_id', $treeIds)->exists()) {
+        $inUse = \App\Models\Business::whereIn('category_id', $treeIds)
+            ->orWhereHas('categories', fn ($q) => $q->whereIn('categories.id', $treeIds))
+            ->exists();
+
+        if ($inUse) {
             return response()->json(['message' => 'Энэ ангилалд бизнес бүртгэлтэй тул устгах боломжгүй. Эхлээд бизнесүүдийг өөр ангилалд шилжүүлнэ үү.'], 422);
         }
 

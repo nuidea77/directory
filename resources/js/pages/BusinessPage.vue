@@ -12,6 +12,13 @@ import VerifiedBadge from '../components/VerifiedBadge.vue';
 // Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 
+// Ангиллын chip: үндсэн ангилал эхэнд
+const categoryChips = computed(() => {
+    const list = business.value?.categories || [];
+    const primary = business.value?.category?.id;
+    return [...list].sort((a, b) => (b.id === primary) - (a.id === primary));
+});
+
 // Газрын зурагт бүх идэвхтэй, координаттай салбаруудыг pin-ээр харуулна
 const mapMarkers = () => (business.value?.branches || [])
     .filter((b) => b.lat !== null && b.lat !== undefined)
@@ -235,6 +242,17 @@ onMounted(fetchBusiness);
                                 {{ business.is_favorited ? '♥ Хадгалсан' : 'Хадгалах' }}
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Ангиллууд: нэг бизнес олон ангилалд харагдана -->
+                    <div v-if="business.categories?.length" class="mt-3 flex flex-wrap gap-1.5">
+                        <router-link
+                            v-for="c in categoryChips"
+                            :key="c.id"
+                            :to="{ name: 'category', params: { slug: c.slug } }"
+                            class="rounded-full border px-2.5 py-1 text-[12px] font-semibold transition"
+                            :class="c.id === business.category?.id ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body hover:border-brand hover:text-brand'"
+                        >{{ c.name }}</router-link>
                     </div>
 
                     <!-- Салбар сонгогч (5b) -->

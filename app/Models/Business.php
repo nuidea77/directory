@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
@@ -36,8 +37,22 @@ class Business extends Model
         ];
     }
 
+    /**
+     * Нэг бизнес олон ангилалд бүртгэгдэж болно (ж: үсчин + хумсны засал).
+     * Хамгийн ихдээ хэдэн ангилал сонгож болох — үндсэнийг оруулаад.
+     */
+    public const MAX_CATEGORIES = 5;
+
     protected static function booted(): void
     {
+        // Үндсэн ангилал ҮРГЭЛЖ pivot дотор байна — хайлт зөвхөн pivot-оор
+        // ажилладаг тул энэ нь мод дүүрэн байхыг баталгаажуулна
+        static::saved(function (Business $business) {
+            if ($business->category_id) {
+                $business->categories()->syncWithoutDetaching([$business->category_id]);
+            }
+        });
+
         static::deleting(function (Business $business) {
             // DB cascade Eloquent event дуудахгүй тул салбаруудыг моделиор устгана
             $business->branches()->get()->each->delete();
@@ -56,6 +71,29 @@ class Business extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Үндсэн + нэмэлт ангиллууд (хайлт, ангиллын жагсаалт эндээс ажиллана).
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Ангиллын багцыг бүхэлд нь солино — үндсэн ангилал үргэлж эхэнд.
+     */
+    public function syncCategories(array $ids): void
+    {
+        $ids = collect($ids)->map(fn ($id) => (int) $id)
+            ->prepend((int) $this->category_id)
+            ->filter()
+            ->unique()
+            ->take(self::MAX_CATEGORIES)
+            ->all();
+
+        $this->categories()->sync($ids);
     }
 
     public function branches(): HasMany

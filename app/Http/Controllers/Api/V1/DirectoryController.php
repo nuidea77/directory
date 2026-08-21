@@ -46,7 +46,7 @@ class DirectoryController extends Controller
         $this->campaigns->sync();
 
         $categories = Category::whereNull('parent_id')
-            ->withCount('businesses')
+            ->withCount('allBusinesses as businesses_count')
             ->orderBy('sort_order')
             ->get();
 
@@ -165,7 +165,8 @@ class DirectoryController extends Controller
         if ($category !== null) {
             // Бүх түвшний дэд ангилал (эцэг сонговол дэд дэд нь ч илэрнэ)
             $ids = $category->descendantIds();
-            $query->whereHas('business', fn ($q) => $q->whereIn('category_id', $ids));
+            // Үндсэн ба нэмэлт ангилал хоёуланг нь хамарна (pivot дотор бүгд бий)
+            $query->whereHas('business.categories', fn ($q) => $q->whereIn('categories.id', $ids));
         }
 
         $term = trim((string) $request->query('q'));
@@ -366,6 +367,7 @@ class DirectoryController extends Controller
         $business = Business::where('slug', $slug)
             ->with([
                 'category',
+                'categories',
                 'branches' => fn ($q) => $q->where('status', 'active')
                     ->with(['images', 'reviews' => fn ($r) => $r->where('status', 'active')->with('user')]),
             ])
@@ -377,7 +379,9 @@ class DirectoryController extends Controller
 
         // Ижил төрлийн бизнесүүд — зөвхөн идэвхтэй салбар, зурагтайгаа
         // (images-гүй ачаалбал cover_url хоосон гарч, N+1 үүсдэг)
-        $similar = Business::where('category_id', $business->category_id)
+        $similarCategoryIds = $business->categories->pluck('id')->push($business->category_id)->unique()->all();
+
+        $similar = Business::whereHas('categories', fn ($q) => $q->whereIn('categories.id', $similarCategoryIds))
             ->where('id', '!=', $business->id)
             ->with([
                 'category',

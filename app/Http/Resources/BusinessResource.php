@@ -24,6 +24,8 @@ class BusinessResource extends JsonResource
             'price_level' => $this->price_level,
             'is_verified' => $this->is_verified,
             'category' => new CategoryResource($this->whenLoaded('category')),
+            // Үндсэн + нэмэлт ангиллууд (нэг бизнес олон ангилалд харагдана)
+            'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'branches' => BranchResource::collection($this->whenLoaded('branches')),
             'rating_avg' => $this->when($this->relationLoaded('branches'), fn () => $this->ratingAvg()),
             'reviews_total' => $this->when($this->relationLoaded('branches'), fn () => $this->reviewsTotal()),

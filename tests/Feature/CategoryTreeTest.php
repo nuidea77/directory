@@ -68,6 +68,65 @@ class CategoryTreeTest extends TestCase
             ->assertJsonPath('ancestors.1.slug', 'education-1');
     }
 
+    public function test_a_business_can_belong_to_several_categories(): void
+    {
+        $beauty = Category::factory()->create(['name' => 'Гоо сайхан', 'slug' => 'beauty']);
+        $hair = Category::factory()->create(['name' => 'Үсчин', 'slug' => 'beauty-1', 'parent_id' => $beauty->id]);
+        $nails = Category::factory()->create(['name' => 'Хумсны засал', 'slug' => 'beauty-4', 'parent_id' => $beauty->id]);
+
+        // Үндсэн ангилал нь «Гоо сайхан», нэмэлтээр үсчин ба хумсны засал
+        $business = Business::factory()->create(['category_id' => $beauty->id]);
+        $business->syncCategories([$hair->id, $nails->id]);
+        Branch::factory()->create(['business_id' => $business->id]);
+
+        // Гурван ангиллын алинаас нь ч олдоно
+        foreach (['beauty', 'beauty-1', 'beauty-4'] as $slug) {
+            $this->getJson("/api/v1/search?category={$slug}")
+                ->assertOk()
+                ->assertJsonPath('meta.total', 1);
+        }
+
+        // Ангиллын тоолол нэмэлт ангиллыг ч тооцно
+        $this->getJson('/api/v1/categories/beauty-1')
+            ->assertOk()
+            ->assertJsonPath('stats.total', 1)
+            ->assertJsonPath('data.businesses_count', 1);
+
+        // Ангилал сольж хасахад тухайн ангиллаас алга болно
+        $business->syncCategories([$hair->id]);
+        $this->getJson('/api/v1/search?category=beauty-4')->assertOk()->assertJsonPath('meta.total', 0);
+        $this->getJson('/api/v1/search?category=beauty-1')->assertOk()->assertJsonPath('meta.total', 1);
+
+        // Үндсэн ангилал хэзээ ч хасагдахгүй
+        $business->syncCategories([]);
+        $this->assertSame([$beauty->id], $business->categories()->pluck('categories.id')->all());
+    }
+
+    public function test_console_can_save_extra_categories(): void
+    {
+        $beauty = Category::factory()->create(['slug' => 'beauty']);
+        $hair = Category::factory()->create(['slug' => 'beauty-1', 'parent_id' => $beauty->id]);
+
+        $user = User::factory()->create();
+
+        $created = $this->actingAs($user)->postJson('/api/v1/console/organizations', [
+            'organization_name' => 'Гоо Студио',
+            'business_name' => 'Гоо Студио 21',
+            'category_id' => $beauty->id,
+            'category_ids' => [$hair->id],
+        ])->assertCreated();
+
+        $business = Business::find($created->json('business.id'));
+        $this->assertEqualsCanonicalizing([$beauty->id, $hair->id], $business->categories()->pluck('categories.id')->all());
+
+        // Нэмэлтийг хоослоход зөвхөн үндсэн ангилал үлдэнэ
+        $this->actingAs($user)->postJson("/api/v1/console/businesses/{$business->id}", [
+            'category_ids' => [],
+        ])->assertOk();
+
+        $this->assertSame([$beauty->id], $business->refresh()->categories()->pluck('categories.id')->all());
+    }
+
     public function test_admin_cannot_create_a_fourth_level(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

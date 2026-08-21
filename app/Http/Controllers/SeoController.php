@@ -92,7 +92,7 @@ class SeoController extends Controller
 
     public function category(string $slug): Response
     {
-        $category = Category::where('slug', $slug)->withCount('businesses')->first();
+        $category = Category::where('slug', $slug)->withCount('allBusinesses as businesses_count')->first();
 
         if ($category === null) {
             return response()->view('app', ['meta' => $this->default], 404);

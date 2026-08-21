@@ -17,7 +17,7 @@ class CategoryController extends Controller
         // Cache-д зөвхөн ЦЭВЭР массив хадгална: Eloquent/Resource объект
         // хадгалбал unserialize эвдэрч (__PHP_Incomplete_Class) 500 өгдөг.
         $payload = Cache::remember('categories:index:v3', 600, function () {
-            $all = Category::query()->withCount('businesses')->orderBy('sort_order')->get();
+            $all = Category::query()->withCount('allBusinesses as businesses_count')->orderBy('sort_order')->get();
 
             $byParent = $all->groupBy(fn (Category $c) => $c->parent_id ?? 0);
 
@@ -52,10 +52,10 @@ class CategoryController extends Controller
     public function show(string $slug): JsonResponse
     {
         $category = Category::where('slug', $slug)
-            ->withCount('businesses')
+            ->withCount('allBusinesses as businesses_count')
             // Одоогийн ангиллаас 2 түвшин доош (дэд + дэд дэд) — chip-үүдэд
-            ->with(['children' => fn ($q) => $q->withCount('businesses')
-                ->with(['children' => fn ($q2) => $q2->withCount('businesses')])])
+            ->with(['children' => fn ($q) => $q->withCount('allBusinesses as businesses_count')
+                ->with(['children' => fn ($q2) => $q2->withCount('allBusinesses as businesses_count')])])
             ->firstOrFail();
 
         // Ангиллын статистик: нийт, баталгаажсан, одоо нээлттэй.
@@ -64,7 +64,7 @@ class CategoryController extends Controller
         $categoryIds = $category->descendantIds();
 
         $branchIds = Branch::query()->active()
-            ->whereHas('business', fn ($q) => $q->whereIn('category_id', $categoryIds))
+            ->whereHas('business.categories', fn ($q) => $q->whereIn('categories.id', $categoryIds))
             ->pluck('id');
 
         $verified = Branch::whereIn('id', $branchIds)
