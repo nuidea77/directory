@@ -41,7 +41,20 @@ const loadError = ref('');
 const locations = ref([]);
 const amenityOptions = ref([]);
 
-const districts = computed(() => locations.value.find((l) => l.city === (filters.value.city || 'Улаанбаатар'))?.districts || []);
+// Хот сонгоогүй үед («Бүх байршил») дүүргийн жагсаалтыг Улаанбаатараар харуулна
+const districtCity = computed(() => filters.value.city || 'Улаанбаатар');
+const districts = computed(() => locations.value.find((l) => l.city === districtCity.value)?.districts || []);
+
+// Дүүрэг сонгоход аль хотынх нь болох нь тодорхой байх ёстой
+function toggleDistrict(d) {
+    if (filters.value.district === d) {
+        filters.value.district = '';
+    } else {
+        filters.value.district = d;
+        if (!filters.value.city) filters.value.city = districtCity.value;
+    }
+    apply();
+}
 
 const filters = ref({
     q: '',
@@ -360,18 +373,21 @@ onMounted(async () => {
 
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">БАЙРШИЛ</div>
                 <select v-model="filters.city" class="input cursor-pointer !py-2 !text-[12.5px]" @change="filters.district = ''; apply()">
-                    <option value="">Улаанбаатар (бүх дүүрэг)</option>
+                    <option value="">Бүх байршил</option>
                     <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
                 </select>
 
-                <div class="mb-2 mt-4 text-[11px] font-bold tracking-[.08em] text-mute">{{ (filters.city || 'Улаанбаатар') === 'Улаанбаатар' ? 'ДҮҮРЭГ' : 'СУМ' }}</div>
+                <div class="mb-2 mt-4 text-[11px] font-bold tracking-[.08em] text-mute">
+                    {{ districtCity === 'Улаанбаатар' ? 'ДҮҮРЭГ' : 'СУМ' }}
+                    <span v-if="!filters.city" class="font-semibold text-faint">· {{ districtCity.toUpperCase() }}</span>
+                </div>
                 <div class="max-h-56 overflow-y-auto pr-1">
                     <button
                         v-for="d in districts"
                         :key="d"
                         class="flex w-full cursor-pointer items-center gap-2 py-1 text-left"
                         :aria-pressed="filters.district === d"
-                        @click="filters.district = filters.district === d ? '' : d; apply()"
+                        @click="toggleDistrict(d)"
                     >
                         <span class="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded border-[1.5px]" :class="filters.district === d ? 'border-brand bg-brand text-[9px] text-white' : 'border-[#cfccc5]'">{{ filters.district === d ? '✓' : '' }}</span>
                         <span class="text-[13px] font-medium text-body">{{ d }}</span>

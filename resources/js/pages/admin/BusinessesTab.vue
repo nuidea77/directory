@@ -120,7 +120,7 @@ onMounted(async () => {
                 <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
             </select>
             <select v-model="filters.city" class="cursor-pointer rounded-[8px] border border-inputline bg-white px-2.5 py-2 text-[12.5px] font-semibold text-ink outline-none">
-                <option value="">Аймаг / Нийслэл</option>
+                <option value="">Бүх байршил</option>
                 <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
             </select>
             <select
