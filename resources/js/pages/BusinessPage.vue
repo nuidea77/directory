@@ -12,13 +12,6 @@ import VerifiedBadge from '../components/VerifiedBadge.vue';
 // Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 
-// Ангиллын chip: үндсэн ангилал эхэнд
-const categoryChips = computed(() => {
-    const list = business.value?.categories || [];
-    const primary = business.value?.category?.id;
-    return [...list].sort((a, b) => (b.id === primary) - (a.id === primary));
-});
-
 // Газрын зурагт бүх идэвхтэй, координаттай салбаруудыг pin-ээр харуулна
 const mapMarkers = () => (business.value?.branches || [])
     .filter((b) => b.lat !== null && b.lat !== undefined)
@@ -29,6 +22,13 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const business = ref(null);
+
+// Ангиллын chip: үндсэн ангилал эхэнд
+const categoryChips = computed(() => {
+    const list = business.value?.categories || [];
+    const primary = business.value?.category?.id;
+    return [...list].sort((a, b) => (b.id === primary) - (a.id === primary));
+});
 const similar = ref([]);
 const selectedBranchId = ref(null);
 const loading = ref(true);
@@ -36,7 +36,8 @@ const notFound = ref(false);
 const loadError = ref('');
 const tab = ref('overview');
 
-const reviewForm = ref({ rating: 5, comment: '' });
+// Анхдагчаар од сонгоогүй байна — 5 од урьдчилж тавибал бүх үнэлгээ 5 болно
+const reviewForm = ref({ rating: 0, comment: '' });
 const reviewError = ref('');
 const reviewBusy = ref(false);
 const favoriteBusy = ref(false);
@@ -97,6 +98,12 @@ const weekdays = { mon: 'Даваа', tue: 'Мягмар', wed: 'Лхагва', 
 const todayKey = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][(new Date().getDay() + 6) % 7];
 
 const branch = computed(() => business.value?.branches?.find((b) => b.id === selectedBranchId.value) || business.value?.branches?.[0]);
+
+// Хэрэглэгч өмнө нь бичсэн бол формд нь буулгана — засаад дахин илгээх боломжтой
+// (branch-аас хамаардаг тул түүний ДАРАА тодорхойлно)
+watch(myReview, (r) => {
+    reviewForm.value = r ? { rating: r.rating, comment: r.comment || '' } : { rating: 0, comment: '' };
+});
 const hasMultipleBranches = computed(() => (business.value?.branches?.length || 0) > 1);
 const gallery = computed(() => branch.value?.images || []);
 
@@ -151,7 +158,6 @@ async function submitReview() {
     reviewBusy.value = true;
     try {
         await api.post(`/branches/${branch.value.id}/reviews`, reviewForm.value);
-        reviewForm.value = { rating: 5, comment: '' };
         await fetchBusiness();
         tab.value = 'reviews';
     } catch (e) {
@@ -325,12 +331,24 @@ onMounted(fetchBusiness);
                             <div class="flex items-center gap-3">
                                 <span class="text-[13px] font-semibold text-body">Таны үнэлгээ:</span>
                                 <div class="flex gap-0.5">
-                                    <button v-for="s in 5" :key="s" type="button" class="cursor-pointer text-[20px] leading-none transition hover:scale-110" :class="s <= reviewForm.rating ? 'text-amberdot' : 'text-searchline'" @click="reviewForm.rating = s">★</button>
+                                    <button
+                                        v-for="s in 5"
+                                        :key="s"
+                                        type="button"
+                                        class="cursor-pointer text-[20px] leading-none transition hover:scale-110"
+                                        :class="s <= reviewForm.rating ? 'text-amberdot' : 'text-searchline'"
+                                        :aria-label="`${s} од`"
+                                        :aria-pressed="s === reviewForm.rating"
+                                        @click="reviewForm.rating = s"
+                                    >★</button>
                                 </div>
+                                <span class="text-[12px] font-medium" :class="reviewForm.rating ? 'text-mute' : 'text-amberdark'">
+                                    {{ reviewForm.rating ? `${reviewForm.rating} / 5` : 'Од дарж үнэлгээгээ өгнө үү' }}
+                                </span>
                             </div>
                             <textarea v-model="reviewForm.comment" rows="2" placeholder="Туршлагаа хуваалцаарай..." class="input resize-none"></textarea>
                             <p v-if="reviewError" class="text-[12.5px] font-medium text-red">{{ reviewError }}</p>
-                            <button type="submit" class="btn-primary !py-2.5" :disabled="reviewBusy">
+                            <button type="submit" class="btn-primary !py-2.5" :disabled="reviewBusy || !reviewForm.rating">
                                 {{ auth.isLoggedIn ? 'Сэтгэгдэл үлдээх' : 'Нэвтэрч сэтгэгдэл бичих' }}
                             </button>
                         </form>
