@@ -15,6 +15,7 @@ const router = useRouter();
 
 // Байгаа бизнест шинэ салбар нэмэх (шинэ байгууллага үүсгэхгүй)
 const addOpen = ref(false);
+const limitOpen = ref(false);
 const addBusy = ref(false);
 const addError = ref('');
 const locations = ref([]);
@@ -22,7 +23,18 @@ const addForm = ref({ business_id: null, city: 'Улаанбаатар', distric
 
 const addDistricts = computed(() => locations.value.find((l) => l.city === addForm.value.city)?.districts || []);
 
+// Эрхийн бичгийн салбарын лимит (0 = хязгааргүй)
+const branchLimit = computed(() => Number(store.organization?.limits?.branches || 0));
+const atLimit = computed(() => branchLimit.value > 0 && store.branches.length >= branchLimit.value);
+
+// Лимит дүүрсэн бол формыг нээхийн оронд эрх ахиулах санамж харуулна
 async function openAdd() {
+    if (atLimit.value) {
+        addOpen.value = false;
+        limitOpen.value = !limitOpen.value;
+        return;
+    }
+    limitOpen.value = false;
     addOpen.value = !addOpen.value;
     addForm.value.business_id = store.businesses[0]?.id || null;
     if (!locations.value.length) {
@@ -71,7 +83,10 @@ const totals = computed(() => ({
         <PanelPageHeader
             title="Салбарууд"
             description="Салбар бүр тусдаа бүртгэл — хаяг, цагийн хуваарь, статистик нь салангид."
-            :meta="[{ label: `${store.branches.length} салбар` }, { label: `${store.businesses.length} бизнес` }]"
+            :meta="[
+                { label: branchLimit ? `${store.branches.length} / ${branchLimit} салбар` : `${store.branches.length} салбар` },
+                { label: `${store.businesses.length} бизнес` },
+            ]"
         >
             <template #actions>
                 <router-link :to="{ name: 'add-business' }" class="btn-outline !px-4 !py-2.5 !text-[12.5px]">Шинэ бизнес</router-link>
@@ -80,6 +95,20 @@ const totals = computed(() => ({
                 </button>
             </template>
         </PanelPageHeader>
+
+        <!-- Лимит дүүрсэн үеийн санамж -->
+        <div v-if="limitOpen" class="card mt-4 !border-blueline !bg-bluetint p-5">
+            <div class="text-[14px] font-bold text-ink">Салбар нэмэхэд эрхээ ахиулна</div>
+            <p class="mt-1.5 max-w-[560px] text-[12.5px] leading-relaxed text-body">
+                {{ store.organization?.plan_name }} эрхэд {{ branchLimit }} хаяг багтана (одоо {{ store.branches.length }}).
+                Стандарт эрхээс эхлэн салбарын тоо хязгааргүй — шинэ салбар бүр өөрийн хаяг, цагийн хуваарь,
+                статистиктай тусдаа бүртгэл болно.
+            </p>
+            <div class="mt-3.5 flex flex-wrap gap-2">
+                <router-link :to="{ name: 'console-plan' }" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Эрх ахиулах</router-link>
+                <button type="button" class="btn-outline !px-4 !py-2.5 !text-[12.5px]" @click="limitOpen = false">Болих</button>
+            </div>
+        </div>
 
         <!-- Салбар нэмэх форм -->
         <div v-if="addOpen" class="card mt-4 p-5">
