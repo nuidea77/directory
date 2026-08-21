@@ -51,14 +51,16 @@ async function submitReply(review) {
 // page параметрт өгвөл буруу хуудас дуудагдана
 watch(() => store.organization?.id, () => fetchReviews());
 onMounted(() => fetchReviews());
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 </script>
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Сэтгэгдэл</h1>
-            <button class="chip" :class="{ 'chip-active': unrepliedOnly }" @click="unrepliedOnly = !unrepliedOnly; fetchReviews()">Хариугүй</button>
-        </div>
+        <PanelPageHeader title="Сэтгэгдэл" description="Хариу бичсэн бизнес илүү итгэл төрүүлдэг — ялангуяа шүүмжлэлтэй сэтгэгдэлд.">
+            <template #actions>
+                <button class="chip" :class="{ 'chip-active': unrepliedOnly }" @click="unrepliedOnly = !unrepliedOnly; fetchReviews()">Хариугүй</button>
+            </template>
+        </PanelPageHeader>
 
         <div v-if="loadError" class="card mt-4 p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>

@@ -85,14 +85,19 @@ async function fetchData() {
 
 watch(() => store.organization?.id, fetchData);
 onMounted(fetchData);
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import { Megaphone } from 'lucide-vue-next';
 </script>
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Эрх ба сурталчилгаа</h1>
-            <router-link :to="{ name: 'ad-purchase' }" class="btn-primary !px-4 !py-2.5 !text-[12.5px]">Онцлох байршил авах</router-link>
-        </div>
+        <PanelPageHeader title="Эрх ба сурталчилгаа" description="Эрхийн бичгийн төлөв, хугацаа болон идэвхтэй сурталчилгаанууд.">
+            <template #actions>
+                <router-link :to="{ name: 'ad-purchase' }" class="btn-primary flex items-center gap-1.5 !px-4 !py-2.5 !text-[12.5px]">
+                    <Megaphone :size="15" :stroke-width="2" /> Онцлох байршил авах
+                </router-link>
+            </template>
+        </PanelPageHeader>
 
         <div v-if="loadError" class="card mt-4 p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>

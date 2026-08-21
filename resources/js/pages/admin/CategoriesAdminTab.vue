@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { api, ApiError } from '../../api';
 import CategoryIcon from '../../components/CategoryIcon.vue';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 import { iconNames } from '../../data/categoryIcons';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
@@ -204,7 +204,7 @@ onMounted(fetchCategories);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Бизнесүүдийн ангилал"
             description="3 түвшин хүртэл: үндсэн → дэд → дэд дэд. Ж: Боловсрол → Хэлний сургалт → Англи хэл."
             :meta="categories ? [
@@ -222,7 +222,7 @@ onMounted(fetchCategories);
                     class="w-[240px] rounded-[8px] border border-inputline bg-white px-3 py-2 text-[12.5px] outline-none focus:border-brand"
                 />
             </template>
-        </AdminPageHeader>
+        </PanelPageHeader>
 
         <p v-if="msg.text" class="rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
@@ -287,9 +287,9 @@ onMounted(fetchCategories);
                     <span :class="cat.depth === 1 ? 'text-[13.5px] font-bold text-ink' : 'text-[12.5px] font-semibold text-body'">{{ cat.name }}</span>
                     <span class="font-mono text-[10.5px] text-faint">{{ cat.slug }}</span>
 
-                    <AdminBadge mono>{{ cat.businesses_count || 0 }}</AdminBadge>
-                    <AdminBadge v-if="childrenOf(cat.id).length" tone="brand" mono>{{ childrenOf(cat.id).length }} дэд</AdminBadge>
-                    <AdminBadge v-if="cat.depth === 1 && !cat.icon" tone="warn">icon-гүй</AdminBadge>
+                    <PanelBadge mono>{{ cat.businesses_count || 0 }}</PanelBadge>
+                    <PanelBadge v-if="childrenOf(cat.id).length" tone="brand" mono>{{ childrenOf(cat.id).length }} дэд</PanelBadge>
+                    <PanelBadge v-if="cat.depth === 1 && !cat.icon" tone="warn">icon-гүй</PanelBadge>
 
                     <div class="ml-auto flex items-center gap-2 text-[11.5px] font-semibold">
                         <template v-if="!query">

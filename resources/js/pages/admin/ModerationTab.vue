@@ -2,9 +2,9 @@
 import { onMounted, ref } from 'vue';
 import { Flag, Clock, CheckCircle2, XCircle, Store } from 'lucide-vue-next';
 import { api } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminStat from '../../components/admin/AdminStat.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelStat from '../../components/panel/PanelStat.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Модерацын тойм (4a): KPI, хүлээгдэж буй бүртгэл, дата чанар
 // Огноог YYYY.MM.DD — browser бүрд mn-MN locale байдаггүй
@@ -51,7 +51,7 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Модерацын тойм"
             description="Шинээр бүртгүүлсэн салбаруудыг батлах, татгалзах. Татгалзсан шалтгаан эзэнд харагдана."
         >
@@ -59,7 +59,7 @@ onMounted(fetchData);
                 <span class="text-[12.5px] font-medium text-mute">{{ today }}</span>
                 <button class="btn-outline !px-3.5 !py-2 !text-[12.5px]" @click="fetchData">Шинэчлэх</button>
             </template>
-        </AdminPageHeader>
+        </PanelPageHeader>
 
         <div v-if="loadError" class="card p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
@@ -71,7 +71,7 @@ onMounted(fetchData);
         <template v-else>
             <!-- KPI (4a) -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <AdminStat
+                <PanelStat
                     label="Гомдолтой сэтгэгдэл"
                     :value="Number(data.kpis.flagged_reviews)"
                     :tone="data.kpis.flagged_reviews ? 'bad' : 'default'"
@@ -79,10 +79,10 @@ onMounted(fetchData);
                     :to="{ name: 'admin-reviews' }"
                     hint="Шалгах шаардлагатай"
                 />
-                <AdminStat label="Хүлээгдэж байгаа" :value="Number(data.kpis.pending)" :tone="data.kpis.pending ? 'warn' : 'good'" :icon="Clock" hint="Редакцын хяналтад" />
-                <AdminStat label="Өнөөдөр батлагдсан" :value="Number(data.kpis.approved_today)" tone="good" :icon="CheckCircle2" />
-                <AdminStat label="Татгалзсан" :value="Number(data.kpis.rejected)" :icon="XCircle" />
-                <AdminStat label="Бүртгэлтэй бизнес" :value="Number(data.kpis.total_businesses)" :icon="Store" />
+                <PanelStat label="Хүлээгдэж байгаа" :value="Number(data.kpis.pending)" :tone="data.kpis.pending ? 'warn' : 'good'" :icon="Clock" hint="Редакцын хяналтад" />
+                <PanelStat label="Өнөөдөр батлагдсан" :value="Number(data.kpis.approved_today)" tone="good" :icon="CheckCircle2" />
+                <PanelStat label="Татгалзсан" :value="Number(data.kpis.rejected)" :icon="XCircle" />
+                <PanelStat label="Бүртгэлтэй бизнес" :value="Number(data.kpis.total_businesses)" :icon="Store" />
             </div>
 
             <div class="mt-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-[1fr_272px]">
@@ -90,14 +90,14 @@ onMounted(fetchData);
                 <div class="card overflow-hidden">
                     <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                         <span class="text-[14px] font-bold text-ink">Хүлээгдэж байгаа бүртгэл</span>
-                        <AdminBadge :tone="data.queue_total ? 'warn' : 'neutral'" mono>{{ data.queue_total }}</AdminBadge>
+                        <PanelBadge :tone="data.queue_total ? 'warn' : 'neutral'" mono>{{ data.queue_total }}</PanelBadge>
                     </div>
                     <div v-for="branch in data.queue" :key="branch.id" class="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3 last:border-0">
                         <div class="img-ph h-[26px] w-[26px] shrink-0 rounded-md"></div>
                         <div class="min-w-[170px] flex-1">
                             <div class="flex items-center gap-2">
                                 <span class="whitespace-nowrap text-[13px] font-bold text-ink">{{ branch.business?.name }} — {{ branch.name }}</span>
-                                <AdminBadge tone="brand">ШИНЭ</AdminBadge>
+                                <PanelBadge tone="brand">ШИНЭ</PanelBadge>
                             </div>
                             <div class="mt-0.5 text-[11.5px] text-mute">{{ branch.business?.category?.name }} · {{ branch.district }} · {{ branch.phone }}</div>
                         </div>

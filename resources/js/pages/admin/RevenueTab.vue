@@ -2,9 +2,9 @@
 import { onMounted, ref } from 'vue';
 import { Building2, FileClock, Megaphone, TicketPercent, Wallet } from 'lucide-vue-next';
 import { api } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminStat from '../../components/admin/AdminStat.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelStat from '../../components/panel/PanelStat.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Эрх, сурталчилгаа, орлого (9b)
 const data = ref(null);
@@ -26,7 +26,7 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Эрх, орлого"
             description="Эрхийн бичиг болон онцлох зайн орлого, төлбөртэй байгууллагын тоо, эрхийн бичгийн тархалт, онцлох зайн ашиглалтыг харуулна."
             :meta="[{ label: 'Сүүлийн 30 хоног' }]"
@@ -42,17 +42,17 @@ onMounted(fetchData);
         <template v-else>
             <!-- KPI -->
             <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                <AdminStat
+                <PanelStat
                     label="30 хоногийн орлого"
                     :value="fmt(data.kpis.revenue_30d)"
                     :hint="data.kpis.revenue_delta !== null ? (data.kpis.revenue_delta >= 0 ? '+' : '') + data.kpis.revenue_delta + '%' : ''"
                     :tone="data.kpis.revenue_delta === null ? 'default' : data.kpis.revenue_delta >= 0 ? 'good' : 'bad'"
                     :icon="Wallet"
                 />
-                <AdminStat label="Төлбөртэй байгууллага" :value="data.kpis.paid_organizations" :icon="Building2" />
-                <AdminStat label="Эрхийн орлого" :value="fmt(data.kpis.plan_revenue)" :icon="TicketPercent" />
-                <AdminStat label="Онцлох зайн орлого" :value="fmt(data.kpis.ad_revenue)" :icon="Megaphone" />
-                <AdminStat
+                <PanelStat label="Төлбөртэй байгууллага" :value="data.kpis.paid_organizations" :icon="Building2" />
+                <PanelStat label="Эрхийн орлого" :value="fmt(data.kpis.plan_revenue)" :icon="TicketPercent" />
+                <PanelStat label="Онцлох зайн орлого" :value="fmt(data.kpis.ad_revenue)" :icon="Megaphone" />
+                <PanelStat
                     label="Хүлээгдэж буй нэхэмжлэх"
                     :value="data.kpis.pending_orders"
                     :tone="data.kpis.pending_orders ? 'warn' : 'default'"
@@ -85,10 +85,10 @@ onMounted(fetchData);
                             <div class="mt-0.5 text-[11px] text-mute">{{ v.type_name }}</div>
                         </div>
                         <div class="w-16">
-                            <AdminBadge mono>{{ v.occupied }} / {{ v.slots }}</AdminBadge>
+                            <PanelBadge mono>{{ v.occupied }} / {{ v.slots }}</PanelBadge>
                         </div>
                         <div class="w-16">
-                            <AdminBadge v-if="v.queued" tone="warn">{{ v.queued }} хүлээж</AdminBadge>
+                            <PanelBadge v-if="v.queued" tone="warn">{{ v.queued }} хүлээж</PanelBadge>
                             <span v-else class="text-[12px] font-semibold text-mute">—</span>
                         </div>
                         <div class="w-24 text-right text-[12.5px] font-bold text-ink">{{ fmt(v.monthly_revenue) }}</div>

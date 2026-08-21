@@ -41,18 +41,21 @@ const deltaText = (d) => (d === null ? '—' : (d >= 0 ? '+' : '') + d + '%');
 
 watch(() => store.organization?.id, fetchStats);
 onMounted(fetchStats);
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import { Eye, Navigation, Phone } from 'lucide-vue-next';
 </script>
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Статистик</h1>
+        <PanelPageHeader title="Статистик" description="Салбар бүрийн үзэлт, залгалт, зам заалт — сонгосон хугацаанд.">
+            <template #actions>
             <select v-model="days" class="cursor-pointer rounded-lg border border-inputline bg-white px-3 py-2 text-[12.5px] font-medium text-soft outline-none" @change="fetchStats">
                 <option :value="7">Сүүлийн 7 хоног</option>
                 <option :value="30">Сүүлийн 30 хоног</option>
                 <option :value="90">Сүүлийн 90 хоног</option>
             </select>
-        </div>
+            </template>
+        </PanelPageHeader>
 
         <div v-if="loadError" class="card mt-5 p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
@@ -69,8 +72,10 @@ onMounted(fetchStats);
 
             <!-- KPI -->
             <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div v-for="k in [['Бүртгэл үзсэн', stats.totals.views, stats.totals.views_delta], ['Залгасан', stats.totals.calls, stats.totals.calls_delta], ['Зам заалт', stats.totals.directions, stats.totals.directions_delta]]" :key="k[0]" class="card p-[18px]">
-                    <div class="text-[11.5px] font-semibold text-mute">{{ k[0] }}</div>
+                <div v-for="k in [['Бүртгэл үзсэн', stats.totals.views, stats.totals.views_delta, Eye], ['Залгасан', stats.totals.calls, stats.totals.calls_delta, Phone], ['Зам заалт', stats.totals.directions, stats.totals.directions_delta, Navigation]]" :key="k[0]" class="card p-[18px]">
+                    <div class="flex items-center gap-1.5 text-[11.5px] font-semibold text-mute">
+                        <component :is="k[3]" :size="14" :stroke-width="1.9" class="text-brand" /> {{ k[0] }}
+                    </div>
                     <div class="mt-2 text-[28px] font-extrabold tracking-[-.02em] text-ink">{{ Number(k[1]).toLocaleString() }}</div>
                     <div class="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
                         <span class="font-bold" :class="deltaColor(k[2])">{{ deltaText(k[2]) }}</span>

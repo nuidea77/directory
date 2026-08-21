@@ -2,8 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { shortDate } from '../../utils/date';
 import { api } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Гомдолтой сэтгэгдэл + хэрэглэгчдийн залруулгын модерац
 const reviews = ref(null);
@@ -54,7 +54,7 @@ onMounted(fetchAll);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Сэтгэгдэл ба залруулга"
             description="Гомдол ирсэн сэтгэгдлийг сэргээх эсвэл нуух, хэрэглэгчдээс ирсэн бүртгэлийн залруулгын хүсэлтийг хүлээн авах эсвэл татгалзах модерацын хуудас."
         />
@@ -71,7 +71,7 @@ onMounted(fetchAll);
             <div class="card overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                     <span class="text-[14px] font-bold text-ink">Гомдолтой сэтгэгдэл</span>
-                    <AdminBadge tone="bad" mono>{{ reviewsTotal }}</AdminBadge>
+                    <PanelBadge tone="bad" mono>{{ reviewsTotal }}</PanelBadge>
                 </div>
                 <div v-for="r in reviews" :key="r.id" class="border-b border-hairline px-4 py-3 last:border-0">
                     <div class="flex flex-wrap items-center gap-2 text-[12.5px]">
@@ -92,7 +92,7 @@ onMounted(fetchAll);
             <div class="card mt-4 overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-divider px-4 py-3.5">
                     <span class="text-[14px] font-bold text-ink">Залруулгын хүсэлт</span>
-                    <AdminBadge tone="warn" mono>{{ corrections?.length || 0 }}</AdminBadge>
+                    <PanelBadge tone="warn" mono>{{ corrections?.length || 0 }}</PanelBadge>
                 </div>
                 <div v-for="c in corrections" :key="c.id" class="border-b border-hairline px-4 py-3 last:border-0">
                     <div class="flex flex-wrap items-center gap-2 text-[12.5px]">

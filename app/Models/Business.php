@@ -22,6 +22,7 @@ class Business extends Model
         'description',
         'logo_path',
         'website',
+        'email',
         'facebook',
         'instagram',
         'price_level',

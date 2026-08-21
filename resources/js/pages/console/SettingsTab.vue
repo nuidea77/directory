@@ -31,6 +31,7 @@ function syncForms() {
             category_id: business.value.category?.id || '',
             description: business.value.description || '',
             website: business.value.website || '',
+            email: business.value.email || '',
             facebook: business.value.facebook || '',
             instagram: business.value.instagram || '',
             price_level: business.value.price_level || '₮₮',
@@ -89,12 +90,12 @@ onMounted(async () => {
     const cats = await api.get('/categories');
     categories.value = cats.data;
 });
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 </script>
 
 <template>
     <div class="max-w-2xl p-5 sm:p-7">
-        <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Тохиргоо</h1>
-        <p class="mt-1 text-[12.5px] text-mute">Нэр, лого, ангилал, тайлбар — байгууллагын хэмжээнд. Хаяг, утас, цаг — салбар тус бүрт.</p>
+        <PanelPageHeader title="Тохиргоо" description="Нэр, лого, ангилал, холбоо барих мэдээлэл — бизнесийн хэмжээнд. Хаяг, утас, цаг — салбар тус бүрт." />
 
         <p v-if="msg.text" class="mt-4 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
@@ -153,6 +154,7 @@ onMounted(async () => {
                     <textarea v-model="bizForm.description" rows="3" maxlength="400" class="input resize-none"></textarea>
                 </div>
                 <div><label class="field-label">Вэб сайт</label><input v-model="bizForm.website" type="text" class="input" /></div>
+                <div><label class="field-label">И-мэйл хаяг</label><input v-model="bizForm.email" type="email" placeholder="info@example.mn" class="input" /></div>
                 <div><label class="field-label">Facebook</label><input v-model="bizForm.facebook" type="text" class="input" /></div>
                 <div><label class="field-label">Instagram</label><input v-model="bizForm.instagram" type="text" class="input" /></div>
                 <div class="flex items-center justify-between sm:col-span-2">

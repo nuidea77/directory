@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import HoursEditor from '../../components/HoursEditor.vue';
+import { cityCenters } from '../../data/cityCenters';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
 /**
@@ -22,12 +23,12 @@ const organization = ref(null);
 const business = ref(null);
 
 const info = ref({
-    organization_name: '',
     business_name: '',
     category_id: '',
     subcategory: '',
     description: '',
     website: '',
+    email: '',
     facebook: '',
     instagram: '',
     price_level: '₮₮',
@@ -47,6 +48,9 @@ const defaultHours = () => ({
     fri: { from: '09:00', to: '19:00', closed: false }, sat: { from: '10:00', to: '16:00', closed: false },
     sun: { from: '09:00', to: '19:00', closed: true },
 });
+
+// Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
+const MapView = defineAsyncComponent(() => import('../../components/MapView.vue'));
 
 const structure = ref('single'); // single | multi
 
@@ -73,8 +77,38 @@ const selectedCategory = computed(() => mainCategory.value);
 function newBranchForm() {
     return {
         city: 'Улаанбаатар', district: '', khoroo: '', address: '', landmark: '',
+        lat: null, lng: null,
         phone: '', email: '', hours: defaultHours(), amenities: [],
     };
+}
+
+// Салбарын байршил: зураг дээр дарж/чирэхэд координат хадгалагдана
+// (хэрэглэгчид тоо харагдахгүй, зөвхөн цэг)
+function pickLocation(form, { lat, lng }) {
+    form.lat = lat;
+    form.lng = lng;
+}
+
+const locatingIndex = ref(null);
+
+function useMyLocation(form, i) {
+    if (!navigator.geolocation) return;
+    locatingIndex.value = i;
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            pickLocation(form, { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) });
+            locatingIndex.value = null;
+        },
+        () => { locatingIndex.value = null; },
+        { timeout: 8000 },
+    );
+}
+
+// Аймаг солиход зураг тухайн төв рүү шилжинэ (цэг тавиагүй үед)
+function centerFor(form) {
+    if (form.lat) return { lat: Number(form.lat), lng: Number(form.lng) };
+    const c = cityCenters[form.city] || cityCenters['Улаанбаатар'];
+    return { lat: c.lat, lng: c.lng };
 }
 
 function toggleAmenity(form, amenity) {
@@ -87,7 +121,11 @@ async function submitInfo() {
     error.value = '';
     busy.value = true;
     try {
-        const data = await api.post('/console/organizations', info.value);
+        // Байгууллагын нэрийг тусад нь асуухаа больсон — бизнесийн нэрээр үүснэ
+        const data = await api.post('/console/organizations', {
+            ...info.value,
+            organization_name: info.value.business_name,
+        });
         organization.value = data.organization.data ?? data.organization;
         business.value = data.business.data ?? data.business;
         step.value = 2;
@@ -210,7 +248,7 @@ onMounted(async () => {
                 <!-- ШАТ 1: Үндсэн мэдээлэл (2c) -->
                 <template v-if="step === 1">
                     <h1 class="mt-7 text-[26px] font-extrabold tracking-[-.02em] text-ink">Бизнесийн үндсэн мэдээлэл</h1>
-                    <p class="mt-2 max-w-[520px] text-[14px] leading-relaxed text-soft">Улсын бүртгэлийн дугаараар шалгагдсан бизнес «Баталгаажсан» тэмдэг авч, хайлтад дээгүүр эрэмбэлэгдэнэ.</p>
+                    <p class="mt-2 max-w-[520px] text-[14px] leading-relaxed text-soft">Нэр, ангилал, холбоо барих мэдээллээ бөглөнө үү. Редакц хянасны дараа бизнес «Баталгаажсан» тэмдэг авч, хайлтад дээгүүр эрэмбэлэгдэнэ.</p>
 
                     <form class="mt-6 grid max-w-[620px] grid-cols-1 gap-4 sm:grid-cols-2" @submit.prevent="submitInfo">
                         <div class="sm:col-span-2">
@@ -231,10 +269,6 @@ onMounted(async () => {
                                 <option v-for="sub in subOptions" :key="sub.id" :value="sub.id">{{ optionLabel(sub) }}</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="field-label !text-[12px]">Байгууллагын нэр (ХХК)</label>
-                            <input v-model="info.organization_name" type="text" placeholder="Хангай Авто ХХК" class="input" required maxlength="150" />
-                        </div>
                         <div class="sm:col-span-2">
                             <label class="field-label !text-[12px]">Тайлбар</label>
                             <textarea v-model="info.description" rows="3" maxlength="400" placeholder="Танай бизнес юугаараа онцлог вэ?" class="input resize-none"></textarea>
@@ -244,6 +278,11 @@ onMounted(async () => {
                             <label class="field-label !text-[12px]">Вэб сайт</label>
                             <input v-model="info.website" type="text" placeholder="hangaiauto.mn" class="input" />
                             <p class="mt-1 text-[11.5px] text-mute">https:// шаардлагагүй</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">И-мэйл хаяг</label>
+                            <input v-model="info.email" type="email" placeholder="info@hangaiauto.mn" class="input" />
+                            <p class="mt-1 text-[11.5px] text-mute">Захиалга, лавлагаа хүлээн авах хаяг — бизнесийн хуудсанд харагдана</p>
                         </div>
                         <div>
                             <label class="field-label !text-[12px]">Facebook хуудас</label>
@@ -338,6 +377,20 @@ onMounted(async () => {
                                     <input v-model="form.phone" type="tel" inputmode="numeric" placeholder="9500 1122" class="input" required />
                                 </div>
                                 <div class="sm:col-span-2">
+                                    <label class="field-label !text-[12px]">Газрын зураг дээрх байршил <span class="font-normal text-mute">— «Ойролцоо» хайлтад хэрэгтэй</span></label>
+                                    <div class="overflow-hidden rounded-[11px] border border-line">
+                                        <MapView :center="centerFor(form)" :zoom="form.lat ? 15 : 12" picker height="210px" @pick="pickLocation(form, $event)" />
+                                        <div class="flex flex-wrap items-center gap-2 border-t border-line bg-panel px-3 py-2">
+                                            <span class="text-[11.5px] font-medium" :class="form.lat ? 'text-green' : 'text-mute'">
+                                                {{ form.lat ? '✓ Байршил тэмдэглэгдлээ' : 'Зураг дээр дарж эсвэл цэгийг чирж байршлаа тавина' }}
+                                            </span>
+                                            <button type="button" class="ml-auto cursor-pointer rounded-[7px] border border-inputline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-brand" :disabled="locatingIndex === i" @click="useMyLocation(form, i)">
+                                                {{ locatingIndex === i ? 'Тогтоож байна…' : '📍 Одоогийн байршлаа ашиглах' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="sm:col-span-2">
                                     <HoursEditor v-model="form.hours">
                                         <template #title><span class="field-label !mb-0 !text-[12px]">Цагийн хуваарь</span></template>
                                     </HoursEditor>
@@ -400,7 +453,7 @@ onMounted(async () => {
                     <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
                         <div class="text-[13.5px] font-bold text-ink">Баталгаажуулалт хэрхэн явагддаг</div>
                         <div class="mt-3 flex flex-col gap-2.5">
-                            <div v-for="(v, i) in ['Улсын бүртгэлийн дугаарыг автоматаар шалгана (шууд).', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана — энэ хугацаанд ч бүртгэл хайлтад харагдана.']" :key="i" class="flex gap-2.5">
+                            <div v-for="(v, i) in ['Утасны дугаараа баталгаажуулснаар бүртгэл идэвхжинэ.', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана — энэ хугацаанд ч бүртгэл хайлтад харагдана.']" :key="i" class="flex gap-2.5">
                                 <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">{{ i + 1 }}</span>
                                 <span class="text-[12.5px] leading-normal text-body">{{ v }}</span>
                             </div>

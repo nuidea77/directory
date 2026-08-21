@@ -1,8 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { api, ApiError } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Эрхийн бичгүүд: үнэ, хугацаа, лимитийг админаас удирдана
 const plans = ref(null);
@@ -68,7 +68,7 @@ onMounted(fetchPlans);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Эрхийн бичгүүд"
             description="Өөрчлөлт хадгалмагц үнийн хуудас, худалдан авалт, лимит шалгалтад шууд хүчинтэй болно. Идэвхгүй болгосон эрх шинээр зарагдахгүй, байгаа эзэмшигчид хэвээр."
             :meta="plans ? [{ label: plans.length + ' эрх' }] : []"
@@ -76,7 +76,7 @@ onMounted(fetchPlans);
             <template #actions>
                 <button class="btn-primary cursor-pointer !px-4 !py-2 !text-[12.5px]" @click="createOpen = !createOpen">Шинэ эрх үүсгэх</button>
             </template>
-        </AdminPageHeader>
+        </PanelPageHeader>
 
         <p v-if="msg.text" class="mb-3 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
@@ -112,7 +112,7 @@ onMounted(fetchPlans);
             <div v-for="plan in plans" :key="plan.id" class="card p-5" :class="{ 'opacity-60': !plan.is_active }">
                 <div class="flex items-center gap-2">
                     <span class="text-[15px] font-bold text-ink">{{ plan.name }}</span>
-                    <AdminBadge mono>{{ plan.key }}</AdminBadge>
+                    <PanelBadge mono>{{ plan.key }}</PanelBadge>
                     <label class="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold" :class="plan.is_active ? 'text-green' : 'text-mute'">
                         <input v-model="plan.is_active" type="checkbox" />{{ plan.is_active ? 'Идэвхтэй' : 'Идэвхгүй' }}
                     </label>

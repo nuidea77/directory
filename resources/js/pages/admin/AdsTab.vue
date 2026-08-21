@@ -3,9 +3,9 @@ import { onMounted, ref, watch } from 'vue';
 import { Megaphone, ListOrdered, Clock, CalendarClock, Coins } from 'lucide-vue-next';
 import { shortDate } from '../../utils/date';
 import { api } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminStat from '../../components/admin/AdminStat.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelStat from '../../components/panel/PanelStat.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Сурталчилгааны тойм: хэдэн зар явж байгаа, дуусах хугацаа, дараалал
 const data = ref(null);
@@ -48,7 +48,7 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Сурталчилгаа"
             description="Худалдагдсан онцлох байршлууд, тэдгээрийн хугацаа, үр дүн. Зайн ачаалал хэсэгт аль байршил дүүрснийг харна."
         >
@@ -68,7 +68,7 @@ onMounted(fetchData);
                 <option value="keyword">Хайлтын үг</option>
             </select>
             </template>
-        </AdminPageHeader>
+        </PanelPageHeader>
 
         <div v-if="loadError" class="card p-10 text-center">
             <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
@@ -80,11 +80,11 @@ onMounted(fetchData);
         <template v-else>
             <!-- KPI -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <AdminStat label="Явж байгаа зар" :value="Number(data.kpis.active)" tone="good" :icon="Megaphone" />
-                <AdminStat label="Дараалалд" :value="Number(data.kpis.queued)" :tone="data.kpis.queued ? 'warn' : 'default'" :icon="ListOrdered" />
-                <AdminStat label="Төлбөр хүлээж буй" :value="Number(data.kpis.pending_payment)" :icon="Clock" />
-                <AdminStat label="7 хоногт дуусах" :value="Number(data.kpis.expiring_7d)" :tone="data.kpis.expiring_7d ? 'warn' : 'default'" :icon="CalendarClock" hint="Сунгалт санал болгох" />
-                <AdminStat label="Идэвхтэй зарын орлого" :value="fmt(data.kpis.running_revenue)" tone="good" :icon="Coins" />
+                <PanelStat label="Явж байгаа зар" :value="Number(data.kpis.active)" tone="good" :icon="Megaphone" />
+                <PanelStat label="Дараалалд" :value="Number(data.kpis.queued)" :tone="data.kpis.queued ? 'warn' : 'default'" :icon="ListOrdered" />
+                <PanelStat label="Төлбөр хүлээж буй" :value="Number(data.kpis.pending_payment)" :icon="Clock" />
+                <PanelStat label="7 хоногт дуусах" :value="Number(data.kpis.expiring_7d)" :tone="data.kpis.expiring_7d ? 'warn' : 'default'" :icon="CalendarClock" hint="Сунгалт санал болгох" />
+                <PanelStat label="Идэвхтэй зарын орлого" :value="fmt(data.kpis.running_revenue)" tone="good" :icon="Coins" />
             </div>
 
             <!-- Зайн ачаалал: аль байршил дүүрсэн, хэзээ сулрах -->
@@ -106,10 +106,10 @@ onMounted(fetchData);
                             <div class="h-full" :class="sp.free === 0 ? 'bg-amber' : 'bg-green'" :style="{ width: Math.min(100, ((sp.occupied + sp.pending + sp.queued) / sp.total) * 100) + '%' }"></div>
                         </div>
                         <span class="font-mono text-[12px] font-semibold text-ink">{{ sp.occupied }}/{{ sp.total }}</span>
-                        <AdminBadge v-if="sp.pending" tone="warn">+{{ sp.pending }} төлбөр хүлээж</AdminBadge>
+                        <PanelBadge v-if="sp.pending" tone="warn">+{{ sp.pending }} төлбөр хүлээж</PanelBadge>
                     </div>
                     <div>
-                        <AdminBadge :tone="sp.free === 0 ? 'warn' : 'good'">{{ sp.free === 0 ? 'ДҮҮРСЭН' : sp.free + ' сул' }}</AdminBadge>
+                        <PanelBadge :tone="sp.free === 0 ? 'warn' : 'good'">{{ sp.free === 0 ? 'ДҮҮРСЭН' : sp.free + ' сул' }}</PanelBadge>
                     </div>
                     <div class="text-[12.5px] font-medium" :class="sp.free === 0 ? 'text-ink' : 'text-mute'">
                         {{ sp.free === 0 ? shortDate(sp.next_free_at) : 'одоо боломжтой' }}

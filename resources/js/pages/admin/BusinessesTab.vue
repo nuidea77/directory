@@ -2,8 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { shortDate } from '../../utils/date';
 import { api } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 import VerifiedBadge from '../../components/VerifiedBadge.vue';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
@@ -45,7 +45,7 @@ const districtOptions = computed(() => {
     return city ? city.districts : [];
 });
 
-// Эрхийн төрөл → AdminBadge-ийн өнгө
+// Эрхийн төрөл → PanelBadge-ийн өнгө
 const planTone = {
     free: 'neutral',
     standard: 'brand',
@@ -95,7 +95,7 @@ onMounted(async () => {
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Бизнесүүд"
             description="Бүртгэлтэй бизнесүүдийг нэр, эрхийн төрөл, ангилал, байршлаар шүүж, хүлээгдэж буй төлбөр, сурталчилгаа, модерацыг нь хянана."
             :meta="data ? [{ label: data.meta.total + ' бизнес' }] : []"
@@ -170,15 +170,15 @@ onMounted(async () => {
 
                     <!-- Эрх -->
                     <div>
-                        <AdminBadge :tone="planTone[b.plan]">{{ b.plan_name }}</AdminBadge>
+                        <PanelBadge :tone="planTone[b.plan]">{{ b.plan_name }}</PanelBadge>
                         <div v-if="b.plan_expires_at" class="mt-1 text-[10.5px] text-mute">{{ shortDate(b.plan_expires_at) }} хүртэл</div>
                     </div>
 
                     <!-- Хүлээгдэж буй -->
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <AdminBadge v-if="b.pending_orders_count" tone="warn">₮ төлбөр {{ b.pending_orders_count }}</AdminBadge>
-                        <AdminBadge v-if="b.pending_ads_count" tone="brand">Сурталчилгаа {{ b.pending_ads_count }}</AdminBadge>
-                        <AdminBadge v-if="b.pending_branches_count" tone="warn">Модерац {{ b.pending_branches_count }}</AdminBadge>
+                        <PanelBadge v-if="b.pending_orders_count" tone="warn">₮ төлбөр {{ b.pending_orders_count }}</PanelBadge>
+                        <PanelBadge v-if="b.pending_ads_count" tone="brand">Сурталчилгаа {{ b.pending_ads_count }}</PanelBadge>
+                        <PanelBadge v-if="b.pending_branches_count" tone="warn">Модерац {{ b.pending_branches_count }}</PanelBadge>
                         <span v-if="!b.pending_orders_count && !b.pending_ads_count && !b.pending_branches_count" class="text-[10.5px] font-medium text-mute">—</span>
                     </div>
                 </div>

@@ -363,6 +363,7 @@ onMounted(fetchBusiness);
                             <div><div class="kicker !text-[11px]">ХАЯГ</div><div class="mt-1 font-medium leading-normal text-ink">{{ branch?.city && branch.city !== 'Улаанбаатар' ? branch.city + ', ' : '' }}{{ branch?.district }}{{ branch?.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch?.address }}</div></div>
                             <div><div class="kicker !text-[11px]">УТАС</div><div class="mt-1 font-medium text-ink">{{ branch?.phone }}</div></div>
                             <div v-if="business.website"><div class="kicker !text-[11px]">ВЭБ</div><a :href="'https://' + business.website.replace(/^https?:\/\//, '')" target="_blank" rel="noopener" class="mt-1 block font-medium text-brand">{{ business.website }}</a></div>
+                            <div v-if="business.email"><div class="kicker !text-[11px]">И-МЭЙЛ</div><a :href="`mailto:${business.email}`" class="mt-1 block font-medium text-brand">{{ business.email }}</a></div>
                             <div v-if="business.facebook || business.instagram"><div class="kicker !text-[11px]">СОШИАЛ</div><div class="mt-1 flex gap-2 font-medium text-brand">
                                 <a v-if="business.facebook" :href="'https://' + business.facebook.replace(/^https?:\/\//, '')" target="_blank" rel="noopener">Facebook</a>
                                 <a v-if="business.instagram" :href="'https://instagram.com/' + business.instagram.replace('@', '')" target="_blank" rel="noopener">Instagram</a>

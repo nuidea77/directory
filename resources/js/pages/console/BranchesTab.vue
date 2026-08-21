@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import ImagePh from '../../components/ImagePh.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelStat from '../../components/panel/PanelStat.vue';
+import { Eye, MapPin, Navigation, Phone, Plus, Store } from 'lucide-vue-next';
 
 // Миний салбарууд (4b): салбар бүр үзэлт/залгалт/үнэлгээ/бүрэн байдалтай
 const store = useConsoleStore();
@@ -64,16 +67,18 @@ const totals = computed(() => ({
 
 <template>
     <div class="p-5 sm:p-7">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Салбарууд</h1>
-                <p class="mt-1 text-[12.5px] text-mute">Бүртгэл бүр тусад нь эрэмбэлэгддэг</p>
-            </div>
-            <div class="flex gap-2">
+        <PanelPageHeader
+            title="Салбарууд"
+            description="Салбар бүр тусдаа бүртгэл — хаяг, цагийн хуваарь, статистик нь салангид."
+            :meta="[{ label: `${store.branches.length} салбар` }, { label: `${store.businesses.length} бизнес` }]"
+        >
+            <template #actions>
                 <router-link :to="{ name: 'add-business' }" class="btn-outline !px-4 !py-2.5 !text-[12.5px]">Шинэ бизнес</router-link>
-                <button class="btn-primary cursor-pointer !px-4 !py-2.5 !text-[12.5px]" @click="openAdd">Салбар нэмэх</button>
-            </div>
-        </div>
+                <button class="btn-primary flex cursor-pointer items-center gap-1.5 !px-4 !py-2.5 !text-[12.5px]" @click="openAdd">
+                    <Plus :size="15" :stroke-width="2.2" /> Салбар нэмэх
+                </button>
+            </template>
+        </PanelPageHeader>
 
         <!-- Салбар нэмэх форм -->
         <div v-if="addOpen" class="card mt-4 p-5">
@@ -114,12 +119,12 @@ const totals = computed(() => ({
             </form>
         </div>
 
-        <!-- KPI (4b) -->
-        <div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div v-for="k in [['Бүртгэл үзсэн', totals.views], ['Залгасан', totals.calls], ['Зам заалт', totals.directions], ['Салбарууд', store.branches.length]]" :key="k[0]" class="card p-4">
-                <div class="text-[11px] font-semibold text-mute">{{ k[0] }}</div>
-                <div class="mt-2 text-2xl font-extrabold tracking-[-.02em] text-ink">{{ Number(k[1]).toLocaleString() }}</div>
-            </div>
+        <!-- KPI -->
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <PanelStat label="Бүртгэл үзсэн" :value="totals.views" :icon="Eye" />
+            <PanelStat label="Залгасан" :value="totals.calls" :icon="Phone" tone="good" />
+            <PanelStat label="Зам заалт" :value="totals.directions" :icon="Navigation" />
+            <PanelStat label="Салбарууд" :value="store.branches.length" :icon="Store" :to="{ name: 'console-stats' }" />
         </div>
 
         <!-- Салбарын мөрүүд -->
@@ -132,12 +137,14 @@ const totals = computed(() => ({
                 <div class="hidden h-[62px] w-[84px] shrink-0 overflow-hidden rounded-lg sm:block">
                     <ImagePh :src="branch.cover_url" />
                 </div>
-                <div class="w-full min-w-0 sm:w-[238px]">
+                <div class="w-full min-w-0 sm:w-[290px]">
                     <div class="flex items-center gap-2">
                         <span class="truncate text-[14px] font-bold text-ink">{{ branch.business.name }} — {{ branch.district }}</span>
                         <span class="rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold" :class="statusLabel[branch.status]?.[1]">{{ statusLabel[branch.status]?.[0] }}</span>
                     </div>
-                    <div class="mt-1 truncate text-[11.5px] text-mute">{{ branch.address }}</div>
+                    <div class="mt-1 flex items-center gap-1 truncate text-[11.5px] text-mute">
+                        <MapPin :size="12" :stroke-width="1.9" class="shrink-0" /> {{ branch.address }}
+                    </div>
                     <div v-if="branch.status === 'rejected' && branch.rejection_reason" class="mt-1 text-[11.5px] font-medium text-red">Шалтгаан: {{ branch.rejection_reason }}</div>
                 </div>
                 <div class="w-20"><div class="text-[10.5px] font-semibold text-mute">ҮЗСЭН</div><div class="mt-1 text-[15px] font-bold text-ink">{{ (branch.views_count || 0).toLocaleString() }}</div></div>

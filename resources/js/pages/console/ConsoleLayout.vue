@@ -2,6 +2,7 @@
 import { onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useConsoleStore } from '../../stores/console';
+import { BadgeCheck, ChartNoAxesColumn, MessageSquare, Receipt, Settings, Store } from 'lucide-vue-next';
 
 const store = useConsoleStore();
 const router = useRouter();
@@ -16,12 +17,12 @@ watch(
 );
 
 const nav = [
-    { name: 'Салбарууд', route: 'console' },
-    { name: 'Статистик', route: 'console-stats' },
-    { name: 'Сэтгэгдэл', route: 'console-reviews' },
-    { name: 'Эрх ба сурталчилгаа', route: 'console-plan' },
-    { name: 'Нэхэмжлэх', route: 'console-invoices' },
-    { name: 'Тохиргоо', route: 'console-settings' },
+    { name: 'Салбарууд', route: 'console', icon: Store },
+    { name: 'Статистик', route: 'console-stats', icon: ChartNoAxesColumn },
+    { name: 'Сэтгэгдэл', route: 'console-reviews', icon: MessageSquare },
+    { name: 'Эрх ба сурталчилгаа', route: 'console-plan', icon: BadgeCheck },
+    { name: 'Нэхэмжлэх', route: 'console-invoices', icon: Receipt },
+    { name: 'Тохиргоо', route: 'console-settings', icon: Settings },
 ];
 
 onMounted(() => store.load());
@@ -68,7 +69,7 @@ onMounted(() => store.load());
                     class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
                     :class="$route.name === item.route ? 'bg-bluetint text-brand' : 'text-body hover:bg-panel'"
                 >
-                    <span class="h-4 w-4 rounded-[5px]" :class="$route.name === item.route ? 'bg-brand' : 'bg-searchline'"></span>
+                    <component :is="item.icon" :size="16" :stroke-width="1.9" class="shrink-0" aria-hidden="true" />
                     {{ item.name }}
                 </router-link>
             </nav>
@@ -83,7 +84,16 @@ onMounted(() => store.load());
         <!-- Мобайл таб -->
         <div class="min-w-0 flex-1">
             <div class="flex gap-4 overflow-x-auto border-b border-line bg-white px-4 py-3 text-[13px] font-semibold text-mute md:hidden">
-                <router-link v-for="item in nav" :key="item.route" :to="{ name: item.route }" class="whitespace-nowrap" :class="{ 'text-brand': $route.name === item.route }">{{ item.name }}</router-link>
+                <router-link
+                    v-for="item in nav"
+                    :key="item.route"
+                    :to="{ name: item.route }"
+                    class="flex items-center gap-1.5 whitespace-nowrap"
+                    :class="{ 'text-brand': $route.name === item.route }"
+                >
+                    <component :is="item.icon" :size="15" :stroke-width="1.9" aria-hidden="true" />
+                    {{ item.name }}
+                </router-link>
             </div>
 
             <div v-if="store.error === 'failed'" class="p-10 text-center">

@@ -25,9 +25,11 @@ class ConsoleTest extends TestCase
             'business_name' => 'Тест Сервис',
             'category_id' => $category->id,
             'price_level' => '₮₮',
+            'email' => 'info@test.mn',
         ]);
 
         $response->assertCreated();
+        $response->assertJsonPath('business.email', 'info@test.mn');
         $businessId = $response->json('business.id');
 
         $branch = $this->actingAs($user)->postJson("/api/v1/console/businesses/{$businessId}/branches", [

@@ -41,11 +41,12 @@ async function cancelOrder(order) {
 }
 
 onMounted(fetchOrders);
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 </script>
 
 <template>
     <div class="p-5 sm:p-7">
-        <h1 class="text-xl font-extrabold tracking-[-.02em] text-ink">Нэхэмжлэх, төлбөрийн түүх</h1>
+        <PanelPageHeader title="Нэхэмжлэх, төлбөрийн түүх" description="Эрхийн бичиг, сурталчилгааны бүх төлбөр — төлөв, огноотойгоо." />
 
         <div v-if="loading" class="card mt-4 h-48 animate-pulse"></div>
 

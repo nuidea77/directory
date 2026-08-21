@@ -18,6 +18,7 @@ class BusinessResource extends JsonResource
             'description' => $this->description,
             'logo_url' => $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null,
             'website' => $this->website,
+            'email' => $this->email,
             'facebook' => $this->facebook,
             'instagram' => $this->instagram,
             'price_level' => $this->price_level,

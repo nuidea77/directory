@@ -3,9 +3,9 @@ import { onMounted, ref, watch } from 'vue';
 import { Ticket, TicketCheck, Repeat, Coins } from 'lucide-vue-next';
 import { shortDate } from '../../utils/date';
 import { api, ApiError } from '../../api';
-import AdminPageHeader from '../../components/admin/AdminPageHeader.vue';
-import AdminStat from '../../components/admin/AdminStat.vue';
-import AdminBadge from '../../components/admin/AdminBadge.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import PanelStat from '../../components/panel/PanelStat.vue';
+import PanelBadge from '../../components/panel/PanelBadge.vue';
 
 // Промо код: эрхийн бичиг болон сурталчилгааны хөнгөлөлтийг админаас удирдана
 const data = ref(null);
@@ -178,7 +178,7 @@ onMounted(fetchData);
 
 <template>
     <div class="p-5 sm:p-7">
-        <AdminPageHeader
+        <PanelPageHeader
             title="Промо код"
             description="Хоёр ангилалд тусад нь ажиллана: «Эрхийн бичиг» код зөвхөн эрхийн бичгийн худалдан авалтад, «Сурталчилгаа» код зөвхөн зарын төлбөрт хүчинтэй. Хөнгөлөлт хувиар эсвэл тогтмол дүнгээр бодогдоно."
             :meta="data ? [{ label: data.data.length + ' код' }] : []"
@@ -197,7 +197,7 @@ onMounted(fetchData);
                 </select>
                 <button class="btn-primary cursor-pointer !px-4 !py-2 !text-[12.5px]" @click="createOpen = !createOpen">Шинэ код үүсгэх</button>
             </template>
-        </AdminPageHeader>
+        </PanelPageHeader>
 
         <p v-if="msg.text" class="mb-3 rounded-lg px-4 py-2.5 text-[13px] font-medium" :class="msg.type === 'ok' ? 'bg-greentint text-green' : 'bg-redtint text-red'">{{ msg.text }}</p>
 
@@ -268,10 +268,10 @@ onMounted(fetchData);
         <template v-else>
             <!-- KPI -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <AdminStat label="Нийт код" :value="Number(data.kpis.total)" :icon="Ticket" />
-                <AdminStat label="Идэвхтэй" :value="Number(data.kpis.active)" tone="good" :icon="TicketCheck" hint="Одоо ашиглагдаж болно" />
-                <AdminStat label="Ашиглалтын тоо" :value="Number(data.kpis.redemptions)" :icon="Repeat" />
-                <AdminStat label="Олгосон нийт хөнгөлөлт" :value="fmt(data.kpis.discount_given)" tone="warn" :icon="Coins" />
+                <PanelStat label="Нийт код" :value="Number(data.kpis.total)" :icon="Ticket" />
+                <PanelStat label="Идэвхтэй" :value="Number(data.kpis.active)" tone="good" :icon="TicketCheck" hint="Одоо ашиглагдаж болно" />
+                <PanelStat label="Ашиглалтын тоо" :value="Number(data.kpis.redemptions)" :icon="Repeat" />
+                <PanelStat label="Олгосон нийт хөнгөлөлт" :value="fmt(data.kpis.discount_given)" tone="warn" :icon="Coins" />
             </div>
 
             <!-- Жагсаалт -->
@@ -288,7 +288,7 @@ onMounted(fetchData);
                         </div>
 
                         <div>
-                            <AdminBadge :tone="c.scope === 'subscription' ? 'brand' : 'warn'">{{ c.scope_name }}</AdminBadge>
+                            <PanelBadge :tone="c.scope === 'subscription' ? 'brand' : 'warn'">{{ c.scope_name }}</PanelBadge>
                             <div v-if="c.min_amount" class="mt-1 text-[11px] text-mute">{{ fmt(c.min_amount) }}-с дээш захиалгад</div>
                         </div>
 
@@ -308,7 +308,7 @@ onMounted(fetchData);
                         </div>
 
                         <div>
-                            <AdminBadge :tone="statusOf(c)[1]">{{ statusOf(c)[0] }}</AdminBadge>
+                            <PanelBadge :tone="statusOf(c)[1]">{{ statusOf(c)[0] }}</PanelBadge>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2.5 text-[11.5px] font-semibold lg:justify-end">
