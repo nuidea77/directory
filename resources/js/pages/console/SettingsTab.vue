@@ -3,8 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import BizLogo from '../../components/BizLogo.vue';
-import { flattenCategories, optionLabel } from '../../utils/categories';
-import CategoryPicker from '../../components/CategoryPicker.vue';
+import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
+import { ancestorsOf } from '../../utils/categories';
+import SubcategoryPicker from '../../components/SubcategoryPicker.vue';
 
 // Байгууллагын нийтлэг мэдээлэл (нэр, лого, ангилал, танилцуулга)
 const store = useConsoleStore();
@@ -13,7 +14,16 @@ const orgForm = ref({ name: '' });
 const bizForm = ref({});
 const msg = ref({ type: '', text: '' });
 const categories = ref([]);
-const categoryOptions = computed(() => flattenCategories(categories.value));
+
+// Нэг үндсэн ангилал + түүний дэд ангиллуудаас хэд хэдэн сонголт
+const mainId = ref('');
+const subIds = ref([]);
+const mainCategory = computed(() => categories.value.find((c) => c.id === Number(mainId.value)));
+const subItems = computed(() => mainCategory.value?.children || []);
+
+function onMainChange() {
+    subIds.value = [];
+}
 const selectedBusinessId = ref(null);
 const logoFile = ref(null);
 const logoUploading = ref(false);
@@ -27,12 +37,16 @@ function syncForms() {
         };
     }
     if (business.value) {
+        // Одоогийн ангиллуудаас үндсэн (хамгийн дээд) ба дэд сонголтуудыг ялгана
+        const primaryId = business.value.category?.id || null;
+        const root = ancestorsOf(categories.value, primaryId)[0];
+        mainId.value = root ? root.id : (primaryId || '');
+        subIds.value = (business.value.categories || [])
+            .map((c) => c.id)
+            .filter((id) => id !== mainId.value);
+
         bizForm.value = {
             name: business.value.name,
-            category_id: business.value.category?.id || '',
-            category_ids: (business.value.categories || [])
-                .map((c) => c.id)
-                .filter((id) => id !== business.value.category?.id),
             description: business.value.description || '',
             website: business.value.website || '',
             email: business.value.email || '',
@@ -57,6 +71,11 @@ async function saveOrg() {
 async function saveBusiness() {
     msg.value = { type: '', text: '' };
     try {
+        // Эхний дэд ангилал нь үндсэн ангилал болно (сонгоогүй бол үндсэн ангилал өөрөө)
+        const [first, ...rest] = subIds.value;
+        bizForm.value.category_id = first || mainId.value;
+        bizForm.value.category_ids = rest;
+
         // Лого файлтай тул multipart-аар илгээнэ
         const fd = new FormData();
         // Хоосон болгосон талбарыг ч илгээнэ — эс бөгөөс устгасан вэб сайт,
@@ -101,8 +120,9 @@ watch(selectedBusinessId, syncForms);
 onMounted(async () => {
     const cats = await api.get('/categories');
     categories.value = cats.data;
+    // Мод ирсний дараа л үндсэн/дэд ангиллыг зөв ялгаж чадна
+    syncForms();
 });
-import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 </script>
 
 <template>
@@ -149,15 +169,15 @@ import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
                     <label class="field-label">Бизнесийн нэр</label>
                     <input v-model="bizForm.name" type="text" class="input" required />
                 </div>
-                <div>
-                    <label class="field-label">Үндсэн ангилал</label>
-                    <select v-model="bizForm.category_id" class="input cursor-pointer">
-                        <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
+                <div class="sm:col-span-2">
+                    <label class="field-label">Ангилал</label>
+                    <select v-model="mainId" class="input cursor-pointer" @change="onMainChange">
+                        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                     </select>
                 </div>
-                <div class="sm:col-span-2">
-                    <label class="field-label">Нэмэлт ангилал <span class="font-normal text-mute">— олон ангилалд харагдана</span></label>
-                    <CategoryPicker v-model="bizForm.category_ids" :categories="categories" :primary-id="bizForm.category_id" />
+                <div v-if="mainId" class="sm:col-span-2">
+                    <label class="field-label">Дэд ангилал <span class="font-normal text-mute">— хэд хэдийг сонгож болно</span></label>
+                    <SubcategoryPicker v-model="subIds" :items="subItems" />
                 </div>
                 <div>
                     <label class="field-label">Үнийн зэрэглэл</label>

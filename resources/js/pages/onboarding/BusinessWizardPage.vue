@@ -5,8 +5,8 @@ import { api, ApiError } from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import HoursEditor from '../../components/HoursEditor.vue';
 import { cityCenters } from '../../data/cityCenters';
-import { flattenCategories, optionLabel } from '../../utils/categories';
-import CategoryPicker from '../../components/CategoryPicker.vue';
+import { flattenCategories } from '../../utils/categories';
+import SubcategoryPicker from '../../components/SubcategoryPicker.vue';
 
 /**
  * Бизнес нэмэх шаталсан форм (2c → 3a/5a):
@@ -56,24 +56,32 @@ const MapView = defineAsyncComponent(() => import('../../components/MapView.vue'
 
 const structure = ref('single'); // single | multi
 
-// Ангилал 3 түвшинтэй: үндсэн → дэд → дэд дэд (ж. Боловсрол → Хэлний сургалт → Англи хэл).
-// Хамгийн гүн сонголт нь бизнесийн category_id болно.
+// Ангилал: нэг үндсэн ангилал сонгоод, түүний дэд ангиллуудаас ХЭД ХЭДИЙГ
+// сонгож болно (ж. Гоо сайхан → Үсчин + Хумсны засал). Эхний сонголт нь
+// бизнесийн үндсэн ангилал (category_id), бусад нь нэмэлт болж хадгалагдана.
 const mainCategoryId = ref('');
 const mainCategory = computed(() => categories.value.find((c) => c.id === Number(mainCategoryId.value)));
-const subOptions = computed(() => flattenCategories(mainCategory.value?.children || [], 2));
+const subItems = computed(() => mainCategory.value?.children || []);
+const subIds = ref([]);
+const subFlat = computed(() => flattenCategories(subItems.value, 2));
 
-watch(mainCategoryId, (id) => {
-    info.value.category_id = id;
-    info.value.subcategory = '';
-    // Үндсэн ангилал нэмэлт жагсаалтад давхардахгүй
-    info.value.category_ids = info.value.category_ids.filter((x) => Number(x) !== Number(id));
+watch(mainCategoryId, () => {
+    subIds.value = [];
+    syncCategorySelection();
 });
 
-function pickSubcategory(id) {
-    const sub = subOptions.value.find((c) => c.id === Number(id));
-    info.value.category_id = sub ? sub.id : mainCategoryId.value;
-    info.value.subcategory = sub ? sub.name : '';
-    info.value.category_ids = info.value.category_ids.filter((x) => Number(x) !== Number(info.value.category_id));
+watch(subIds, syncCategorySelection, { deep: true });
+
+// Сонголтыг API-д илгээх хэлбэрт буулгана
+function syncCategorySelection() {
+    const [first, ...rest] = subIds.value;
+    info.value.category_id = first || mainCategoryId.value;
+    info.value.category_ids = rest;
+    info.value.subcategory = subIds.value
+        .map((id) => subFlat.value.find((c) => c.id === Number(id))?.name)
+        .filter(Boolean)
+        .join(', ')
+        .slice(0, 100);
 }
 const branchForms = ref([newBranchForm()]);
 
@@ -260,24 +268,17 @@ onMounted(async () => {
                             <label class="field-label !text-[12px]">Бизнесийн нэр</label>
                             <input v-model="info.business_name" type="text" placeholder="Хангай Авто Сервис" class="input" required maxlength="150" />
                         </div>
-                        <div>
+                        <div class="sm:col-span-2">
                             <label class="field-label !text-[12px]">Ангилал</label>
                             <select v-model="mainCategoryId" class="input cursor-pointer" required>
                                 <option value="" disabled>Сонгоно уу</option>
                                 <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="field-label !text-[12px]">Дэд ангилал</label>
-                            <select :value="info.subcategory ? String(info.category_id) : ''" class="input cursor-pointer" :disabled="!subOptions.length" @change="pickSubcategory($event.target.value)">
-                                <option value="">{{ subOptions.length ? 'Сонгоно уу (сонголттой)' : 'Дэд ангилал алга' }}</option>
-                                <option v-for="sub in subOptions" :key="sub.id" :value="sub.id">{{ optionLabel(sub) }}</option>
-                            </select>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="field-label !text-[12px]">Нэмэлт ангилал <span class="font-normal text-mute">— бизнес хэд хэдэн ангилалд харагдаж болно</span></label>
-                            <CategoryPicker v-model="info.category_ids" :categories="categories" :primary-id="info.category_id" />
-                            <p class="mt-1 text-[11.5px] text-mute">Ж: гоо сайхны салон нь «Үсчин», «Хумсны засал» ангилалд ч харагдана.</p>
+                        <div v-if="mainCategoryId" class="sm:col-span-2">
+                            <label class="field-label !text-[12px]">Дэд ангилал <span class="font-normal text-mute">— хэд хэдийг сонгож болно</span></label>
+                            <SubcategoryPicker v-model="subIds" :items="subItems" />
+                            <p class="mt-1 text-[11.5px] text-mute">Ж: гоо сайхны салон нь «Үсчин», «Хумсны засал» хоёуланд нь харагдана.</p>
                         </div>
                         <div class="sm:col-span-2">
                             <label class="field-label !text-[12px]">Тайлбар</label>
