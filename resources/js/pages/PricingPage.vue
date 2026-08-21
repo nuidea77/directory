@@ -132,28 +132,31 @@ onMounted(fetchPricing);
                 </div>
             </div>
 
-            <div class="mt-5 grid grid-cols-1 gap-3.5 md:grid-cols-3">
+            <div class="mt-5 grid max-w-[860px] grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div v-for="ad in ads" :key="ad.key" class="rounded-xl border-[1.5px] p-5" :class="ad.key === 'category_featured' ? 'border-amberline bg-ambertint' : 'border-line bg-white'">
                     <div class="flex items-center gap-2">
                         <span class="text-[15px] font-bold text-ink">{{ ad.name }}</span>
                         <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="ad.key === 'category_featured' ? 'bg-amberbadge text-amber' : ad.key === 'home_featured' ? 'bg-bluetint text-brand' : 'bg-chip text-chiptext'">
-                            {{ ad.key === 'keyword' ? 'ҮГ ТУТАМД 3 ЗАЙ' : (ad.key === 'category_featured' ? 'ДЭЭД' : '') + ' ' + ad.slots + ' ЗАЙ' }}
+                            {{ (ad.key === 'category_featured' ? 'ДЭЭД ' : '') + ad.slots + ' ЗАЙ' }}
                         </span>
+                    </div>
+                    <div class="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-mute">
+                        <span class="badge-featured">ОНЦЛОХ</span>
+                        <span>тэмдэгтэй, жагсаалтын эхэнд</span>
                     </div>
                     <div class="mt-2 min-h-[52px] text-[12px] leading-relaxed text-soft">
                         <template v-if="ad.key === 'category_featured'">Сонгосон ангилал + дүүргийн хайлтын дээд 3-т. Ангилал тус бүрт зэрэг ердөө 3 онцлох.</template>
-                        <template v-else-if="ad.key === 'home_featured'">Нүүр хуудасны «Онцлох бизнесүүд» хэсэгт, хот бүрт 6 зай, өдөр тутам эргэлддэг.</template>
-                        <template v-else>«шүдний эмнэлэг», «авто засвар» гэх мэт хайлтын үгэнд дээгүүр гарах. Үг тутамд 3 зай.</template>
+                        <template v-else>Нүүр хуудасны «Онцлох бизнесүүд» хэсэгт, хот бүрт {{ ad.slots }} зай, өдөр тутам эргэлддэг.</template>
                     </div>
                     <div class="mt-2.5 flex items-baseline gap-1.5">
                         <span class="text-2xl font-extrabold tracking-[-.02em] text-ink">{{ fmt(ad.prices[30]) }}</span>
-                        <span class="text-[12px] font-medium text-mute">/ 30 хоног{{ ad.key === 'keyword' ? ' · үг тутам' : '' }}</span>
+                        <span class="text-[12px] font-medium text-mute">/ 30 хоног</span>
                     </div>
                     <div class="mt-1.5 text-[11.5px] font-medium text-mute">
                         7 хоног {{ fmt(ad.prices[7]) }} · 14 хоног {{ fmt(ad.prices[14]) }}{{ ad.business_plan_discount > 0 ? ` · Бизнес эрхтэйд −${ad.business_plan_discount * 100}%` : '' }}
                     </div>
                     <router-link :to="{ name: 'ad-purchase', query: { type: ad.key } }" class="mt-4 block rounded-lg border py-2.5 text-center text-[12.5px] font-bold" :class="ad.key === 'category_featured' ? 'border-ink bg-ink text-white' : 'border-inputline bg-white text-ink'">
-                        {{ ad.key === 'category_featured' ? 'Зай сонгох' : ad.key === 'home_featured' ? 'Сул зай харах' : 'Үг сонгох' }}
+                        {{ ad.key === 'category_featured' ? 'Зай сонгох' : 'Сул зай харах' }}
                     </router-link>
                 </div>
             </div>

@@ -438,7 +438,7 @@ class AdminController extends Controller
     {
         $filters = $request->validate([
             'status' => ['nullable', 'in:active,queued,pending_payment,expired,canceled'],
-            'type' => ['nullable', 'in:category_featured,home_featured,keyword'],
+            'type' => ['nullable', 'in:category_featured,home_featured'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
 

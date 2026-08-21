@@ -391,36 +391,6 @@ class DirectoryTest extends TestCase
         $this->assertSame('Plain', $response->json('data.1.business.name'));
     }
 
-    public function test_keyword_campaign_boosts_matching_search(): void
-    {
-        // Тэмдэглэл: SQLite-ийн LIKE кирилл үсэгт case-sensitive тул тестийн
-        // өгөгдөл жижиг үсгээр — MySQL (utf8mb4_unicode_ci) дээр case-insensitive.
-        $target = Business::factory()->create(['name' => 'Хангай авто сервис']);
-        Branch::factory()->create(['business_id' => $target->id, 'rating_avg' => 3.0]);
-
-        $other = Business::factory()->create(['name' => 'Мастер', 'description' => 'авто засвар']);
-        Branch::factory()->create(['business_id' => $other->id, 'rating_avg' => 5.0]);
-
-        Campaign::factory()->create([
-            'organization_id' => $target->organization_id,
-            'business_id' => $target->id,
-            'type' => 'keyword',
-            'keyword' => 'авто',
-            'slot' => 1,
-            'status' => 'active',
-            'starts_at' => now(),
-            'ends_at' => now()->addDays(10),
-        ]);
-
-        $response = $this->getJson('/api/v1/search?q='.urlencode('авто'));
-
-        $this->assertSame('Хангай авто сервис', $response->json('data.0.business.name'));
-
-        // Хэсэгчилсэн тохирол: «авто засвар» гэж хайхад ч «авто» түлхүүр гарна
-        $partial = $this->getJson('/api/v1/search?q='.urlencode('авто засвар'));
-        $this->assertSame('Хангай авто сервис', $partial->json('data.0.business.name'));
-    }
-
     public function test_search_filters_by_city_and_business_plan_ranks_higher(): void
     {
         // Хөвсгөлд салбартай бизнес

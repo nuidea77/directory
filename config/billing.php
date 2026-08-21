@@ -73,12 +73,6 @@ return [
             'prices' => [7 => 74000, 14 => 134000, 30 => 249000],
             'business_plan_discount' => 0.0,
         ],
-        'keyword' => [
-            'name' => 'Хайлтын үг',
-            'slots' => 3, // үг тутамд 3 зай
-            'prices' => [7 => 26000, 14 => 47000, 30 => 89000],
-            'business_plan_discount' => 0.0,
-        ],
     ],
 
 ];

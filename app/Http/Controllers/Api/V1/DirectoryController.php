@@ -132,7 +132,10 @@ class DirectoryController extends Controller
         return Cache::remember("home:sections:v1:{$city}", 600, function () use ($city) {
             $ids = fn (string $slug) => optional(Category::where('slug', $slug)->first())->descendantIds() ?? [];
 
-            $rows = function (callable $tune, int $limit) use ($city) {
+            // Идэвхтэй зартай бизнесүүд — блокуудад «ОНЦЛОХ» тэмдэгтэй гарна
+            $adBusinessIds = Campaign::query()->running()->pluck('business_id')->unique()->all();
+
+            $rows = function (callable $tune, int $limit) use ($city, $adBusinessIds) {
                 $query = Branch::query()->active()
                     ->where('city', $city)
                     ->whereHas('business')
@@ -148,6 +151,7 @@ class DirectoryController extends Controller
                         ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->business->logo_path)
                         : null,
                     'is_verified' => (bool) $b->business->is_verified,
+                    'is_featured' => in_array($b->business_id, $adBusinessIds, true),
                     'category' => $b->business->category?->name,
                     'district' => $b->district,
                     'address' => $b->address,
@@ -215,7 +219,7 @@ class DirectoryController extends Controller
 
     /**
      * Хайлт — салбарын түвшинд (дүүрэг, нээлттэй, үнэлгээ гэх мэт шүүлтүүр).
-     * Онцлох (category_featured / keyword) кампанит ажилтай бизнесүүд дээр гарна.
+     * Онцлох (category_featured) кампанит ажилтай бизнесүүд дээр гарна.
      */
     public function search(Request $request): JsonResponse
     {
@@ -265,36 +269,15 @@ class DirectoryController extends Controller
 
         $term = trim((string) $request->query('q'));
 
-        // Түлхүүр үгийн зар: худалдаж авсан үг хайлтын үгэнд агуулагдах эсвэл
-        // эсрэгээрээ бол тухайн бизнес текст тохироогүй ч илэрцэд орж дээр гарна
-        $keywordFeaturedIds = collect();
-
-        if ($term !== '') {
-            $needle = mb_strtolower($term);
-            $keywordFeaturedIds = Campaign::query()->running()
-                ->where('type', 'keyword')
-                ->orderBy('slot')
-                ->get(['business_id', 'keyword'])
-                ->filter(fn ($c) => $c->keyword !== null
-                    && (str_contains($needle, $c->keyword) || str_contains($c->keyword, $needle)))
-                ->pluck('business_id');
-        }
-
         if ($term !== '') {
             // LIKE-ийн % _ тэмдэгтүүдийг escape хийнэ
             $like = '%'.addcslashes($term, '%_\\').'%';
-            $query->where(function (Builder $q) use ($like, $keywordFeaturedIds) {
-                $q->where(function (Builder $qq) use ($like) {
-                    $qq->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
-                        ->orWhere('description', 'like', $like)
-                        ->orWhere('subcategory', 'like', $like))
-                        ->orWhere('address', 'like', $like)
-                        ->orWhere('name', 'like', $like);
-                });
-
-                if ($keywordFeaturedIds->isNotEmpty()) {
-                    $q->orWhereIn('business_id', $keywordFeaturedIds);
-                }
+            $query->where(function (Builder $q) use ($like) {
+                $q->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhere('subcategory', 'like', $like))
+                    ->orWhere('address', 'like', $like)
+                    ->orWhere('name', 'like', $like);
             });
         }
 
@@ -368,11 +351,6 @@ class DirectoryController extends Controller
                     ->get(['business_id', 'branch_id', 'district']),
             );
         }
-
-        // Түлхүүр үгийн зар нь дүүрэг заадаггүй — бизнесийн бүх салбарт үйлчилнэ
-        $featuredCampaigns = $featuredCampaigns->merge(
-            $keywordFeaturedIds->map(fn ($id) => (object) ['business_id' => $id, 'branch_id' => null, 'district' => null]),
-        );
 
         // Зар бүрийн зорилтот салбаруудыг тодорхойлно
         $featuredBranchIds = collect();

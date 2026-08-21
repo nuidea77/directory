@@ -38,13 +38,12 @@ class CheckoutController extends Controller
             'promo_code' => ['nullable', 'string', 'max:40'],
             'extra_branches' => ['nullable', 'integer', 'min:0', 'max:100'],
             'campaigns' => ['nullable', 'array', 'max:5'],
-            'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],
+            'campaigns.*.type' => ['required', 'in:category_featured,home_featured'],
             'campaigns.*.business_id' => ['required', 'integer', 'exists:businesses,id'],
             'campaigns.*.branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'campaigns.*.category_id' => ['nullable', 'required_if:campaigns.*.type,category_featured', 'integer', 'exists:categories,id'],
             'campaigns.*.district' => ['nullable', 'string', 'max:80'],
             'campaigns.*.city' => ['nullable', 'string', 'max:80'],
-            'campaigns.*.keyword' => ['nullable', 'required_if:campaigns.*.type,keyword', 'string', 'max:80'],
             'campaigns.*.days' => ['required', 'integer', 'in:7,14,30'],
         ]);
 
@@ -81,12 +80,11 @@ class CheckoutController extends Controller
             'plan_period' => ['nullable', 'in:monthly,yearly'],
             'extra_branches' => ['nullable', 'integer', 'min:0', 'max:100'],
             'campaigns' => ['nullable', 'array', 'max:5'],
-            'campaigns.*.type' => ['required', 'in:category_featured,home_featured,keyword'],
+            'campaigns.*.type' => ['required', 'in:category_featured,home_featured'],
             'campaigns.*.business_id' => ['required', 'integer', 'exists:businesses,id'],
             'campaigns.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'campaigns.*.district' => ['nullable', 'string', 'max:80'],
             'campaigns.*.city' => ['nullable', 'string', 'max:80'],
-            'campaigns.*.keyword' => ['nullable', 'string', 'max:80'],
             'campaigns.*.days' => ['required', 'integer', 'in:7,14,30'],
             'promo_code' => ['required', 'string', 'max:40'],
         ]);
@@ -177,11 +175,10 @@ class CheckoutController extends Controller
     public function slots(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'type' => ['required', 'in:category_featured,home_featured,keyword'],
+            'type' => ['required', 'in:category_featured,home_featured'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'district' => ['nullable', 'string', 'max:80'],
             'city' => ['nullable', 'string', 'max:80'],
-            'keyword' => ['nullable', 'string', 'max:80'],
         ]);
 
         $state = $this->campaigns->slotState(
@@ -189,7 +186,7 @@ class CheckoutController extends Controller
             $data['category_id'] ?? null,
             $data['district'] ?? null,
             $data['city'] ?? null,
-            isset($data['keyword']) ? mb_strtolower(trim($data['keyword'])) : null,
+            null,
         );
 
         $config = config("billing.ads.{$data['type']}");

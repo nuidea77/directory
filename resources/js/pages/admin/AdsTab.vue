@@ -65,7 +65,6 @@ onMounted(fetchData);
                 <option value="">Бүх төрөл</option>
                 <option value="category_featured">Ангиллын онцлох</option>
                 <option value="home_featured">Нүүрийн онцлох</option>
-                <option value="keyword">Хайлтын үг</option>
             </select>
             </template>
         </PanelPageHeader>

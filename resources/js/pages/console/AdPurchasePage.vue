@@ -17,7 +17,6 @@ const pricing = ref(null);
 const slots = ref(null);
 const selectedBusinessId = ref(null);
 const selectedBranchId = ref(null);
-const keyword = ref('');
 const days = ref(30);
 const error = ref('');
 const loadError = ref('');
@@ -75,14 +74,12 @@ const homeCity = computed(() => branch.value?.city || 'Улаанбаатар');
 
 const scopeLabel = computed(() => {
     if (type.value === 'category_featured') return `${business.value?.category?.name || ''} · ${branch.value?.district || ''}`;
-    if (type.value === 'home_featured') return `Нүүр хуудас · ${homeCity.value}`;
-    return keyword.value ? `«${keyword.value}»` : 'Хайлтын үг';
+    return `Нүүр хуудас · ${homeCity.value}`;
 });
 
 async function fetchSlots() {
     slots.value = null;
     loadError.value = '';
-    if (type.value === 'keyword' && !keyword.value.trim()) return;
     if (type.value === 'category_featured' && (!business.value?.category?.id || !branch.value?.district)) return;
 
     try {
@@ -91,7 +88,6 @@ async function fetchSlots() {
             category_id: type.value === 'category_featured' ? business.value.category.id : undefined,
             district: type.value === 'category_featured' ? branch.value.district : undefined,
             city: type.value === 'home_featured' ? homeCity.value : undefined,
-            keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
         });
         slots.value = data;
     } catch {
@@ -110,7 +106,6 @@ function orderPayload() {
             category_name: type.value === 'category_featured' ? business.value.category.name : undefined,
             district: type.value === 'category_featured' ? branch.value.district : undefined,
             city: type.value === 'home_featured' ? homeCity.value : undefined,
-            keyword: type.value === 'keyword' ? keyword.value.trim().toLowerCase() : undefined,
             days: days.value,
         }],
     };
@@ -170,7 +165,7 @@ async function checkout() {
 
 watch([type, selectedBusinessId, selectedBranchId], fetchSlots);
 // Сонголт/хугацаа өөрчлөгдвөл хөнгөлөлтийг дахин шалгуулна — дүн өөрчлөгдсөн
-watch([type, days, selectedBusinessId, selectedBranchId, keyword], () => {
+watch([type, days, selectedBusinessId, selectedBranchId], () => {
     if (promo.value) clearPromo();
 });
 
@@ -241,7 +236,7 @@ onMounted(loadPage);
                             <option v-for="b in store.businesses" :key="b.id" :value="b.id">{{ b.name }}</option>
                         </select>
                     </div>
-                    <div v-if="type !== 'keyword'">
+                    <div>
                         <label class="field-label">Салбар{{ type === 'home_featured' ? ' (хот тодорхойлно)' : '' }}</label>
                         <select v-model="selectedBranchId" class="input cursor-pointer">
                             <option v-for="b in business?.branches || []" :key="b.id" :value="b.id">
@@ -252,13 +247,6 @@ onMounted(loadPage);
                     <div v-if="type === 'category_featured'">
                         <label class="field-label">Ангилал</label>
                         <div class="input pointer-events-none flex justify-between !bg-panel"><span>{{ business?.category?.name }}</span></div>
-                    </div>
-                    <div v-if="type === 'keyword'" class="sm:col-span-2">
-                        <label class="field-label">Хайлтын үг</label>
-                        <div class="flex gap-2">
-                            <input v-model="keyword" type="text" placeholder="жш: авто засвар" class="input" @keyup.enter="fetchSlots" />
-                            <button class="btn-outline shrink-0 !py-2.5" @click="fetchSlots">Шалгах</button>
-                        </div>
                     </div>
                 </div>
 
@@ -316,7 +304,7 @@ onMounted(loadPage);
                     <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
                     <button class="btn-primary mt-4" @click="fetchSlots">Дахин оролдох</button>
                 </div>
-                <p v-else class="text-[13px] text-mute">{{ type === 'keyword' ? 'Хайлтын үгээ оруулаад шалгана уу.' : 'Ачаалж байна…' }}</p>
+                <p v-else class="text-[13px] text-mute">Ачаалж байна…</p>
 
                 <!-- Хугацаа -->
                 <div class="mb-3 mt-6 text-[15px] font-bold text-ink">Хугацаа</div>

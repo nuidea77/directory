@@ -45,6 +45,7 @@ function linkTo(section) {
                     <div class="flex items-center gap-1.5">
                         <span class="truncate text-[14px] font-bold text-ink">{{ item.name }}</span>
                         <VerifiedBadge v-if="item.is_verified" :size="14" />
+                        <span v-if="item.is_featured" class="badge-featured shrink-0">ОНЦЛОХ</span>
                         <span v-if="item.is_24_7" class="shrink-0 rounded-[4px] bg-greentint px-1.5 py-0.5 text-[9.5px] font-bold text-green">24/7</span>
                     </div>
                     <div class="mt-1 flex items-center gap-1.5 text-[12.5px]">
