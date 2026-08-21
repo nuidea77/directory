@@ -18,6 +18,7 @@ class CategoryResource extends JsonResource
             'parent_id' => $this->parent_id,
             'depth' => $this->depth(),
             'businesses_count' => $this->whenCounted('businesses'),
+            'children_count' => $this->whenCounted('children'),
             // Дэд ангиллууд (рекурсив — ачаалсан гүн хүртэл)
             'children' => CategoryResource::collection($this->whenLoaded('children')),
         ];

@@ -19,10 +19,13 @@ function mainBranch(business) {
 </script>
 
 <template>
-    <router-link :to="{ name: 'business', params: { slug: business.slug } }" class="card block overflow-hidden bg-white transition hover:-translate-y-0.5 hover:shadow-md">
+    <router-link :to="{ name: 'business', params: { slug: business.slug } }" class="card block overflow-hidden bg-white transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-md">
         <div class="relative h-[132px]">
             <ImagePh :src="coverOf(business)" :alt="business.name" label="ЗУРАГ 4:3" />
             <span v-if="business.is_featured" class="badge-featured absolute left-3 top-3 shadow-sm">ОНЦЛОХ</span>
+            <span v-if="business.reviews_total" class="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[11.5px] font-bold text-ink shadow-sm">
+                <span class="text-[10px] text-amberdot">★</span>{{ (business.rating_avg || 0).toFixed(1) }}
+            </span>
         </div>
         <div class="p-4">
             <div class="flex items-center gap-2">
@@ -34,7 +37,8 @@ function mainBranch(business) {
             <div class="mt-2.5 flex items-center gap-2.5">
                 <div class="text-[13px] font-bold text-ink">{{ (business.rating_avg || 0).toFixed(1) }}</div>
                 <div class="text-[12px] text-mute">{{ business.reviews_total || 0 }} сэтгэгдэл</div>
-                <div class="ml-auto text-[12px] font-semibold" :class="mainBranch(business)?.is_open ? 'text-green' : 'text-amberdark'">
+                <div class="ml-auto flex items-center gap-1.5 text-[12px] font-semibold" :class="mainBranch(business)?.is_open ? 'text-green' : 'text-amberdark'">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="mainBranch(business)?.is_open ? 'bg-green' : 'bg-amberdot'"></span>
                     {{ mainBranch(business)?.is_open ? 'Нээлттэй' : (mainBranch(business)?.open_label || '') }}
                 </div>
             </div>

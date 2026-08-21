@@ -353,7 +353,7 @@ onMounted(async () => {
 
         <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[236px_1fr]">
             <!-- Шүүлтүүр sidebar -->
-            <aside class="border-line bg-panel px-5 py-6 sm:px-6 lg:border-r">
+            <aside class="border-line bg-panel px-5 py-6 sm:px-6 lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-r">
                 <div class="flex items-baseline justify-between">
                     <div class="text-[13px] font-bold text-ink">Шүүлтүүр</div>
                     <button class="cursor-pointer text-[11.5px] font-medium text-brand" @click="clearFilters">Цэвэрлэх</button>
@@ -552,7 +552,7 @@ onMounted(async () => {
                         v-for="(branch, i) in branches"
                         :key="branch.id"
                         :to="{ name: 'business', params: { slug: branch.business.slug } }"
-                        class="flex gap-4 rounded-xl border p-3.5 transition hover:shadow-sm"
+                        class="flex gap-4 rounded-xl border p-3.5 transition hover:border-blueline hover:shadow-sm"
                         :class="branch.is_featured ? 'border-blueline bg-bluepale' : 'border-line bg-white'"
                         @click="trackView(branch)"
                     >

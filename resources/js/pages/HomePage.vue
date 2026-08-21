@@ -5,6 +5,8 @@ import { api } from '../api';
 import BusinessCard from '../components/BusinessCard.vue';
 import CategoryIcon from '../components/CategoryIcon.vue';
 import HomeSection from '../components/HomeSection.vue';
+import SectionHeader from '../components/SectionHeader.vue';
+import { LayoutGrid, Sparkle } from 'lucide-vue-next';
 
 const router = useRouter();
 const categories = ref([]);
@@ -61,75 +63,104 @@ function filteredFeatured() {
 
 <template>
     <div>
-        <!-- Hero (1a) -->
-        <section class="border-b border-line bg-hero">
-            <div class="mx-auto max-w-7xl px-5 py-12 sm:px-10 sm:py-14">
-                <div class="max-w-[720px]">
-                    <h1 class="text-[32px] font-extrabold leading-[1.15] tracking-[-.025em] text-ink sm:text-[40px]">
+        <!-- Hero -->
+        <section class="relative overflow-hidden border-b border-line bg-hero">
+            <!-- Зөөлөн өнгөний толбо — хоосон талбайг дүүргэнэ -->
+            <div class="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-bluetint/70 blur-3xl"></div>
+
+            <div class="relative mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-12 sm:px-10 sm:py-14 lg:grid-cols-[1fr_300px] lg:items-center">
+                <div>
+                    <h1 class="max-w-[720px] text-[32px] font-extrabold leading-[1.15] tracking-[-.025em] text-ink sm:text-[40px]">
                         Монгол дахь {{ stats.businesses.toLocaleString() }} бизнесийг нэг дороос
                     </h1>
-                    <p class="mt-3 text-[15px] leading-relaxed text-soft">
+                    <p class="mt-3 max-w-[640px] text-[15px] leading-relaxed text-soft">
                         Ресторан, эмнэлэг, авто засвар, хууль зүйн үйлчилгээ — хаяг, цагийн хуваарь, үнэлгээ бүхий баталгаажсан лавлах.
                     </p>
+
+                    <!-- Хайлт: нэг мөр болгон нэгтгэсэн -->
+                    <form class="mt-6 flex max-w-[760px] flex-col gap-2.5 rounded-[14px] border border-inputline bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:gap-0" @submit.prevent="search()">
+                        <div class="flex flex-[1.5] items-center gap-2.5 px-3 py-2.5">
+                            <svg class="h-4 w-4 shrink-0 text-ph" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4-4"/></svg>
+                            <input v-model="query" type="search" placeholder="Бизнес, үйлчилгээ, брэнд хайх" class="w-full bg-transparent text-[14px] font-medium text-ink outline-none placeholder:text-ph" />
+                        </div>
+                        <div class="hidden h-7 w-px bg-line sm:block"></div>
+                        <div class="flex flex-1 items-center px-3">
+                            <select v-model="city" class="w-full cursor-pointer bg-transparent py-2.5 text-[14px] font-medium text-ink outline-none" @change="fetchHome()">
+                                <option value="Улаанбаатар">Улаанбаатар</option>
+                                <option v-for="c in cities.filter((c) => c !== 'Улаанбаатар')" :key="c" :value="c">{{ c }}</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary !rounded-[10px] !px-7 !py-3 !text-[14px]">Хайх</button>
+                    </form>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <span class="text-[12.5px] font-medium text-soft">Их хайсан:</span>
+                        <button
+                            v-for="term in popular"
+                            :key="term"
+                            class="cursor-pointer rounded-full border border-inputline bg-white px-3 py-1.5 text-[12.5px] font-semibold text-body transition hover:border-brand hover:text-brand"
+                            @click="search(term)"
+                        >{{ term }}</button>
+                    </div>
                 </div>
 
-                <form class="mt-6 flex max-w-[900px] flex-col gap-2.5 sm:flex-row" @submit.prevent="search()">
-                    <div class="flex flex-[1.4] items-center gap-2.5 rounded-[10px] border border-inputline bg-white px-4 py-3.5">
-                        <svg class="h-4 w-4 shrink-0 text-ph" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4-4"/></svg>
-                        <input v-model="query" type="search" placeholder="Бизнес, үйлчилгээ, брэнд хайх" class="w-full bg-transparent text-[14px] font-medium text-ink outline-none placeholder:text-ph" />
+                <!-- Тоон тойм -->
+                <div class="rounded-2xl border border-line bg-white/80 p-5 backdrop-blur">
+                    <div class="text-[11px] font-semibold tracking-[.08em] text-mute">ХААНА.MN-Д</div>
+                    <div class="mt-3 flex flex-col gap-3">
+                        <div v-for="stat in [[stats.businesses, 'бүртгэлтэй бизнес'], [stats.branches, 'салбар, хаяг'], [categories.length, 'үндсэн ангилал']]" :key="stat[1]" class="flex items-baseline gap-2">
+                            <span class="text-[22px] font-extrabold tracking-[-.02em] text-brand">{{ Number(stat[0] || 0).toLocaleString() }}</span>
+                            <span class="text-[12.5px] font-medium text-mute">{{ stat[1] }}</span>
+                        </div>
                     </div>
-                    <div class="flex flex-1 items-center rounded-[10px] border border-inputline bg-white px-4 py-1.5">
-                        <select v-model="city" class="w-full cursor-pointer bg-transparent py-2 text-[14px] font-medium text-ink outline-none" @change="fetchHome()">
-                            <option value="Улаанбаатар">Улаанбаатар</option>
-                            <option v-for="c in cities.filter((c) => c !== 'Улаанбаатар')" :key="c" :value="c">{{ c }}</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-primary !rounded-[10px] !px-8 !py-3.5 !text-[14px]">Хайх</button>
-                </form>
-
-                <div class="mt-4 flex flex-wrap items-center gap-2 text-[12.5px] font-medium">
-                    <span class="text-soft">Их хайсан:</span>
-                    <template v-for="(term, i) in popular" :key="term">
-                        <button class="cursor-pointer text-brand hover:text-brand-dark" @click="search(term)">{{ term }}</button>
-                        <span v-if="i < popular.length - 1" class="text-[#c9ccd1]">·</span>
-                    </template>
+                    <router-link :to="{ name: 'add-business' }" class="mt-4 block rounded-[9px] border border-blueline bg-bluetint py-2.5 text-center text-[12.5px] font-bold text-brand transition hover:bg-white">
+                        Бизнесээ нэмэх
+                    </router-link>
                 </div>
             </div>
         </section>
 
         <!-- Ангиллаар үзэх -->
-        <section class="mx-auto max-w-7xl px-5 pb-2 pt-9 sm:px-10">
-            <div class="flex items-baseline justify-between">
-                <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Ангиллаар үзэх</h2>
-                <router-link :to="{ name: 'categories' }" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүх {{ categories.length }} ангилал →</router-link>
-            </div>
-            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <section class="mx-auto max-w-7xl px-5 pt-10 sm:px-10">
+            <SectionHeader
+                title="Ангиллаар үзэх"
+                subtitle="Хэрэгтэй үйлчилгээгээ ангиллаар нь олоорой"
+                :icon="LayoutGrid"
+                :to="{ name: 'categories' }"
+                :link-label="`Бүх ${categories.length} ангилал →`"
+            />
+            <div class="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                 <router-link
                     v-for="category in categories.slice(0, 12)"
                     :key="category.id"
                     :to="{ name: 'category', params: { slug: category.slug }, query: city !== 'Улаанбаатар' ? { city } : {} }"
-                    class="rounded-[10px] border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-sm"
+                    class="group flex items-center gap-3 rounded-[11px] border border-line bg-white px-3.5 py-3 transition hover:-translate-y-0.5 hover:border-blueline hover:shadow-sm"
                 >
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-blueline bg-bluetint text-brand transition group-hover:bg-brand group-hover:text-white">
                         <CategoryIcon :name="category.icon" :size="17" />
-                    </div>
-                    <div class="mt-3 text-[13.5px] font-semibold text-ink">{{ category.name }}</div>
-                    <div class="mt-0.5 text-[12px] text-mute">{{ (category.businesses_count || 0).toLocaleString() }} бизнес</div>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block truncate text-[13.5px] font-semibold text-ink group-hover:text-brand">{{ category.name }}</span>
+                        <span class="mt-0.5 block text-[11.5px] text-mute">
+                            {{ category.businesses_count ? `${category.businesses_count.toLocaleString()} бизнес` : `${category.children_count || 0} дэд ангилал` }}
+                        </span>
+                    </span>
                 </router-link>
             </div>
         </section>
 
         <!-- Онцлох бизнесүүд -->
-        <section class="mx-auto max-w-7xl px-5 py-9 sm:px-10 sm:pb-11">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-bold tracking-[-.015em] text-ink">Онцлох бизнесүүд — {{ city }}</h2>
-                <div class="flex gap-2 text-[12.5px] font-semibold">
-                    <button class="chip" :class="{ 'chip-active': featuredFilter === 'all' }" @click="featuredFilter = 'all'">Бүгд</button>
-                    <button class="chip" :class="{ 'chip-active': featuredFilter === 'open' }" @click="featuredFilter = 'open'">Нээлттэй</button>
-                    <button class="chip" :class="{ 'chip-active': featuredFilter === 'rating' }" @click="featuredFilter = 'rating'">4.5+ үнэлгээ</button>
-                    <button class="chip" :class="{ 'chip-active': featuredFilter === 'verified' }" @click="featuredFilter = 'verified'">Баталгаажсан</button>
-                </div>
-            </div>
+        <section class="mx-auto max-w-7xl px-5 pt-10 sm:px-10">
+            <SectionHeader :title="`Онцлох бизнесүүд — ${city}`" subtitle="Санал болгож буй, идэвхтэй бизнесүүд" :icon="Sparkle">
+                <template #actions>
+                    <div class="flex flex-wrap gap-1.5 text-[12.5px] font-semibold">
+                        <button class="chip !px-3 !py-1.5" :class="{ 'chip-active': featuredFilter === 'all' }" @click="featuredFilter = 'all'">Бүгд</button>
+                        <button class="chip !px-3 !py-1.5" :class="{ 'chip-active': featuredFilter === 'open' }" @click="featuredFilter = 'open'">Нээлттэй</button>
+                        <button class="chip !px-3 !py-1.5" :class="{ 'chip-active': featuredFilter === 'rating' }" @click="featuredFilter = 'rating'">4.5+</button>
+                        <button class="chip !px-3 !py-1.5" :class="{ 'chip-active': featuredFilter === 'verified' }" @click="featuredFilter = 'verified'">Баталгаажсан</button>
+                    </div>
+                </template>
+            </SectionHeader>
 
             <div v-if="loading" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="i in 6" :key="i" class="card h-72 animate-pulse bg-panel"></div>
@@ -138,7 +169,7 @@ function filteredFeatured() {
                 <p class="text-[13px] font-medium text-red">{{ loadError }}</p>
                 <button class="btn-primary mt-4" @click="fetchHome()">Дахин оролдох</button>
             </div>
-            <div v-else-if="filteredFeatured().length" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-else-if="filteredFeatured().length" class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <BusinessCard v-for="business in filteredFeatured()" :key="business.id" :business="business" />
             </div>
             <!-- Тухайн хотод огт бизнес байхгүй бол шүүлтүүрийн хоосноос ялгаж хэлнэ -->

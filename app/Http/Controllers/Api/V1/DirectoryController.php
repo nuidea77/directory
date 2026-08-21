@@ -47,7 +47,7 @@ class DirectoryController extends Controller
         $this->campaigns->sync();
 
         $categories = Category::whereNull('parent_id')
-            ->withCount('allBusinesses as businesses_count')
+            ->withCount(['allBusinesses as businesses_count', 'children as children_count'])
             ->orderBy('sort_order')
             ->get();
 

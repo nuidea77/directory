@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import { Clock, Heart, Sparkles, Store, Utensils } from 'lucide-vue-next';
 import BizLogo from './BizLogo.vue';
 import VerifiedBadge from './VerifiedBadge.vue';
+import SectionHeader from './SectionHeader.vue';
 
 /**
  * Нүүрийн сэдэвчилсэн блок: «Хаана хооллох вэ?», «Болзоход тохиромжтой» гэх мэт.
@@ -28,20 +29,7 @@ const to = computed(() => {
 
 <template>
     <section class="mx-auto max-w-7xl px-5 pt-10 sm:px-10">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-            <div class="flex items-center gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-blueline bg-bluetint text-brand">
-                    <component :is="icon" :size="18" :stroke-width="1.9" aria-hidden="true" />
-                </span>
-                <div>
-                    <h2 class="text-[19px] font-bold tracking-[-.015em] text-ink">{{ section.title }}</h2>
-                    <p v-if="section.subtitle" class="mt-0.5 text-[12.5px] text-mute">{{ section.subtitle }}</p>
-                </div>
-            </div>
-            <RouterLink :to="to" class="rounded-lg border border-inputline bg-white px-3.5 py-2 text-[12.5px] font-semibold text-brand transition hover:border-brand">
-                Бүгдийг үзэх →
-            </RouterLink>
-        </div>
+        <SectionHeader :title="section.title" :subtitle="section.subtitle" :icon="icon" :to="to" />
 
         <div class="mt-3 grid grid-cols-1 gap-x-7 sm:grid-cols-2 lg:grid-cols-3">
             <RouterLink
