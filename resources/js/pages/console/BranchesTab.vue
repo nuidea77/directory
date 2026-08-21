@@ -173,8 +173,9 @@ const totals = computed(() => ({
                         <span class="truncate text-[14px] font-bold text-ink">{{ branch.business.name }} — {{ branch.district }}</span>
                         <span class="rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold" :class="statusLabel[branch.status]?.[1]">{{ statusLabel[branch.status]?.[0] }}</span>
                     </div>
-                    <div class="mt-1 flex items-center gap-1 truncate text-[11.5px] text-mute">
-                        <MapPin :size="12" :stroke-width="1.9" class="shrink-0" /> {{ branch.address }}
+                    <div class="mt-1 flex items-center gap-1 text-[11.5px] text-mute">
+                        <MapPin :size="12" :stroke-width="1.9" class="shrink-0" />
+                        <span class="truncate">{{ branch.address }}</span>
                     </div>
                     <div v-if="branch.status === 'rejected' && branch.rejection_reason" class="mt-1 text-[11.5px] font-medium text-red">Шалтгаан: {{ branch.rejection_reason }}</div>
                 </div>

@@ -34,7 +34,8 @@ const routes = [
     {
         path: '/console',
         component: () => import('./pages/console/ConsoleLayout.vue'),
-        meta: { auth: true, verified: true },
+        // Зөвлөл өөрийн толгой, sidebar-тай — нийтийн header/footer давхарлахгүй
+        meta: { auth: true, verified: true, chrome: false },
         children: [
             { path: '', name: 'console', component: () => import('./pages/console/BranchesTab.vue') },
             { path: 'stats', name: 'console-stats', component: () => import('./pages/console/StatsTab.vue') },
