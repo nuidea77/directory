@@ -129,7 +129,7 @@ class DirectoryController extends Controller
      */
     protected function homeSections(string $city): array
     {
-        return Cache::remember("home:sections:v1:{$city}", 600, function () use ($city) {
+        return Cache::remember("home:sections:v2:{$city}", 600, function () use ($city) {
             $ids = fn (string $slug) => optional(Category::where('slug', $slug)->first())->descendantIds() ?? [];
 
             // Идэвхтэй зартай бизнесүүд — блокуудад «ОНЦЛОХ» тэмдэгтэй гарна
@@ -153,6 +153,9 @@ class DirectoryController extends Controller
                     'is_verified' => (bool) $b->business->is_verified,
                     'is_featured' => in_array($b->business_id, $adBusinessIds, true),
                     'category' => $b->business->category?->name,
+                    'category_slug' => $b->business->category?->slug,
+                    'is_open' => $b->openState()['open'],
+                    'open_label' => $b->openState()['label'],
                     'district' => $b->district,
                     'address' => $b->address,
                     'price_level' => $b->business->price_level,
@@ -165,7 +168,11 @@ class DirectoryController extends Controller
                 ])->all();
             };
 
-            $byRating = fn ($q) => $q->orderByDesc('rating_avg')->orderByDesc('reviews_count');
+            // Жинлэсэн дундаж (Bayesian): цөөн сэтгэгдэлтэй 5.0 нь олон сэтгэгдэлтэй
+            // 4.8-аас дээгүүр гарахгүй. Прайор 4.0, жин 5 сэтгэгдэл.
+            $byRating = fn ($q) => $q
+                ->orderByRaw('(rating_avg * reviews_count + 4.0 * 5) / (reviews_count + 5) desc')
+                ->orderByDesc('reviews_count');
 
             $eatIds = $ids('restaurants');
             $funIds = array_merge($ids('entertainment'), $ids('arts'));
@@ -173,16 +180,19 @@ class DirectoryController extends Controller
             $sections = [
                 [
                     'key' => 'eat',
+                    'icon' => 'utensils',
                     'title' => 'Хаана хооллох вэ?',
                     'subtitle' => 'Хамгийн өндөр үнэлгээтэй хоолны газрууд',
                     'link' => ['name' => 'category', 'slug' => 'restaurants'],
                     'items' => $rows(function ($q) use ($eatIds, $byRating) {
-                        $q->whereHas('business.categories', fn ($c) => $c->whereIn('categories.id', $eatIds));
+                        $q->whereHas('business.categories', fn ($c) => $c->whereIn('categories.id', $eatIds))
+                            ->where('reviews_count', '>', 0);
                         $byRating($q);
                     }, 9),
                 ],
                 [
                     'key' => 'date',
+                    'icon' => 'heart',
                     'title' => 'Болзоход тохиромжтой',
                     'subtitle' => 'Уур амьсгалтай ресторан, кафе, зугаа цэнгэл',
                     'link' => ['name' => 'search', 'query' => ['category' => 'restaurants', 'rating' => 4]],
@@ -195,6 +205,7 @@ class DirectoryController extends Controller
                 ],
                 [
                     'key' => 'open_24_7',
+                    'icon' => 'clock',
                     'title' => '24 цагаар нээлттэй',
                     'subtitle' => 'Шөнө ч хаалгаа хаадаггүй газрууд',
                     'link' => ['name' => 'search', 'query' => ['open_24_7' => 1]],
@@ -205,12 +216,26 @@ class DirectoryController extends Controller
                 ],
                 [
                     'key' => 'newest',
+                    'icon' => 'sparkles',
                     'title' => 'Шинээр нэмэгдсэн',
                     'subtitle' => 'Сүүлд бүртгүүлсэн бизнесүүд',
                     'link' => ['name' => 'search', 'query' => ['sort' => 'new']],
                     'items' => $rows(fn ($q) => $q->orderByDesc('id'), 4),
                 ],
             ];
+
+            // «Болзоход тохиромжтой» блок «Хаана хооллох вэ?»-тэй бүрэн давхцвал
+            // нүүр хуудас нэг бизнесийг дахин дахин харуулна — давхцлыг арилгана
+            // (гэхдээ 2-оос цөөн үлдвэл хэвээр нь орхино)
+            $eatIdsShown = array_column($sections[0]['items'] ?? [], 'id');
+            $dateItems = array_values(array_filter(
+                $sections[1]['items'] ?? [],
+                fn ($i) => ! in_array($i['id'], $eatIdsShown, true),
+            ));
+
+            if (count($dateItems) >= 2) {
+                $sections[1]['items'] = $dateItems;
+            }
 
             // Хоосон блокыг үзүүлэхгүй
             return array_values(array_filter($sections, fn ($s) => count($s['items']) > 0));

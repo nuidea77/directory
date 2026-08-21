@@ -153,8 +153,20 @@ function filteredFeatured() {
         </section>
 
         <!-- Сэдэвчилсэн блокууд: хаана хооллох, болзох, 24 цаг, шинэ -->
-        <template v-if="!loading && !loadError">
-            <HomeSection v-for="section in sections" :key="section.key" :section="section" :city="city" />
+        <section v-if="loading" class="mx-auto max-w-7xl px-5 pt-10 sm:px-10">
+            <div class="h-9 w-56 animate-pulse rounded-lg bg-panel"></div>
+            <div class="mt-4 grid grid-cols-1 gap-x-7 sm:grid-cols-2 lg:grid-cols-3">
+                <div v-for="i in 6" :key="i" class="flex items-center gap-3 py-2.5">
+                    <div class="h-[52px] w-[52px] shrink-0 animate-pulse rounded-[10px] bg-panel"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-3 w-3/4 animate-pulse rounded bg-panel"></div>
+                        <div class="h-2.5 w-1/2 animate-pulse rounded bg-panel"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <template v-else-if="!loadError">
+            <HomeSection v-for="section in sections" :key="section.key" :section="section" />
         </template>
 
         <!-- Бизнесээ бүртгүүлэх урилга -->

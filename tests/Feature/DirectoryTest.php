@@ -171,7 +171,7 @@ class DirectoryTest extends TestCase
             'reviews_count' => 12,
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget('home:sections:v1:Улаанбаатар');
+        \Illuminate\Support\Facades\Cache::forget('home:sections:v2:Улаанбаатар');
 
         $sections = collect($this->getJson('/api/v1/home')->assertOk()->json('sections'));
 
@@ -186,7 +186,7 @@ class DirectoryTest extends TestCase
         $this->assertSame($business->name, $open247['items'][0]['name']);
         $this->assertTrue($open247['items'][0]['is_24_7']);
 
-        \Illuminate\Support\Facades\Cache::forget('home:sections:v1:Улаанбаатар');
+        \Illuminate\Support\Facades\Cache::forget('home:sections:v2:Улаанбаатар');
     }
 
     public function test_rejection_reason_is_not_exposed_publicly(): void

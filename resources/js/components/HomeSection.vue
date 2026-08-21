@@ -1,60 +1,85 @@
 <script setup>
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
+import { Clock, Heart, Sparkles, Store, Utensils } from 'lucide-vue-next';
 import BizLogo from './BizLogo.vue';
 import VerifiedBadge from './VerifiedBadge.vue';
 
 /**
  * Нүүрийн сэдэвчилсэн блок: «Хаана хооллох вэ?», «Болзоход тохиромжтой» гэх мэт.
- * Жижиг мөр карт — лого, нэр, үнэлгээ, үнийн зэрэглэл, байршил.
+ * Мөр карт — эрэмбийн дугаар, лого/зураг, нэр, үнэлгээ, үнэ, байршил, нээлттэй эсэх.
  */
-defineProps({
+const props = defineProps({
     section: { type: Object, required: true },
-    city: { type: String, default: '' },
+    loading: { type: Boolean, default: false },
 });
 
-function linkTo(section) {
-    const l = section.link || {};
-    if (l.name === 'category') return { name: 'category', params: { slug: l.slug } };
-    return { name: 'search', query: l.query || {} };
-}
+const ICONS = { utensils: Utensils, heart: Heart, clock: Clock, sparkles: Sparkles };
+
+const icon = computed(() => ICONS[props.section.icon] || Store);
+
+const to = computed(() => {
+    const l = props.section.link || {};
+    return l.name === 'category'
+        ? { name: 'category', params: { slug: l.slug } }
+        : { name: 'search', query: l.query || {} };
+});
 </script>
 
 <template>
-    <section class="mx-auto max-w-7xl px-5 pt-9 sm:px-10">
-        <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-                <h2 class="text-xl font-bold tracking-[-.015em] text-ink">{{ section.title }}</h2>
-                <p v-if="section.subtitle" class="mt-1 text-[12.5px] text-mute">{{ section.subtitle }}</p>
+    <section class="mx-auto max-w-7xl px-5 pt-10 sm:px-10">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+            <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-blueline bg-bluetint text-brand">
+                    <component :is="icon" :size="18" :stroke-width="1.9" aria-hidden="true" />
+                </span>
+                <div>
+                    <h2 class="text-[19px] font-bold tracking-[-.015em] text-ink">{{ section.title }}</h2>
+                    <p v-if="section.subtitle" class="mt-0.5 text-[12.5px] text-mute">{{ section.subtitle }}</p>
+                </div>
             </div>
-            <RouterLink :to="linkTo(section)" class="text-[13px] font-semibold text-brand hover:text-brand-dark">Бүгдийг үзэх →</RouterLink>
+            <RouterLink :to="to" class="rounded-lg border border-inputline bg-white px-3.5 py-2 text-[12.5px] font-semibold text-brand transition hover:border-brand">
+                Бүгдийг үзэх →
+            </RouterLink>
         </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-3 grid grid-cols-1 gap-x-7 sm:grid-cols-2 lg:grid-cols-3">
             <RouterLink
-                v-for="item in section.items"
+                v-for="(item, i) in section.items"
                 :key="item.id"
                 :to="{ name: 'business', params: { slug: item.slug } }"
-                class="flex items-center gap-3 rounded-[11px] border border-transparent p-2 transition hover:border-line hover:bg-panel"
+                class="group flex items-center gap-3 border-b border-hairline py-2.5 transition last:border-0"
             >
-                <div v-if="item.cover_url" class="h-[56px] w-[64px] shrink-0 overflow-hidden rounded-[9px]">
-                    <img :src="item.cover_url" :alt="item.name" class="h-full w-full object-cover" loading="lazy" />
+                <span class="w-4 shrink-0 text-right font-mono text-[11.5px] text-faint">{{ i + 1 }}</span>
+
+                <div class="h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px] border border-line bg-white">
+                    <img v-if="item.cover_url" :src="item.cover_url" :alt="item.name" class="h-full w-full object-cover" loading="lazy" />
+                    <BizLogo v-else :business="item" size="h-full w-full rounded-none text-[15px]" />
                 </div>
-                <BizLogo v-else :business="item" size="h-[56px] w-[64px] rounded-[9px] text-[15px]" />
 
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1.5">
-                        <span class="truncate text-[14px] font-bold text-ink">{{ item.name }}</span>
-                        <VerifiedBadge v-if="item.is_verified" :size="14" />
+                        <span class="truncate text-[13.5px] font-bold text-ink group-hover:text-brand">{{ item.name }}</span>
+                        <VerifiedBadge v-if="item.is_verified" :size="13" />
                         <span v-if="item.is_featured" class="badge-featured shrink-0">ОНЦЛОХ</span>
-                        <span v-if="item.is_24_7" class="shrink-0 rounded-[4px] bg-greentint px-1.5 py-0.5 text-[9.5px] font-bold text-green">24/7</span>
                     </div>
-                    <div class="mt-1 flex items-center gap-1.5 text-[12.5px]">
-                        <span class="text-amberdot">★</span>
-                        <span class="font-bold text-ink">{{ (item.rating_avg || 0).toFixed(1) }}</span>
-                        <span class="text-mute">({{ item.reviews_count }})</span>
+
+                    <div class="mt-1 flex items-center gap-1.5 text-[12px]">
+                        <template v-if="item.reviews_count">
+                            <span class="text-[11px] text-amberdot">★</span>
+                            <span class="font-bold text-ink">{{ item.rating_avg.toFixed(1) }}</span>
+                            <span class="text-mute">({{ item.reviews_count }})</span>
+                        </template>
+                        <span v-else class="text-mute">Шинэ</span>
+
+                        <span class="text-[#c9ccd1]">·</span>
+                        <span v-if="item.is_24_7" class="font-semibold text-green">24 цаг</span>
+                        <span v-else class="font-semibold" :class="item.is_open ? 'text-green' : 'text-amberdark'">{{ item.is_open ? 'Нээлттэй' : 'Хаалттай' }}</span>
                     </div>
-                    <div class="mt-0.5 flex items-center gap-2 truncate text-[12px] text-mute">
+
+                    <div class="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] text-mute">
                         <span v-if="item.price_level" class="font-semibold text-body">{{ item.price_level }}</span>
+                        <span v-if="item.price_level" class="text-[#c9ccd1]">·</span>
                         <span class="truncate">{{ item.district }}{{ item.category ? ' · ' + item.category : '' }}</span>
                     </div>
                 </div>
