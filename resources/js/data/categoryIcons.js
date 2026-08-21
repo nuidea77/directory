@@ -4,13 +4,17 @@
  * ерөнхий Store icon-оор орлоно.
  */
 import {
-    BedDouble, Building2, Cake, Car, Dumbbell, Factory, GraduationCap, Hammer,
-    House, Landmark, Megaphone, Monitor, PartyPopper, PawPrint, Plane, Scale,
-    Scissors, ShoppingBag, Sprout, Stethoscope, Store, Truck, Utensils,
+    Baby, BedDouble, Briefcase, Building, Building2, Cake, Camera, Car, Dumbbell,
+    Factory, Gamepad2, GraduationCap, Hammer, House, Landmark, Megaphone, Monitor,
+    Palette, PartyPopper, PawPrint, Plane, Scale, Scissors, Shirt, ShoppingBag,
+    ShoppingCart, Sprout, Stethoscope, Store, Truck, Utensils, Wrench,
 } from 'lucide-vue-next';
 
 const ICONS = {
+    baby: Baby,
     'bed-double': BedDouble,
+    briefcase: Briefcase,
+    building: Building,
     'building-2': Building2,
     cake: Cake,
     car: Car,
@@ -27,11 +31,17 @@ const ICONS = {
     plane: Plane,
     scale: Scale,
     scissors: Scissors,
+    camera: Camera,
+    'gamepad-2': Gamepad2,
+    palette: Palette,
+    shirt: Shirt,
     'shopping-bag': ShoppingBag,
+    'shopping-cart': ShoppingCart,
     sprout: Sprout,
     stethoscope: Stethoscope,
     truck: Truck,
     utensils: Utensils,
+    wrench: Wrench,
 };
 
 export const iconNames = Object.keys(ICONS);

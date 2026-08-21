@@ -68,12 +68,12 @@ onMounted(async () => {
                     <!-- Дэд ангиллууд -->
                     <div v-if="category.children?.length" class="mt-3 flex flex-wrap gap-1.5">
                         <router-link
-                            v-for="child in category.children.slice(0, 6)"
+                            v-for="child in category.children.slice(0, 8)"
                             :key="child.id"
                             :to="{ name: 'category', params: { slug: child.slug } }"
                             class="rounded-full border border-searchline bg-search px-2.5 py-1 text-[11.5px] font-semibold text-body hover:border-brand hover:text-brand"
                         >{{ child.name }}<span v-if="child.businesses_count" class="ml-1 font-mono text-[10px] text-mute">{{ child.businesses_count }}</span></router-link>
-                        <span v-if="category.children.length > 6" class="px-1 py-1 text-[11.5px] font-medium text-mute">+{{ category.children.length - 6 }}</span>
+                        <span v-if="category.children.length > 8" class="px-1 py-1 text-[11.5px] font-medium text-mute">+{{ category.children.length - 8 }}</span>
                     </div>
 
                     <router-link :to="{ name: 'category', params: { slug: category.slug } }" class="mt-auto pt-3.5 text-[12.5px] font-semibold text-brand hover:text-brand-dark">Бүгдийг үзэх →</router-link>
