@@ -221,7 +221,7 @@ onMounted(fetchBusiness);
                     <div class="flex flex-wrap items-start gap-3.5">
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-2.5">
-                                <BizLogo v-if="business.logo_url" :business="business" size="h-11 w-11 rounded-[11px] text-lg" />
+                                <BizLogo :business="business" size="h-11 w-11 rounded-[11px] text-lg" />
                                 <h1 class="text-[26px] font-extrabold leading-tight tracking-[-.02em] text-ink sm:text-[30px]">{{ business.name }}</h1>
                                 <VerifiedBadge v-if="business.is_verified" :size="22" />
                             </div>

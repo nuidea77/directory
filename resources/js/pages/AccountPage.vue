@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../api';
 import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
+import BizLogo from '../components/BizLogo.vue';
 
 // Хэрэглэгчийн дашбоард (4c): хадгалсан, миний сэтгэгдэл, тохиргоо
 const auth = useAuthStore();
@@ -181,7 +182,10 @@ onMounted(fetchAll);
                                 <span v-if="b.list_name" class="absolute bottom-2.5 left-2.5 rounded-[5px] bg-white/95 px-2 py-1 text-[10.5px] font-semibold text-ink">{{ b.list_name }}</span>
                             </div>
                             <div class="p-3.5">
-                                <div class="text-[14px] font-bold text-ink">{{ b.name }}</div>
+                                <div class="flex items-center gap-2">
+                                    <BizLogo :business="b" size="h-7 w-7 rounded-[7px] text-[11px]" />
+                                    <div class="truncate text-[14px] font-bold text-ink">{{ b.name }}</div>
+                                </div>
                                 <div class="mt-1 text-[12px] text-mute">{{ b.category?.name }} · {{ b.branches?.[0]?.district }}</div>
                                 <div class="mt-2 flex items-center gap-2 text-[12px] font-medium text-mute">
                                     <b class="text-ink">{{ (b.rating_avg || 0).toFixed(1) }}</b>

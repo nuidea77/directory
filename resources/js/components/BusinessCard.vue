@@ -1,6 +1,7 @@
 <script setup>
 import ImagePh from './ImagePh.vue';
 import VerifiedBadge from './VerifiedBadge.vue';
+import BizLogo from './BizLogo.vue';
 
 // Нүүрийн "Онцлох бизнесүүд" карт (1a дизайн)
 defineProps({
@@ -25,6 +26,7 @@ function mainBranch(business) {
         </div>
         <div class="p-4">
             <div class="flex items-center gap-2">
+                <BizLogo :business="business" size="h-7 w-7 rounded-[7px] text-[11px]" />
                 <div class="truncate text-[15px] font-bold text-ink">{{ business.name }}</div>
                 <VerifiedBadge v-if="business.is_verified" :size="15" />
             </div>

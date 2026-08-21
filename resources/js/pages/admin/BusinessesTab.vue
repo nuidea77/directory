@@ -5,6 +5,7 @@ import { api } from '../../api';
 import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 import PanelBadge from '../../components/panel/PanelBadge.vue';
 import VerifiedBadge from '../../components/VerifiedBadge.vue';
+import BizLogo from '../../components/BizLogo.vue';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
 // Бизнесүүд: эрхийн төрөл, хүлээгдэж буй төлбөр/сурталчилгаа/модерац,
@@ -145,7 +146,7 @@ onMounted(async () => {
                 <div v-for="b in data.data" :key="b.id" class="grid grid-cols-1 gap-2 border-b border-hairline px-4 py-3 last:border-0 lg:grid-cols-[1.4fr_1fr_1fr_.9fr_1fr] lg:items-center lg:gap-3">
                     <!-- Бизнес -->
                     <div class="flex items-center gap-2.5">
-                        <div class="img-ph h-[26px] w-[26px] shrink-0 rounded-md"></div>
+                        <BizLogo :business="b" size="h-[26px] w-[26px] rounded-md text-[10px]" />
                         <div class="min-w-0">
                             <div class="flex items-center gap-1.5">
                                 <router-link :to="{ name: 'business', params: { slug: b.slug } }" class="truncate text-[13px] font-bold text-ink hover:text-brand">{{ b.name }}</router-link>

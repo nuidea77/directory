@@ -8,6 +8,7 @@ import ImagePh from '../components/ImagePh.vue';
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 import CategoryIcon from '../components/CategoryIcon.vue';
 import VerifiedBadge from '../components/VerifiedBadge.vue';
+import BizLogo from '../components/BizLogo.vue';
 import { flattenCategories, optionLabel } from '../utils/categories';
 
 const route = useRoute();
@@ -566,6 +567,7 @@ onMounted(async () => {
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-[12px] text-faint">{{ String((meta.current_page - 1) * (meta.per_page || 20) + i + 1).padStart(2, '0') }}</span>
+                                <BizLogo :business="branch.business" size="h-7 w-7 rounded-[7px] text-[11px]" />
                                 <span class="text-[17px] font-bold text-ink">{{ branch.business.name }}</span>
                                 <VerifiedBadge v-if="branch.business.is_verified" :size="17" />
                                 <span v-if="branch.is_24_7" class="rounded-full bg-greentint px-2 py-0.5 text-[10px] font-bold text-green">24/7</span>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import { useConsoleStore } from '../../stores/console';
 import ImagePh from '../../components/ImagePh.vue';
+import BizLogo from '../../components/BizLogo.vue';
 import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 import PanelStat from '../../components/panel/PanelStat.vue';
 import { Eye, MapPin, Navigation, Phone, Plus, Store } from 'lucide-vue-next';
@@ -139,6 +140,7 @@ const totals = computed(() => ({
                 </div>
                 <div class="w-full min-w-0 sm:w-[290px]">
                     <div class="flex items-center gap-2">
+                        <BizLogo :business="branch.business" size="h-6 w-6 rounded-[6px] text-[10px]" />
                         <span class="truncate text-[14px] font-bold text-ink">{{ branch.business.name }} — {{ branch.district }}</span>
                         <span class="rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold" :class="statusLabel[branch.status]?.[1]">{{ statusLabel[branch.status]?.[0] }}</span>
                     </div>

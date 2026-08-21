@@ -205,6 +205,7 @@ class AdminController extends Controller
                 'name' => $b->name,
                 'slug' => $b->slug,
                 'is_verified' => $b->is_verified,
+                'logo_url' => $b->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->logo_path) : null,
                 'category' => $b->category?->name,
                 'organization' => $org?->name,
                 'plan' => $plan,
