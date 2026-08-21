@@ -38,11 +38,6 @@ function mainBranch(business) {
                     {{ mainBranch(business)?.is_open ? 'Нээлттэй' : (mainBranch(business)?.open_label || '') }}
                 </div>
             </div>
-            <div class="my-3 h-px bg-divider"></div>
-            <div class="flex gap-2 text-[12.5px] font-semibold">
-                <div class="flex-1 rounded-lg border border-inputline py-2 text-center text-ink">{{ mainBranch(business)?.phone }}</div>
-                <div class="flex-1 rounded-lg bg-brand py-2 text-center text-white">Дэлгэрэнгүй</div>
-            </div>
         </div>
     </router-link>
 </template>
