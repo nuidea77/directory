@@ -12,8 +12,8 @@ const props = defineProps({
 
 // Нэр бүрт ижил өнгө оноогдоно (санамсаргүй биш — дахин ачаалахад өөрчлөгдөхгүй)
 const PALETTE = [
-    'bg-[#1d4ed8]', 'bg-[#0f766e]', 'bg-[#b45309]', 'bg-[#7c3aed]',
-    'bg-[#be123c]', 'bg-[#0369a1]', 'bg-[#4d7c0f]', 'bg-[#9333ea]',
+    'bg-[#0e8f52]', 'bg-[#0f766e]', 'bg-[#166534]', 'bg-[#115e59]',
+    'bg-[#3f6212]', 'bg-[#0369a1]', 'bg-[#7c2d12]', 'bg-[#4c1d95]',
 ];
 
 const name = computed(() => (props.business?.name || '').trim());

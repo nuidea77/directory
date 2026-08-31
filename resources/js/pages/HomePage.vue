@@ -6,6 +6,7 @@ import BusinessCard from '../components/BusinessCard.vue';
 import CategoryIcon from '../components/CategoryIcon.vue';
 import HomeSection from '../components/HomeSection.vue';
 import SectionHeader from '../components/SectionHeader.vue';
+import CtaBand from '../components/CtaBand.vue';
 import { LayoutGrid, Sparkle } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -200,37 +201,11 @@ function filteredFeatured() {
             <HomeSection v-for="section in sections" :key="section.key" :section="section" />
         </template>
 
-        <!-- Бизнесээ бүртгүүлэх урилга -->
-        <section class="mx-auto mt-11 max-w-7xl px-5 pb-12 sm:px-10">
-            <div class="overflow-hidden rounded-2xl border border-blueline bg-bluetint px-6 py-8 sm:px-10 sm:py-10">
-                <div class="flex flex-wrap items-center justify-between gap-6">
-                    <div class="max-w-[520px]">
-                        <h2 class="text-[24px] font-extrabold tracking-[-.02em] text-ink sm:text-[28px]">Бизнесээ Хаана.mn дээр нэмээрэй</h2>
-                        <p class="mt-2 text-[14px] leading-relaxed text-body">
-                            Хаяг, цагийн хуваарь, зураг, сэтгэгдэл — хэрэглэгчид хайж олоход хэрэгтэй бүхнийг нэг дороос.
-                            Бүртгэл 1 жил үнэгүй.
-                        </p>
-                        <div class="mt-5 flex flex-wrap gap-2.5">
-                            <router-link :to="{ name: 'add-business' }" class="btn-primary !px-6">Бизнес нэмэх</router-link>
-                            <router-link :to="{ name: 'pricing' }" class="btn-outline !bg-white !px-5">Үнийн санал үзэх</router-link>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap gap-6">
-                        <div>
-                            <div class="text-[28px] font-extrabold tracking-[-.02em] text-brand">{{ (stats.businesses || 0).toLocaleString() }}</div>
-                            <div class="mt-0.5 text-[12px] font-medium text-mute">бүртгэлтэй бизнес</div>
-                        </div>
-                        <div>
-                            <div class="text-[28px] font-extrabold tracking-[-.02em] text-brand">{{ (stats.branches || 0).toLocaleString() }}</div>
-                            <div class="mt-0.5 text-[12px] font-medium text-mute">салбар</div>
-                        </div>
-                        <div>
-                            <div class="text-[28px] font-extrabold tracking-[-.02em] text-brand">{{ categories.length }}</div>
-                            <div class="mt-0.5 text-[12px] font-medium text-mute">ангилал</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <!-- Уриалга -->
+        <CtaBand
+            title="Хэрэгтэй бизнесээ хормын дотор олоорой"
+            subtitle="Хаяг, цагийн хуваарь, үнэлгээ, зураг — бүгд нэг дор. Бизнесээ бүртгүүлэх нь 1 жил үнэгүй."
+        />
+
     </div>
 </template>

@@ -50,6 +50,7 @@ async function fetchPricing() {
 }
 
 onMounted(fetchPricing);
+import CtaBand from '../components/CtaBand.vue';
 </script>
 
 <template>
@@ -197,5 +198,7 @@ onMounted(fetchPricing);
                 </div>
             </div>
         </div>
+    
+        <CtaBand />
     </div>
 </template>

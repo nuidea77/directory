@@ -7,39 +7,41 @@
     --font-sans: 'Manrope', 'SF Pro Display', -apple-system, 'Segoe UI', sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    /* Хаана.mn дизайны палитр */
-    --color-brand: #1f5fa8;
-    --color-brand-dark: #12406f;
-    --color-ink: #16181c;
-    --color-body: #3d454e;
-    --color-soft: #5b646f;
-    --color-mute: #8b939d;
-    --color-ph: #9aa2ac;
-    --color-faint: #a8a49c;
+    /* Хаана.mn дизайны палитр — ногоон + гүн тэнгисийн ногоон */
+    --color-brand: #0e8f52;
+    --color-brand-dark: #0a7343;
+    --color-brandlite: #2fbf6f;
+    --color-ink: #10201d;
+    --color-body: #3b4a47;
+    --color-soft: #566a65;
+    --color-mute: #7f918c;
+    --color-ph: #93a5a0;
+    --color-faint: #a3b2ad;
 
-    --color-line: #e8e6e1;
-    --color-inputline: #d8d5ce;
-    --color-divider: #eeece7;
-    --color-hairline: #f1efeb;
+    --color-line: #e4ebe7;
+    --color-inputline: #d3ded8;
+    --color-divider: #ecf1ee;
+    --color-hairline: #f1f5f3;
 
-    --color-page: #fbfaf8;
-    --color-hero: #f6f5f1;
-    --color-panel: #faf9f7;
-    --color-chip: #f2f0ec;
-    --color-chiptext: #4c5560;
-    --color-search: #f4f3f0;
-    --color-searchline: #e4e2dd;
+    --color-page: #fbfcfb;
+    --color-hero: #eef5f1;
+    --color-panel: #f6faf8;
+    --color-chip: #edf3f0;
+    --color-chiptext: #45564f;
+    --color-search: #f2f7f4;
+    --color-searchline: #e0e9e5;
 
-    --color-bluetint: #eef3fa;
-    --color-blueline: #dbe6f4;
-    --color-bluecard: #f7fafd;
-    --color-bluepale: #fbfcfe;
-    --color-bluelight: #8fb6e2;
+    /* Нэрийг нь хадгалсан — утга нь ногоон болсон (bluetint = зөөлөн ногоон) */
+    --color-bluetint: #e7f4ec;
+    --color-blueline: #c9e6d5;
+    --color-bluecard: #f3fbf6;
+    --color-bluepale: #f8fdfa;
+    --color-bluelight: #6fd79b;
 
-    --color-green: #1a8a5a;
-    --color-greentint: #f2f8f4;
-    --color-greenline: #d9ebe1;
-    --color-greenlite: #3fbf7f;
+    --color-green: #0e8f52;
+    --color-greentint: #e7f4ec;
+    --color-greenline: #c9e6d5;
+    --color-greenlite: #2fbf6f;
 
     --color-amber: #a8621d;
     --color-amberdark: #b0741d;
@@ -53,10 +55,12 @@
     --color-redtint: #fdeeea;
     --color-redline: #f4dcd6;
 
-    --color-dark: #16181c;
-    --color-darktext: #c9ccd1;
-    --color-darkmute: #9aa2ac;
-    --color-darkdim: #6b7480;
+    /* Гүн тэнгисийн ногоон — CTA хэсэг, админы sidebar */
+    --color-dark: #073b3a;
+    --color-darker: #052e2d;
+    --color-darktext: #cfe3dd;
+    --color-darkmute: #9ab8b1;
+    --color-darkdim: #6f918a;
 }
 
 body {
@@ -76,11 +80,11 @@ body {
 }
 
 .btn-primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[9px] bg-brand px-5 py-3 text-[13.5px] font-bold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-brand px-5 py-3 text-[13.5px] font-bold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .btn-outline {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[9px] border border-inputline bg-white px-4 py-3 text-[13px] font-bold text-ink transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-inputline bg-white px-4 py-3 text-[13px] font-bold text-ink transition hover:border-brand hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .btn-dark {
@@ -88,7 +92,7 @@ body {
 }
 
 .card {
-    @apply rounded-xl border border-line bg-white;
+    @apply rounded-[14px] border border-line bg-white;
 }
 
 .chip {
@@ -100,11 +104,11 @@ body {
 }
 
 .badge-verified {
-    @apply inline-flex items-center gap-1 rounded-[5px] border border-blueline bg-bluetint px-2 py-1 text-[10px] font-semibold text-brand;
+    @apply inline-flex items-center gap-1 rounded-full border border-blueline bg-bluetint px-2 py-1 text-[10px] font-semibold text-brand;
 }
 
 .badge-featured {
-    @apply inline-flex items-center rounded-[4px] bg-amberbadge px-1.5 py-0.5 text-[10px] font-semibold text-amber;
+    @apply inline-flex items-center rounded-full bg-amberbadge px-2 py-0.5 text-[10px] font-semibold text-amber;
 }
 
 .kicker {
@@ -113,7 +117,7 @@ body {
 
 /* Зургийн placeholder — дизайны диагональ судал */
 .img-ph {
-    background: repeating-linear-gradient(45deg, #eceae5 0 10px, #f4f2ee 10px 20px);
+    background: repeating-linear-gradient(45deg, #e6efe9 0 10px, #f1f7f3 10px 20px);
 }
 
 /* Зураглалын placeholder — дизайны торон хээ */

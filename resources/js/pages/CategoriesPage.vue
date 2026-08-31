@@ -17,6 +17,7 @@ onMounted(async () => {
         loading.value = false;
     }
 });
+import CtaBand from '../components/CtaBand.vue';
 </script>
 
 <template>
@@ -82,5 +83,7 @@ onMounted(async () => {
 
             <div v-if="!loading && !categories.length" class="p-16 text-center text-[13px] text-mute">Ангилал бүртгэгдээгүй байна</div>
         </div>
+    
+        <CtaBand />
     </div>
 </template>
