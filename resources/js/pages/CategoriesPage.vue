@@ -24,7 +24,7 @@ import CtaBand from '../components/CtaBand.vue';
     <div class="bg-white">
         <!-- Breadcrumb -->
         <div class="mx-auto flex max-w-7xl gap-2 px-5 pt-4 text-[12.5px] font-medium text-mute sm:px-10">
-            <router-link :to="{ name: 'home' }" class="text-brand">Хаана</router-link>
+            <router-link :to="{ name: 'home' }" class="text-brand">Ойрхон</router-link>
             <span>/</span>
             <span>Ангилал</span>
         </div>

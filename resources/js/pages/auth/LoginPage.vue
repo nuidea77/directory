@@ -85,8 +85,8 @@ async function onVerified(data) {
     <div class="bg-hero px-4 py-14">
         <div class="card mx-auto max-w-[460px] bg-white p-8">
             <div class="flex items-center gap-2.5">
-                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[14px] font-extrabold text-white">Х</span>
-                <span class="text-[17px] font-extrabold text-ink">Хаана<span class="text-brand">.mn</span></span>
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[14px] font-extrabold text-white">О</span>
+                <span class="text-[17px] font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span></span>
             </div>
             <h1 class="mt-6 text-[26px] font-extrabold tracking-[-.025em] text-ink">Нэвтрэх</h1>
             <p class="mt-1.5 text-[13px] text-soft">Утасны дугаар эсвэл и-мэйлээрээ.</p>

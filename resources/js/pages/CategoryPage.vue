@@ -167,7 +167,7 @@ async function fetchCategory() {
         category.value = data.data;
         catStats.value = data.stats;
         ancestors.value = data.ancestors || [];
-        document.title = `${category.value.name} | Хаана.mn`;
+        document.title = `${category.value.name} | Ойрхон.mn`;
     }
 }
 
@@ -273,7 +273,7 @@ onMounted(async () => {
     <div class="bg-white">
         <!-- Breadcrumb -->
         <div class="mx-auto flex max-w-7xl gap-2 px-5 pt-4 text-[12.5px] font-medium text-mute sm:px-10">
-            <router-link :to="{ name: 'home' }" class="text-brand">Хаана</router-link>
+            <router-link :to="{ name: 'home' }" class="text-brand">Ойрхон</router-link>
             <span>/</span>
             <router-link :to="{ name: 'categories' }" class="text-brand">Ангилал</router-link>
             <template v-for="a in ancestors" :key="a.id">

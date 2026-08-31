@@ -36,8 +36,8 @@ async function logout() {
         <!-- Sidebar дэлгэцэнд наалттай: урт жагсаалт гүйлгэхэд ч цэс, гарах товч хэвээр -->
         <aside class="sticky top-0 hidden h-screen w-[212px] shrink-0 flex-col overflow-y-auto bg-dark px-3.5 py-4 md:flex">
             <router-link :to="{ name: 'admin' }" class="flex items-center gap-2 px-1.5 pb-4">
-                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
-                <span class="text-[15px] font-extrabold text-white">Хаана</span>
+                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
+                <span class="text-[15px] font-extrabold text-white">Ойрхон</span>
                 <span class="rounded-[4px] bg-bluelight/15 px-1.5 py-0.5 text-[10px] font-semibold text-bluelight">АДМИН</span>
             </router-link>
 
@@ -75,7 +75,7 @@ async function logout() {
                 <button class="cursor-pointer text-[18px] leading-none text-ink md:hidden" @click="mobileNavOpen = !mobileNavOpen">☰</button>
 
                 <div class="flex items-center gap-2 md:hidden">
-                    <span class="flex h-[24px] w-[24px] items-center justify-center rounded-[6px] bg-brand text-[12px] font-extrabold text-white">Х</span>
+                    <span class="flex h-[24px] w-[24px] items-center justify-center rounded-[6px] bg-brand text-[12px] font-extrabold text-white">О</span>
                     <span class="rounded-[4px] bg-bluetint px-1.5 py-0.5 text-[10px] font-semibold text-brand">АДМИН</span>
                 </div>
 

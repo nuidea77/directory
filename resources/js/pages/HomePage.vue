@@ -107,7 +107,7 @@ function filteredFeatured() {
 
                 <!-- Тоон тойм -->
                 <div class="rounded-2xl border border-line bg-white/80 p-5 backdrop-blur">
-                    <div class="text-[11px] font-semibold tracking-[.08em] text-mute">ХААНА.MN-Д</div>
+                    <div class="text-[11px] font-semibold tracking-[.08em] text-mute">ОЙРХОН.MN-Д</div>
                     <div class="mt-3 flex flex-col gap-3">
                         <div v-for="stat in [[stats.businesses, 'бүртгэлтэй бизнес'], [stats.branches, 'салбар, хаяг'], [categories.length, 'үндсэн ангилал']]" :key="stat[1]" class="flex items-baseline gap-2">
                             <span class="text-[22px] font-extrabold tracking-[-.02em] text-brand">{{ Number(stat[0] || 0).toLocaleString() }}</span>

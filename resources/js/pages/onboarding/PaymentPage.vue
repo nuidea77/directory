@@ -91,8 +91,8 @@ onBeforeUnmount(stop);
         <!-- Толгой -->
         <div class="flex items-center justify-between border-b border-line bg-white px-5 py-3.5 sm:px-8">
             <div class="flex items-center gap-2.5">
-                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
-                <span class="text-[15px] font-extrabold text-ink">Хаана<span class="text-brand">.mn</span> <span class="text-[12.5px] font-medium text-mute">· Төлбөр</span></span>
+                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
+                <span class="text-[15px] font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span> <span class="text-[12.5px] font-medium text-mute">· Төлбөр</span></span>
             </div>
             <span v-if="order" class="font-mono text-[12.5px] font-medium text-soft">{{ order.number }}</span>
         </div>

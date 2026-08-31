@@ -30,14 +30,14 @@ class BranchModerated extends Notification implements ShouldQueue
 
         if ($this->approved) {
             return (new MailMessage)
-                ->subject('Бүртгэл батлагдлаа — Хаана.mn')
+                ->subject('Бүртгэл батлагдлаа — Ойрхон.mn')
                 ->greeting('Сайн байна уу!')
                 ->line("«{$name}» салбарын бүртгэл батлагдаж, хайлтад ил гарлаа.")
                 ->action('Бүртгэлээ харах', url('/console'));
         }
 
         return (new MailMessage)
-            ->subject('Бүртгэлд засвар шаардлагатай — Хаана.mn')
+            ->subject('Бүртгэлд засвар шаардлагатай — Ойрхон.mn')
             ->greeting('Сайн байна уу!')
             ->line("«{$name}» салбарын бүртгэлийг редакц татгалзлаа.")
             ->lineIf(filled($this->branch->rejection_reason), 'Шалтгаан: '.$this->branch->rejection_reason)

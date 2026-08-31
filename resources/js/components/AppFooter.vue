@@ -20,8 +20,8 @@ onMounted(async () => {
         <div class="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-10 sm:px-10 lg:grid-cols-[1.4fr_1fr_1fr]">
             <div>
                 <div class="flex items-center gap-2">
-                    <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
-                    <span class="text-[15px] font-extrabold text-ink">Хаана<span class="text-brand">.mn</span></span>
+                    <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
+                    <span class="text-[15px] font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span></span>
                 </div>
                 <p class="mt-3 max-w-[380px] text-[12.5px] leading-relaxed text-soft">
                     Монголын бизнесийн лавлах — хаяг, цагийн хуваарь, үнэлгээ, зураг бүхий баталгаажсан мэдээлэл.
@@ -46,7 +46,7 @@ onMounted(async () => {
             </div>
 
             <div>
-                <div class="text-[11px] font-semibold tracking-[.08em] text-mute">ХААНА.MN</div>
+                <div class="text-[11px] font-semibold tracking-[.08em] text-mute">ОЙРХОН.MN</div>
                 <div class="mt-3 flex flex-col gap-2 text-[12.5px] font-medium text-body">
                     <router-link :to="{ name: 'search' }" class="hover:text-brand">Бүх бизнес</router-link>
                     <router-link :to="{ name: 'pricing' }" class="hover:text-brand">Зар, эрхийн бичиг</router-link>
@@ -59,7 +59,7 @@ onMounted(async () => {
 
         <div class="border-t border-line">
             <div class="mx-auto max-w-7xl px-5 py-4 text-[12px] text-mute sm:px-10">
-                © {{ new Date().getFullYear() }} Хаана.mn — Монголын бизнес лавлах
+                © {{ new Date().getFullYear() }} Ойрхон.mn — Монголын бизнес лавлах
             </div>
         </div>
     </footer>

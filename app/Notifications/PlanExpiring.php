@@ -30,7 +30,7 @@ class PlanExpiring extends Notification implements ShouldQueue
         $date = $this->organization->plan_expires_at?->format('Y-m-d');
 
         return (new MailMessage)
-            ->subject('Эрхийн хугацаа дуусах гэж байна — Хаана.mn')
+            ->subject('Эрхийн хугацаа дуусах гэж байна — Ойрхон.mn')
             ->greeting('Сайн байна уу!')
             ->line("«{$this->organization->name}» байгууллагын {$planName} эрх {$date}-нд дуусна.")
             ->line('Сунгахгүй бол баталгаажсан тэмдэг, нэмэлт боломжууд хаагдана (мэдээлэл устахгүй).')

@@ -27,7 +27,7 @@ class OrderPaid extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject("Төлбөр батлагдлаа · {$this->order->number} — Хаана.mn")
+            ->subject("Төлбөр батлагдлаа · {$this->order->number} — Ойрхон.mn")
             ->greeting('Сайн байна уу!')
             ->line("Захиалга {$this->order->number} — нийт ₮".number_format((float) $this->order->total).' төлөгдлөө.');
 

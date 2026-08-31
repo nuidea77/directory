@@ -21,8 +21,8 @@ async function logout() {
         <div class="mx-auto flex h-[62px] max-w-7xl items-center justify-between gap-6 px-5 sm:px-10">
             <div class="flex items-center gap-8">
                 <router-link :to="{ name: 'home' }" class="flex items-center gap-2.5">
-                    <span class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-brand text-[15px] font-extrabold text-white">Х</span>
-                    <span class="text-lg font-extrabold tracking-[-.01em] text-ink">Хаана<span class="text-brand">.mn</span></span>
+                    <span class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-brand text-[15px] font-extrabold text-white">О</span>
+                    <span class="text-lg font-extrabold tracking-[-.01em] text-ink">Ойрхон<span class="text-brand">.mn</span></span>
                 </router-link>
                 <nav class="hidden items-center gap-6 text-[13.5px] font-medium text-chiptext lg:flex">
                     <router-link :to="{ name: 'categories' }" class="hover:text-ink">Ангилал</router-link>

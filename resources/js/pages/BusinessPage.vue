@@ -115,7 +115,7 @@ async function fetchBusiness() {
         const data = await api.get(`/businesses/${route.params.slug}`);
         business.value = data.data;
         similar.value = data.similar;
-        document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Хаана.mn`;
+        document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Ойрхон.mn`;
 
         // Сэтгэгдэл бичсэний дараа дахин ачаалахад сонгосон салбар 1-рт
         // үсэрдэг байсан — байгаа сонголтоо хадгална
@@ -200,7 +200,7 @@ onMounted(fetchBusiness);
         <template v-else-if="business">
             <!-- Breadcrumb -->
             <div class="mx-auto flex max-w-7xl gap-2 px-5 py-3.5 text-[12.5px] font-medium text-mute sm:px-10">
-                <router-link :to="{ name: 'home' }" class="text-brand">Хаана</router-link>
+                <router-link :to="{ name: 'home' }" class="text-brand">Ойрхон</router-link>
                 <span>/</span>
                 <router-link :to="{ name: 'category', params: { slug: business.category?.slug } }" class="text-brand">{{ business.category?.name }}</router-link>
                 <span>/</span>
@@ -451,7 +451,7 @@ onMounted(fetchBusiness);
             <div class="bg-dark">
                 <div class="mx-auto max-w-7xl px-5 py-6 sm:px-10">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <span class="text-[13px] text-darkmute">Мэдээлэл буруу байна уу? Хаана редакцад мэдэгдэх</span>
+                        <span class="text-[13px] text-darkmute">Мэдээлэл буруу байна уу? Ойрхон редакцад мэдэгдэх</span>
                         <button class="cursor-pointer rounded-lg bg-chip px-4 py-2.5 text-[12.5px] font-semibold text-ink hover:bg-white" @click="correctionOpen = !correctionOpen">Залруулга хүсэх</button>
                     </div>
                     <div v-if="correctionOpen" class="mt-4 max-w-xl">

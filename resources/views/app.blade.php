@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @php($meta = $meta ?? [])
-    @php($title = $meta['title'] ?? 'Хаана.mn — Монголын бизнес лавлах')
+    @php($title = $meta['title'] ?? 'Ойрхон.mn — Монголын бизнес лавлах')
     @php($description = $meta['description'] ?? 'Монголын бизнесүүдийг нэг дороос. Ресторан, эмнэлэг, авто засвар, хууль зүйн үйлчилгээ — хаяг, цагийн хуваарь, үнэлгээ бүхий баталгаажсан лавлах.')
     <title>{{ $title }}</title>
     <meta name="description" content="{{ $description }}">
     @if (!empty($meta['canonical']))
     <link rel="canonical" href="{{ $meta['canonical'] }}">
     @endif
-    <meta property="og:site_name" content="Хаана.mn">
+    <meta property="og:site_name" content="Ойрхон.mn">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{{ $title }}">
     <meta property="og:description" content="{{ $description }}">

@@ -30,7 +30,7 @@ class NewReview extends Notification implements ShouldQueue
         $stars = str_repeat('★', (int) $this->review->rating);
 
         return (new MailMessage)
-            ->subject('Шинэ сэтгэгдэл — Хаана.mn')
+            ->subject('Шинэ сэтгэгдэл — Ойрхон.mn')
             ->greeting('Сайн байна уу!')
             ->line("«{$branch->business?->name} — {$branch->name}» салбарт {$stars} үнэлгээтэй шинэ сэтгэгдэл ирлээ.")
             ->lineIf(filled($this->review->comment), '«'.mb_substr((string) $this->review->comment, 0, 200).'»')

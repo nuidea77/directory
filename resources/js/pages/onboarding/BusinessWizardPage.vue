@@ -234,8 +234,8 @@ onMounted(async () => {
         <!-- Толгой -->
         <div class="flex items-center justify-between border-b border-line px-5 py-3.5 sm:px-10">
             <div class="flex items-center gap-2.5">
-                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
-                <span class="text-base font-extrabold text-ink">Хаана<span class="text-brand">.mn</span> <span class="text-[13px] font-medium text-mute">· Бизнес нэмэх</span></span>
+                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
+                <span class="text-base font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span> <span class="text-[13px] font-medium text-mute">· Бизнес нэмэх</span></span>
             </div>
             <router-link :to="{ name: 'home' }" class="text-[13px] font-medium text-soft">Гарах</router-link>
         </div>
@@ -464,7 +464,7 @@ onMounted(async () => {
                     <div class="mt-4 rounded-xl border border-blueline bg-bluetint p-4">
                         <div class="text-[13.5px] font-bold text-ink">Баталгаажуулалт хэрхэн явагддаг</div>
                         <div class="mt-3 flex flex-col gap-2.5">
-                            <div v-for="(v, i) in ['Утасны дугаараа баталгаажуулснаар бүртгэл идэвхжинэ.', 'Хаана редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана — энэ хугацаанд ч бүртгэл хайлтад харагдана.']" :key="i" class="flex gap-2.5">
+                            <div v-for="(v, i) in ['Утасны дугаараа баталгаажуулснаар бүртгэл идэвхжинэ.', 'Ойрхон редакц 1–2 ажлын өдрийн дотор хаяг, зургийг хянана — энэ хугацаанд ч бүртгэл хайлтад харагдана.']" :key="i" class="flex gap-2.5">
                                 <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">{{ i + 1 }}</span>
                                 <span class="text-[12.5px] leading-normal text-body">{{ v }}</span>
                             </div>

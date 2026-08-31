@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 class SeoController extends Controller
 {
     protected array $default = [
-        'title' => 'Хаана.mn — Монголын бизнес лавлах',
+        'title' => 'Ойрхон.mn — Монголын бизнес лавлах',
         'description' => 'Монголын бизнесүүдийг нэг дороос. Ресторан, эмнэлэг, авто засвар, хууль зүйн үйлчилгээ — хаяг, цагийн хуваарь, үнэлгээ бүхий баталгаажсан лавлах.',
         'image' => null,
         'jsonld' => null,
@@ -82,8 +82,8 @@ class SeoController extends Controller
         }
 
         return response()->view('app', ['meta' => [
-            'title' => $business->name.' — '.($business->category?->name ?? 'Бизнес').' | Хаана.mn',
-            'description' => mb_substr($business->description ?: sprintf('%s — %s, %s. Хаяг, утас, цагийн хуваарь, сэтгэгдэл — Хаана.mn лавлахаас.', $business->name, $branch->district, $branch->address), 0, 160),
+            'title' => $business->name.' — '.($business->category?->name ?? 'Бизнес').' | Ойрхон.mn',
+            'description' => mb_substr($business->description ?: sprintf('%s — %s, %s. Хаяг, утас, цагийн хуваарь, сэтгэгдэл — Ойрхон.mn лавлахаас.', $business->name, $branch->district, $branch->address), 0, 160),
             'image' => $cover ? $disk->url($cover->path) : null,
             'canonical' => url('/b/'.$business->slug),
             'jsonld' => $jsonld,
@@ -99,7 +99,7 @@ class SeoController extends Controller
         }
 
         return response()->view('app', ['meta' => [
-            'title' => $category->name.' — Монголын бизнес лавлах | Хаана.mn',
+            'title' => $category->name.' — Монголын бизнес лавлах | Ойрхон.mn',
             'description' => mb_substr($category->description ?: sprintf('%s ангиллын %d бизнес: хаяг, утас, цагийн хуваарь, үнэлгээ. Дүүрэг, аймгаар шүүж хайгаарай.', $category->name, $category->businesses_count), 0, 160),
             'image' => null,
             'canonical' => url('/c/'.$category->slug),
@@ -107,7 +107,7 @@ class SeoController extends Controller
                 '@context' => 'https://schema.org',
                 '@type' => 'BreadcrumbList',
                 'itemListElement' => [
-                    ['@type' => 'ListItem', 'position' => 1, 'name' => 'Хаана.mn', 'item' => url('/')],
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => 'Ойрхон.mn', 'item' => url('/')],
                     ['@type' => 'ListItem', 'position' => 2, 'name' => 'Ангилал', 'item' => url('/categories')],
                     ['@type' => 'ListItem', 'position' => 3, 'name' => $category->name, 'item' => url('/c/'.$category->slug)],
                 ],

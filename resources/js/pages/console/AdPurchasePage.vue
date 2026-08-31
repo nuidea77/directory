@@ -190,7 +190,7 @@ onMounted(loadPage);
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-5 py-3 sm:px-7">
             <div class="flex items-center gap-3.5">
                 <router-link :to="{ name: 'console' }" class="flex items-center gap-2.5">
-                    <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
+                    <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
                     <span class="text-[15px] font-extrabold text-ink">Бизнес зөвлөл</span>
                 </router-link>
                 <div class="hidden items-center gap-1.5 text-[12.5px] font-medium text-mute sm:flex">

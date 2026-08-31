@@ -225,8 +225,8 @@ onMounted(load);
         <!-- Толгой + шат (10a) -->
         <div class="flex items-center justify-between border-b border-line px-5 py-3.5 sm:px-10">
             <div class="flex items-center gap-2.5">
-                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">Х</span>
-                <span class="text-base font-extrabold text-ink">Хаана<span class="text-brand">.mn</span></span>
+                <span class="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand text-[13px] font-extrabold text-white">О</span>
+                <span class="text-base font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span></span>
             </div>
             <div class="hidden items-center gap-2.5 sm:flex">
                 <div class="flex items-center gap-2"><span class="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-green text-[10px] font-bold text-white">✓</span><span class="text-[12.5px] font-semibold text-ink">Мэдээлэл</span></div>

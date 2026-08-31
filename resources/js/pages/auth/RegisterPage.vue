@@ -81,8 +81,8 @@ async function onVerified(data) {
         <div v-if="step === 'form'" class="card mx-auto grid max-w-[940px] grid-cols-1 overflow-hidden md:grid-cols-[1fr_400px]">
             <div class="bg-white px-7 py-9 sm:px-10">
                 <div class="flex items-center gap-2.5">
-                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[14px] font-extrabold text-white">Х</span>
-                    <span class="text-[17px] font-extrabold text-ink">Хаана<span class="text-brand">.mn</span></span>
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[14px] font-extrabold text-white">О</span>
+                    <span class="text-[17px] font-extrabold text-ink">Ойрхон<span class="text-brand">.mn</span></span>
                     <span class="ml-auto text-[12.5px] font-medium text-soft">Аккаунт байгаа? <router-link :to="{ name: 'login' }" class="font-semibold text-brand">Нэвтрэх</router-link></span>
                 </div>
 
@@ -134,7 +134,7 @@ async function onVerified(data) {
             <!-- Хар баганын танилцуулга -->
             <div class="hidden bg-dark px-8 py-9 md:block">
                 <div class="text-[10.5px] font-semibold tracking-[.12em] text-bluelight">МОНГОЛЫН БИЗНЕС ЛАВЛАХ · 21 АЙМАГ</div>
-                <div class="mt-3.5 text-[22px] font-extrabold leading-snug text-white">Хаана аккаунт танд юу өгөх вэ</div>
+                <div class="mt-3.5 text-[22px] font-extrabold leading-snug text-white">Ойрхон аккаунт танд юу өгөх вэ</div>
                 <div class="mt-5 flex flex-col gap-4">
                     <div v-for="p in perks" :key="p.n" class="flex gap-3">
                         <span class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-bluelight/15 text-[11px] font-bold text-bluelight">{{ p.n }}</span>
