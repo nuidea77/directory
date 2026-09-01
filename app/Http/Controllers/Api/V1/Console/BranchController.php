@@ -7,6 +7,7 @@ use App\Http\Resources\BranchResource;
 use App\Models\Branch;
 use App\Models\BranchImage;
 use App\Models\Business;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +46,7 @@ class BranchController extends Controller
     /**
      * Нүүр зураг сонгох.
      */
-    public function setCover(Request $request, Branch $branch, \App\Models\BranchImage $image): BranchResource
+    public function setCover(Request $request, Branch $branch, BranchImage $image): BranchResource
     {
         $this->authorizeOwner($request, $branch->business);
         abort_unless($image->branch_id === $branch->id, 404);
@@ -108,7 +109,7 @@ class BranchController extends Controller
             ]);
         }
 
-        $thumbs = app(\App\Services\ImageService::class);
+        $thumbs = app(ImageService::class);
 
         foreach ($request->file('images', []) as $i => $file) {
             $branch->images()->create([
@@ -151,6 +152,8 @@ class BranchController extends Controller
             'hours' => ['nullable', 'array'],
             'amenities' => ['nullable', 'array'],
             'amenities.*' => ['string', 'max:50'],
+            'payments' => ['nullable', 'array'],
+            'payments.*' => ['string', 'max:40'],
         ]);
     }
 

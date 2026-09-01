@@ -9,6 +9,8 @@ const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
 import CategoryIcon from '../components/CategoryIcon.vue';
 import VerifiedBadge from '../components/VerifiedBadge.vue';
 import BizLogo from '../components/BizLogo.vue';
+import AmenityIcon from '../components/AmenityIcon.vue';
+import PaymentBadge from '../components/PaymentBadge.vue';
 import { flattenCategories, optionLabel } from '../utils/categories';
 
 const route = useRoute();
@@ -53,7 +55,32 @@ const searchHint = computed(() => {
 
 // Байршил, үйлчилгээний жагсаалт API-аас
 const locations = ref([]);
-const amenityOptions = ref([]);
+const amenityOptions = ref([]); // [{ name, icon }] — идэвхтэй ангиллын сан
+const paymentOptions = ref([]); // [{ slug, name }] — зээлийн аппууд
+
+// Шүүлтүүрт үзүүлэх amenity сан — сонгосон ангиллаас хамаарна
+const activeCategorySlug = computed(() => filters.value.sub || (isCategory.value ? route.params.slug : filters.value.category) || '');
+
+let amenityReq = 0;
+
+async function fetchAmenityOptions() {
+    const slug = activeCategorySlug.value;
+    const token = ++amenityReq;
+    try {
+        const res = await api.get('/amenities', slug ? { category: slug } : {});
+        if (token !== amenityReq) return; // хожуу ирсэн хуучин хариуг үл тоомсорлоно
+
+        const list = res.data || [];
+        // Сонгосон онцлог шинэ ангиллын санд байхгүй бол ч харагдаж, буцааж
+        // болиулах боломжтой байх ёстой (үгүй бол далд шүүлтүүр үлдэнэ)
+        const active = filters.value.amenity;
+        amenityOptions.value = active && !list.some((a) => a.name === active)
+            ? [...list, { name: active, icon: 'settings' }]
+            : list;
+    } catch {
+        /* шүүлтүүрийн жагсаалтгүйгээр үргэлжилнэ */
+    }
+}
 
 // Хот сонгоогүй үед («Бүх байршил») дүүргийн жагсаалтыг Улаанбаатараар харуулна
 const districtCity = computed(() => filters.value.city || 'Улаанбаатар');
@@ -164,6 +191,7 @@ function syncFromRoute() {
         open_24_7: route.query.open_24_7 === '1',
         verified: route.query.verified === '1',
         amenity: route.query.amenity || '',
+        payment: route.query.payment || '',
         sub: route.query.sub || '',
         sort: route.query.sort || 'rating',
         page: Number(route.query.page) || 1,
@@ -199,6 +227,7 @@ async function fetchResults() {
             open_24_7: filters.value.open_24_7 ? 1 : undefined,
             verified: filters.value.verified ? 1 : undefined,
             amenity: filters.value.amenity,
+            payment: filters.value.payment,
             sort: filters.value.sort,
             page: filters.value.page,
             // «Ойролцоо» горимд зайгаар шүүж, эрэмбэлнэ
@@ -235,6 +264,7 @@ function apply(page = 1) {
             verified: filters.value.verified ? '1' : undefined,
             view: view.value === 'map' ? 'map' : undefined,
             amenity: filters.value.amenity || undefined,
+            payment: filters.value.payment || undefined,
             sub: filters.value.sub || undefined,
             sort: filters.value.sort !== 'rating' ? filters.value.sort : undefined,
             page: page > 1 ? page : undefined,
@@ -243,7 +273,7 @@ function apply(page = 1) {
 }
 
 function clearFilters() {
-    filters.value = { ...filters.value, category: '', city: '', district: '', price: '', rating: '', open_now: false, open_24_7: false, amenity: '', sub: '' };
+    filters.value = { ...filters.value, category: '', city: '', district: '', price: '', rating: '', open_now: false, open_24_7: false, amenity: '', payment: '', sub: '' };
     apply();
 }
 
@@ -262,17 +292,20 @@ async function loadAll() {
         const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
         categories.value = cats.data;
         locations.value = locs.data;
-        amenityOptions.value = locs.amenities || [];
+        paymentOptions.value = locs.payments || [];
     } catch {
         /* шүүлтүүрийн жагсаалтгүйгээр үргэлжилнэ */
     }
-    await Promise.all([fetchCategory().catch(() => {}), fetchResults()]);
+    await Promise.all([fetchCategory().catch(() => {}), fetchResults(), fetchAmenityOptions()]);
 }
 
 watch(() => route.fullPath, async () => {
     syncFromRoute();
     await Promise.all([fetchCategory().catch(() => {}), fetchResults()]);
 });
+
+// Ангилал солигдоход тохирох amenity сангаа шинэчилнэ
+watch(activeCategorySlug, fetchAmenityOptions);
 
 onMounted(async () => {
     syncFromRoute();
@@ -414,12 +447,23 @@ onMounted(async () => {
                     <button v-for="r in ['4.5', '4.0', '3.0']" :key="r" class="cursor-pointer rounded-[7px] px-2.5 py-1.5 text-[12px] font-semibold" :class="filters.rating === r ? 'bg-brand text-white' : 'bg-chip text-chiptext'" @click="filters.rating = filters.rating === r ? '' : r; apply()">{{ r }}+</button>
                 </div>
 
+                <div v-if="paymentOptions.length" class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ЗЭЭЛИЙН АПП</div>
+                <div v-if="paymentOptions.length" class="flex flex-wrap gap-1.5">
+                    <button
+                        v-for="p in paymentOptions"
+                        :key="p.slug"
+                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-medium"
+                        :class="filters.payment === p.name ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'"
+                        @click="filters.payment = filters.payment === p.name ? '' : p.name; apply()"
+                    ><PaymentBadge :name="p.name" :slug="p.slug" :size="18" />{{ p.name }}</button>
+                </div>
+
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ОНЦЛОГ</div>
                 <div class="flex flex-wrap gap-1.5">
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.open_now ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.open_now = !filters.open_now; apply()">Одоо нээлттэй</button>
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.open_24_7 ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.open_24_7 = !filters.open_24_7; apply()">24/7 ажилладаг</button>
                     <button class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.verified ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.verified = !filters.verified; apply()">✓ Баталгаажсан</button>
-                    <button v-for="a in amenityOptions" :key="a" class="cursor-pointer rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.amenity === a ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.amenity = filters.amenity === a ? '' : a; apply()">{{ a }}</button>
+                    <button v-for="a in amenityOptions" :key="a.name" class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-medium" :class="filters.amenity === a.name ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'" @click="filters.amenity = filters.amenity === a.name ? '' : a.name; apply()"><AmenityIcon :name="a.icon" :size="13" />{{ a.name }}</button>
                 </div>
 
                 <div class="mt-6 rounded-[11px] border border-blueline bg-bluetint p-3.5">

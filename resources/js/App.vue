@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppNavbar from './components/AppNavbar.vue';
 import AppFooter from './components/AppFooter.vue';
+import MobileTabBar from './components/MobileTabBar.vue';
 import { useAuthStore } from './stores/auth';
 
 const router = useRouter();
@@ -28,5 +29,11 @@ onBeforeUnmount(() => window.removeEventListener('auth:expired', onAuthExpired))
             <router-view />
         </main>
         <AppFooter v-if="$route.meta.chrome !== false" />
+
+        <!-- Гар утсан дээрх доод таб цэс — доод зайг нөхөж, агуулга халхлагдахгүй -->
+        <template v-if="$route.meta.chrome !== false">
+            <div class="h-[62px] md:hidden" aria-hidden="true"></div>
+            <MobileTabBar />
+        </template>
     </div>
 </template>

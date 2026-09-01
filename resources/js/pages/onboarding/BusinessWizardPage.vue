@@ -7,6 +7,8 @@ import HoursEditor from '../../components/HoursEditor.vue';
 import { cityCenters } from '../../data/cityCenters';
 import { flattenCategories } from '../../utils/categories';
 import SubcategoryPicker from '../../components/SubcategoryPicker.vue';
+import AmenityIcon from '../../components/AmenityIcon.vue';
+import PaymentBadge from '../../components/PaymentBadge.vue';
 
 /**
  * Бизнес нэмэх шаталсан форм (2c → 3a/5a):
@@ -36,9 +38,10 @@ const info = ref({
     price_level: '₮₮',
 });
 
-// Аймаг/нийслэл + сум/дүүрэг, үйлчилгээний жагсаалт API-аас (config/locations, config/amenities)
+// Аймаг/нийслэл + сум/дүүрэг API-аас; үйлчилгээний сан сонгосон ангиллаас хамаарна
 const locations = ref([]);
 const amenityOptions = ref([]);
+const paymentOptions = ref([]); // [{ slug, name }] — зээлийн аппууд
 
 function districtsFor(city) {
     return locations.value.find((l) => l.city === city)?.districts || [];
@@ -72,6 +75,36 @@ watch(mainCategoryId, () => {
 
 watch(subIds, syncCategorySelection, { deep: true });
 
+// Үйлчилгээ/онцлогийн сан: сонгосон (дэд) ангилалд тохирсныг нь татна
+const amenityCategorySlug = computed(() => {
+    const first = subFlat.value.find((c) => c.id === Number(subIds.value[0]));
+    return first?.slug || mainCategory.value?.slug || '';
+});
+
+let amenityReq = 0;
+
+async function fetchAmenityOptions() {
+    const slug = amenityCategorySlug.value;
+    const token = ++amenityReq;
+    try {
+        const res = await api.get('/amenities', slug ? { category: slug } : {});
+        if (token !== amenityReq) return; // хожуу ирсэн хуучин хариу
+
+        amenityOptions.value = res.data || [];
+
+        // Ангилал солигдоход өмнөх ангиллын сонголт (харагдахаа болих тул
+        // болиулах ч аргагүй) үлдэхээс сэргийлж цэвэрлэнэ
+        const known = new Set(amenityOptions.value.map((a) => a.name));
+        branchForms.value.forEach((form) => {
+            form.amenities = form.amenities.filter((n) => known.has(n));
+        });
+    } catch {
+        /* сангүйгээр үргэлжилнэ */
+    }
+}
+
+watch(amenityCategorySlug, fetchAmenityOptions);
+
 // Сонголтыг API-д илгээх хэлбэрт буулгана
 function syncCategorySelection() {
     const [first, ...rest] = subIds.value;
@@ -91,7 +124,7 @@ function newBranchForm() {
     return {
         city: 'Улаанбаатар', district: '', khoroo: '', address: '', landmark: '',
         lat: null, lng: null,
-        phone: '', email: '', hours: defaultHours(), amenities: [],
+        phone: '', email: '', hours: defaultHours(), amenities: [], payments: [],
     };
 }
 
@@ -128,6 +161,12 @@ function toggleAmenity(form, amenity) {
     const i = form.amenities.indexOf(amenity);
     if (i >= 0) form.amenities.splice(i, 1);
     else form.amenities.push(amenity);
+}
+
+function togglePayment(form, name) {
+    const i = form.payments.indexOf(name);
+    if (i >= 0) form.payments.splice(i, 1);
+    else form.payments.push(name);
 }
 
 async function submitInfo() {
@@ -225,7 +264,8 @@ onMounted(async () => {
     const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
     categories.value = cats.data;
     locations.value = locs.data;
-    amenityOptions.value = locs.amenities || [];
+    paymentOptions.value = locs.payments || [];
+    fetchAmenityOptions();
 });
 </script>
 
@@ -411,12 +451,25 @@ onMounted(async () => {
                                     <div class="flex flex-wrap gap-2">
                                         <button
                                             v-for="a in amenityOptions"
-                                            :key="a"
+                                            :key="a.name"
                                             type="button"
-                                            class="cursor-pointer rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
-                                            :class="form.amenities.includes(a) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
-                                            @click="toggleAmenity(form, a)"
-                                        >{{ a }}</button>
+                                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+                                            :class="form.amenities.includes(a.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
+                                            @click="toggleAmenity(form, a.name)"
+                                        ><AmenityIcon :name="a.icon" :size="14" />{{ a.name }}</button>
+                                    </div>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="field-label !text-[12px]">Зээлийн апп <span class="font-normal text-mute">— хэсэгчилсэн төлбөрөөр үйлчилдэг бол сонго</span></label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button
+                                            v-for="p in paymentOptions"
+                                            :key="p.slug"
+                                            type="button"
+                                            class="inline-flex cursor-pointer items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-[12.5px] font-semibold"
+                                            :class="form.payments.includes(p.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
+                                            @click="togglePayment(form, p.name)"
+                                        ><PaymentBadge :name="p.name" :slug="p.slug" :size="20" />{{ p.name }}</button>
                                     </div>
                                 </div>
                             </div>

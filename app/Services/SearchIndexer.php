@@ -87,6 +87,8 @@ class SearchIndexer
             $branch->address,
             $branch->landmark,
             is_array($branch->amenities) ? implode(' ', $branch->amenities) : '',
+            // «storepay», «lendmn» гэж хайхад олдоно
+            is_array($branch->payments) ? implode(' ', $branch->payments) : '',
             mb_substr((string) $business->description, 0, 300),
         ];
 

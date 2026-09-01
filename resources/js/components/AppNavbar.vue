@@ -72,12 +72,10 @@ async function logout() {
         </div>
 
         <div v-if="mobileOpen" class="border-t border-line bg-white px-5 py-3 md:hidden" @click="mobileOpen = false">
+            <!-- Ангилал/Хайх/Профайл нь доод таб цэст байгаа тул энд давхардуулахгүй -->
             <nav class="flex flex-col gap-1 text-[13.5px] font-medium">
-                <router-link :to="{ name: 'categories' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Ангилал</router-link>
-                <router-link :to="{ name: 'search' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бүх бизнес</router-link>
                 <router-link :to="{ name: 'pricing' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бизнест</router-link>
                 <template v-if="auth.isLoggedIn">
-                    <router-link :to="{ name: 'account' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Миний булан</router-link>
                     <router-link :to="{ name: 'console' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Бизнес зөвлөл</router-link>
                     <router-link v-if="auth.user.is_admin" :to="{ name: 'admin' }" class="rounded-lg px-3 py-2.5 text-body hover:bg-panel">Админ</router-link>
                     <router-link :to="{ name: 'add-business' }" class="rounded-lg px-3 py-2.5 font-bold text-brand hover:bg-bluetint">Бизнес нэмэх</router-link>

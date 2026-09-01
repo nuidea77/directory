@@ -8,6 +8,8 @@ import { useAuthStore } from '../stores/auth';
 import ImagePh from '../components/ImagePh.vue';
 import BizLogo from '../components/BizLogo.vue';
 import VerifiedBadge from '../components/VerifiedBadge.vue';
+import AmenityIcon from '../components/AmenityIcon.vue';
+import PaymentBadge from '../components/PaymentBadge.vue';
 
 // Leaflet-тэй тул lazy-load — үндсэн bundle томрохгүй
 const MapView = defineAsyncComponent(() => import('../components/MapView.vue'));
@@ -22,6 +24,18 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const business = ref(null);
+
+// Үйлчилгээ/онцлогийн нэр → icon (тухайн ангиллын сангаас)
+const amenityIcons = ref({});
+
+async function fetchAmenityIcons(slug) {
+    try {
+        const res = await api.get('/amenities', slug ? { category: slug } : {});
+        amenityIcons.value = Object.fromEntries((res.data || []).map((a) => [a.name, a.icon]));
+    } catch {
+        amenityIcons.value = {};
+    }
+}
 
 // Ангиллын chip: үндсэн ангилал эхэнд
 const categoryChips = computed(() => {
@@ -116,6 +130,7 @@ async function fetchBusiness() {
         business.value = data.data;
         similar.value = data.similar;
         document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Ойрхон.mn`;
+        fetchAmenityIcons(business.value.category?.slug);
 
         // Сэтгэгдэл бичсэний дараа дахин ачаалахад сонгосон салбар 1-рт
         // үсэрдэг байсан — байгаа сонголтоо хадгална
@@ -301,8 +316,29 @@ onMounted(fetchBusiness);
                     <div v-show="tab === 'overview'">
                         <p v-if="business.description" class="mt-5 max-w-[600px] text-[14.5px] leading-[1.75] text-body">{{ business.description }}</p>
 
-                        <div v-if="branch?.amenities?.length" class="mt-4 flex flex-wrap gap-2">
-                            <span v-for="a in branch.amenities" :key="a" class="rounded-full border border-line bg-panel px-3 py-2 text-[12.5px] font-medium text-body">{{ a }}</span>
+                        <!-- Үйлчилгээ, тохижилт — ангилалд тохирсон icon-той -->
+                        <div v-if="branch?.amenities?.length" class="mt-7">
+                            <h2 class="mb-3.5 text-[17px] font-bold text-ink">Үйлчилгээ, тохижилт</h2>
+                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                <div v-for="a in branch.amenities" :key="a" class="flex items-center gap-2.5 rounded-[11px] border border-line bg-white px-3 py-2.5">
+                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-blueline bg-bluetint text-brand">
+                                        <AmenityIcon :name="amenityIcons[a]" :size="15" />
+                                    </span>
+                                    <span class="text-[12.5px] font-medium leading-snug text-body">{{ a }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Зээл, хэсэгчилсэн төлбөр -->
+                        <div v-if="branch?.payments?.length" class="mt-7">
+                            <h2 class="mb-1.5 text-[17px] font-bold text-ink">Зээлийн апп</h2>
+                            <p class="mb-3.5 text-[12.5px] text-mute">Эдгээр аппаар хэсэгчилсэн төлбөр, зээлээр үйлчилнэ.</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="p in branch.payments" :key="p" class="inline-flex items-center gap-2 rounded-full border border-line bg-white py-1.5 pl-1.5 pr-3.5">
+                                    <PaymentBadge :name="p" :size="22" />
+                                    <span class="text-[12.5px] font-semibold text-body">{{ p }}</span>
+                                </span>
+                            </div>
                         </div>
 
                         <h2 class="mb-3.5 mt-8 text-[17px] font-bold text-ink">Цагийн хуваарь</h2>

@@ -96,6 +96,7 @@ class DemoSeeder extends Seeder
                     'city' => 'Улаанбаатар',
                     'hours' => $hours,
                     'amenities' => ['Зогсоол', 'Картаар', 'Баталгаат засвар', 'Гэрээт даатгал'],
+                    'payments' => ['LendMN', 'Storepay', 'Pocket'],
                     'status' => 'active',
                 ],
             );
@@ -109,8 +110,11 @@ class DemoSeeder extends Seeder
             ['org' => 'Модерн Номин ХХК', 'name' => 'Модерн Номин', 'slug' => 'modern-nomin', 'category' => 'restaurants', 'sub' => 'Монгол хоол', 'district' => 'Сүхбаатар', 'address' => 'Их тойруу 42, 2-р давхар', 'phone' => '70112233', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'Монгол мяханд шинэ хандлага. 2019 онд Сүхбаатар дүүрэгт нээгдсэн, дотоодын ферм, малчидтай шууд хамтран ажилладаг. Оройн хоолны цагт урьдчилан захиалга авахыг зөвлөж байна.'],
             ['org' => 'Оюу Дент ХХК', 'name' => 'Оюу Дент', 'slug' => 'oyu-dent', 'category' => 'health', 'sub' => 'Шүдний эмнэлэг', 'district' => 'Хан-Уул', 'address' => 'Чингисийн өргөн чөлөө 20', 'phone' => '77004455', 'price' => '₮₮', 'verified' => true,
+                'amenities' => ['Урьдчилсан цаг', 'Хүлээх танхим', 'Даатгалаар үйлчилнэ', 'Хүүхдийн эмчтэй', 'Картаар'],
                 'desc' => 'Олон улсын стандартын шүдний эмнэлэг. Имплант, цайруулалт, хүүхдийн эмчилгээ.'],
             ['org' => 'Тэрэлж Ложи ХХК', 'name' => 'Тэрэлж Ложи', 'slug' => 'terelj-lodge', 'category' => 'hotels', 'sub' => 'Гэр бааз', 'district' => 'Налайх', 'address' => 'Горхи-Тэрэлж', 'phone' => '99117788', 'price' => '₮₮₮', 'verified' => true,
+                'amenities' => ['24 цагийн ресепшн', 'Ресторан', 'Өглөөний цай', 'Сауна', 'Караоке', 'Зогсоол', 'Гэр бүлийн өрөө'],
+                'payments' => ['LendMN', 'Ард Апп', 'SocialPay'],
                 'desc' => 'Хотоос 60 км. Байгальд хоносон гэрийн бааз, зунжингаа дүүрэн.'],
             ['org' => 'Цагаан Хас ХХК', 'name' => 'Цагаан Хас Хууль', 'slug' => 'tsagaan-khas', 'category' => 'legal', 'sub' => 'Өмгөөлөл', 'district' => 'Чингэлтэй', 'address' => 'Бага тойруу 18', 'phone' => '75759090', 'price' => '₮₮₮', 'verified' => true,
                 'desc' => 'Иргэний болон аж ахуйн эрх зүйн мэргэшсэн хуулийн фирм.'],
@@ -143,6 +147,8 @@ class DemoSeeder extends Seeder
             ['org' => 'Тунгалаг Цонх ХХК', 'name' => 'Тунгалаг Цонх', 'slug' => 'tungalag-tsonkh', 'category' => 'construction-5', 'sub' => 'Цонх, хаалга', 'district' => 'Сонгинохайрхан', 'address' => 'Үйлдвэрийн гудамж 22', 'phone' => '95556677', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'Хуванцар цонх, хаалганы захиалга. Шил хийх, цонх солих ажил гүйцэтгэнэ.'],
             ['org' => 'Гэйм Зон ХХК', 'name' => 'Гэйм Зон', 'slug' => 'game-zone', 'category' => 'entertainment-6', 'sub' => 'PC тоглоомын газар', 'district' => 'Баянгол', 'address' => 'Хувьсгалчдын гудамж 8', 'phone' => '80112233', 'price' => '₮', 'verified' => false, 'open24' => true,
+                'amenities' => ['VIP өрөө', 'Буфет', 'Өндөр хүчин чадлын тоног', 'Консол тоглоом', 'Чихэвч, гар', 'Зогсоол'],
+                'payments' => ['Storepay', 'Pocket', 'QPay'],
                 'desc' => 'RTX тоноглолтой 40 суудалтай PC тоглоомын газар. 24 цаг ажиллана.'],
         ];
 
@@ -184,7 +190,9 @@ class DemoSeeder extends Seeder
                     'lng' => 106.85 + random_int(0, 1500) / 10000,
                     'phone' => $sample['phone'],
                     'hours' => ($sample['open24'] ?? false) ? $hours247 : $hours,
-                    'amenities' => collect(['Зогсоол', 'Картаар', 'Wi-Fi', 'Хүргэлт', 'Захиалга', 'Танхим'])->random(3)->values()->all(),
+                    'amenities' => $sample['amenities'] ?? collect(['Зогсоол', 'Картаар', 'Wi-Fi', 'Англи хэл'])->random(3)->values()->all(),
+                    // Зээлийн апп — зарим газар хэсэгчилсэн төлбөр авдаг
+                    'payments' => $sample['payments'] ?? collect(['LendMN', 'Storepay', 'Pocket', 'Ард Апп', 'Toki'])->random(random_int(0, 3))->values()->all(),
                     'status' => 'active',
                 ],
             );

@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, ApiError } from '../../api';
 import HoursEditor from '../../components/HoursEditor.vue';
 import VerifiedBadge from '../../components/VerifiedBadge.vue';
+import AmenityIcon from '../../components/AmenityIcon.vue';
+import PaymentBadge from '../../components/PaymentBadge.vue';
 import { cityCenters } from '../../data/cityCenters';
 import { hoursAre247 } from '../../utils/hours';
 import { defineAsyncComponent } from 'vue';
@@ -24,6 +26,7 @@ const uploading = ref(false);
 // Байршил, үйлчилгээний жагсаалт API-аас (нэг эх сурвалж)
 const locations = ref([]);
 const amenityOptions = ref([]);
+const paymentOptions = ref([]); // [{ slug, name }] — зээлийн аппууд
 
 const districtOptions = computed(() => locations.value.find((l) => l.city === form.value?.city)?.districts || []);
 
@@ -59,6 +62,7 @@ async function fetchBranch() {
             email: branch.value.email || '',
             hours: branch.value.hours || {},
             amenities: branch.value.amenities || [],
+            payments: branch.value.payments || [],
         };
     } catch {
         loadError.value = 'Ачаалахад алдаа гарлаа. Дахин оролдоно уу.';
@@ -69,6 +73,12 @@ function toggleAmenity(a) {
     const i = form.value.amenities.indexOf(a);
     if (i >= 0) form.value.amenities.splice(i, 1);
     else form.value.amenities.push(a);
+}
+
+function togglePayment(name) {
+    const i = form.value.payments.indexOf(name);
+    if (i >= 0) form.value.payments.splice(i, 1);
+    else form.value.payments.push(name);
 }
 
 async function save() {
@@ -168,12 +178,26 @@ const mapCenter = computed(() => {
 
 onMounted(async () => {
     await fetchBranch();
+    // Хоёр жагсаалт бие биенээсээ хамаарахгүй — нэг нь унасан ч нөгөө нь ачаална
     try {
         const locs = await api.get('/locations');
         locations.value = locs.data;
-        amenityOptions.value = locs.amenities || [];
+        paymentOptions.value = locs.payments || [];
     } catch {
         /* байршлын жагсаалтгүйгээр үргэлжилнэ */
+    }
+
+    try {
+        // Үйлчилгээний сан бизнесийн ангиллаас хамаарна
+        const catSlug = branch.value?.business?.category?.slug;
+        const ams = await api.get('/amenities', catSlug ? { category: catSlug } : {});
+        // Сангаас хасагдсан ч энэ салбарт хадгалагдсан хуучин нэрсийг
+        // харуулж, болиулах боломж үлдээнэ
+        const known = new Set((ams.data || []).map((a) => a.name));
+        const extra = (form.value?.amenities || []).filter((n) => !known.has(n)).map((n) => ({ name: n, icon: 'settings' }));
+        amenityOptions.value = [...(ams.data || []), ...extra];
+    } catch {
+        /* үйлчилгээний сангүйгээр үргэлжилнэ */
     }
 });
 </script>
@@ -307,11 +331,26 @@ onMounted(async () => {
                     <div class="mt-3 flex flex-wrap gap-2">
                         <button
                             v-for="a in amenityOptions"
-                            :key="a"
-                            class="cursor-pointer rounded-full border px-3 py-2 text-[12.5px] font-semibold"
-                            :class="form.amenities.includes(a) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
-                            @click="toggleAmenity(a)"
-                        >{{ a }}</button>
+                            :key="a.name"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-[12.5px] font-semibold"
+                            :class="form.amenities.includes(a.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
+                            @click="toggleAmenity(a.name)"
+                        ><AmenityIcon :name="a.icon" :size="14" />{{ a.name }}</button>
+                    </div>
+                </div>
+
+                <!-- Зээлийн апп -->
+                <div class="card mt-3.5 p-5">
+                    <div class="text-[15px] font-bold text-ink">Зээлийн апп</div>
+                    <p class="mt-1.5 text-[12.5px] text-mute">Хэсэгчилсэн төлбөр, зээлээр үйлчилдэг аппуудаа сонгоно. Шүүлтүүрт харагдана.</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button
+                            v-for="p in paymentOptions"
+                            :key="p.slug"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-[12.5px] font-semibold"
+                            :class="form.payments.includes(p.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
+                            @click="togglePayment(p.name)"
+                        ><PaymentBadge :name="p.name" :slug="p.slug" :size="20" />{{ p.name }}</button>
                     </div>
                 </div>
 

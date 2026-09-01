@@ -12,6 +12,7 @@ use App\Models\Campaign;
 use App\Models\Category;
 use App\Services\Billing\CampaignService;
 use App\Services\SearchQuery;
+use App\Support\Amenities;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,28 @@ class DirectoryController extends Controller
             'data' => collect(config('locations'))
                 ->map(fn (array $districts, string $city) => ['city' => $city, 'districts' => $districts])
                 ->values(),
-            'amenities' => config('amenities'),
+            // Хуучин flat хэлбэр — ангилал мэдэгдэхгүй үеийн нийтлэг багц
+            'amenities' => Amenities::defaultNames(),
+            // Зээл, хэсэгчилсэн төлбөрийн аппууд
+            'payments' => config('payments'),
+        ]);
+    }
+
+    /**
+     * Ангилалд тохирсон үйлчилгээ/онцлогийн сан (нэр + icon).
+     * Дэд ангилал эцгүүдийнхээ багцыг өвлөнө.
+     */
+    public function amenities(Request $request): JsonResponse
+    {
+        $category = null;
+
+        if ($slug = $request->query('category')) {
+            $category = Category::where('slug', $slug)->first();
+        }
+
+        return response()->json([
+            'data' => Amenities::forCategory($category),
+            'category' => $category?->slug,
         ]);
     }
 
@@ -260,6 +282,7 @@ class DirectoryController extends Controller
             'open_24_7' => ['nullable', 'boolean'],
             'verified' => ['nullable', 'boolean'],
             'amenity' => ['nullable', 'string', 'max:50'],
+            'payment' => ['nullable', 'string', 'max:40'],
             'sort' => ['nullable', 'in:rating,newest,reviews,distance'],
             'lat' => ['nullable', 'numeric'],
             'lng' => ['nullable', 'numeric'],
@@ -335,6 +358,11 @@ class DirectoryController extends Controller
 
         if ($amenity = $request->query('amenity')) {
             $query->whereJsonContains('amenities', $amenity);
+        }
+
+        // Зээлийн апп: тухайн аппаар үйлчилдэг салбарууд
+        if ($payment = $request->query('payment')) {
+            $query->whereJsonContains('payments', $payment);
         }
 
         // Зайн хайлт (haversine, км)

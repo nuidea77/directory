@@ -34,6 +34,7 @@ class BranchResource extends JsonResource
             'email' => $this->email,
             'hours' => $this->hours,
             'amenities' => $this->amenities,
+            'payments' => $this->payments,
             'status' => $this->status,
             'rejection_reason' => $this->when($private, fn () => $this->rejection_reason),
             // Тухайн салбар онцлох зартай эсэх (хайлтын илэрцэд)
