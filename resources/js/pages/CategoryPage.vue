@@ -35,8 +35,21 @@ function subTotal(cat) {
 }
 const branches = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
+// Backend хайлтын мөрийг хэрхэн ойлгосон (ангилал, дүүрэг, үсгийн залруулга)
+const parsed = ref(null);
 const loading = ref(true);
 const loadError = ref('');
+
+// «shudnii emneleg bayanzurh» → «Шүдний эмнэлэг · Баянзүрх» гэж ойлгосноо харуулна
+const searchHint = computed(() => {
+    const p = parsed.value;
+    if (!p || !filters.value.q) return null;
+    const parts = [...(p.categories || [])];
+    if (p.district) parts.push(p.district);
+    else if (p.city) parts.push(p.city);
+    if (!parts.length) return null;
+    return { parts, corrected: Object.keys(p.corrections || {}).length > 0 };
+});
 
 // Байршил, үйлчилгээний жагсаалт API-аас
 const locations = ref([]);
@@ -196,6 +209,7 @@ async function fetchResults() {
         });
         branches.value = data.data;
         meta.value = data.meta;
+        parsed.value = data.parsed || null;
         selectedId.value = branches.value[0]?.id || null;
     } catch {
         loadError.value = 'Илэрц ачаалахад алдаа гарлаа.';
@@ -421,6 +435,13 @@ onMounted(async () => {
                     <div class="text-[14px] font-bold text-ink">
                         {{ meta.total.toLocaleString() }} бизнес
                         <span v-if="filters.district || filters.price || filters.rating" class="font-medium text-mute">· {{ [filters.district, filters.price, filters.rating ? filters.rating + '+' : ''].filter(Boolean).join(', ') }}</span>
+                    </div>
+
+                    <!-- Хайлтыг хэрхэн ойлгосон -->
+                    <div v-if="searchHint" class="flex flex-wrap items-center gap-1.5 text-[12px] text-mute">
+                        <span>Ойлгосон нь:</span>
+                        <span v-for="part in searchHint.parts" :key="part" class="rounded-full border border-blueline bg-bluetint px-2 py-0.5 text-[11.5px] font-bold text-brand">{{ part }}</span>
+                        <span v-if="searchHint.corrected">· үсгийн алдааг залруулав</span>
                     </div>
 
                     <!-- Жагсаалт / газрын зураг -->

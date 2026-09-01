@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\SearchIndexer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Branch extends Model
 {
@@ -32,6 +34,7 @@ class Branch extends Model
         'amenities',
         'status',
         'rejection_reason',
+        'search_text',
     ];
 
     protected function casts(): array
@@ -197,6 +200,11 @@ class Branch extends Model
             $branch->is_24_7 = static::computeIs247($branch->hours);
         });
 
+        // Хайлтын индексийг хадгалсны дараа шинэчилнэ (нэр, хаяг, ангилал)
+        static::saved(function (Branch $branch) {
+            app(SearchIndexer::class)->index($branch);
+        });
+
         // Салбар устахад зургийн файлууд дискнээс хамт устана
         static::deleting(function (Branch $branch) {
             $paths = $branch->images()->get(['path', 'thumb_path'])
@@ -205,7 +213,7 @@ class Branch extends Model
                 ->all();
 
             if ($paths !== []) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+                Storage::disk('public')->delete($paths);
             }
         });
     }

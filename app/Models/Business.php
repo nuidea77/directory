@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SearchIndexer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Storage;
 
 class Business extends Model
 {
@@ -53,12 +55,17 @@ class Business extends Model
             }
         });
 
+        // Нэр, ангилал, тайлбар солигдоход салбаруудын индекс шинэчлэгдэнэ
+        static::saved(function (Business $business) {
+            app(SearchIndexer::class)->indexBusiness($business);
+        });
+
         static::deleting(function (Business $business) {
             // DB cascade Eloquent event дуудахгүй тул салбаруудыг моделиор устгана
             $business->branches()->get()->each->delete();
 
             if ($business->logo_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($business->logo_path);
+                Storage::disk('public')->delete($business->logo_path);
             }
         });
     }

@@ -11,19 +11,20 @@ use App\Models\Business;
 use App\Models\Campaign;
 use App\Models\Category;
 use App\Services\Billing\CampaignService;
+use App\Services\SearchQuery;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Нийтийн лавлах: нүүр, хайлт, бизнесийн дэлгэрэнгүй, ойролцоох.
  */
 class DirectoryController extends Controller
 {
-    public function __construct(protected CampaignService $campaigns)
-    {
-    }
+    public function __construct(protected CampaignService $campaigns) {}
 
     /**
      * Засаг захиргааны нэгжүүд: нийслэл + 21 аймаг, дүүрэг/сумдтайгаа
@@ -148,7 +149,7 @@ class DirectoryController extends Controller
                     'slug' => $b->business->slug,
                     'name' => $b->business->name,
                     'logo_url' => $b->business->logo_path
-                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->business->logo_path)
+                        ? Storage::disk('public')->url($b->business->logo_path)
                         : null,
                     'is_verified' => (bool) $b->business->is_verified,
                     'is_featured' => in_array($b->business_id, $adBusinessIds, true),
@@ -163,7 +164,7 @@ class DirectoryController extends Controller
                     'reviews_count' => (int) $b->reviews_count,
                     'is_24_7' => (bool) $b->is_24_7,
                     'cover_url' => $b->images->first()
-                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->images->first()->thumb_path ?: $b->images->first()->path)
+                        ? Storage::disk('public')->url($b->images->first()->thumb_path ?: $b->images->first()->path)
                         : null,
                 ])->all();
             };
@@ -293,24 +294,25 @@ class DirectoryController extends Controller
         }
 
         $term = trim((string) $request->query('q'));
+        $parsed = null;
 
         if ($term !== '') {
-            // LIKE-ийн % _ тэмдэгтүүдийг escape хийнэ
-            $like = '%'.addcslashes($term, '%_\\').'%';
-            $query->where(function (Builder $q) use ($like) {
-                $q->whereHas('business', fn ($b) => $b->where('name', 'like', $like)
-                    ->orWhere('description', 'like', $like)
-                    ->orWhere('subcategory', 'like', $like))
-                    ->orWhere('address', 'like', $like)
-                    ->orWhere('name', 'like', $like);
-            });
+            // Кирилл/латин, үсгийн алдаа, ярианы нэр, байршлыг нэг дор задална
+            $parsed = SearchQuery::parse($term);
+            $parsed->apply($query);
+
         }
 
-        if ($city = $request->query('city')) {
+        // «bayanzurh» гэх мэт байршлыг хайлтын мөрөөс нь таасан бол шүүлтүүрт
+        // нь буулгана (хэрэглэгч гараар сонгоогүй үед)
+        $city = (string) $request->query('city', '') ?: $parsed?->city;
+        $district = (string) $request->query('district', '') ?: $parsed?->district;
+
+        if ($city) {
             $query->where('city', $city);
         }
 
-        if ($district = $request->query('district')) {
+        if ($district) {
             $query->where('district', $district);
         }
 
@@ -359,8 +361,6 @@ class DirectoryController extends Controller
         $featuredCampaigns = collect();
 
         if ($category !== null) {
-            $district = $request->query('district');
-
             $featuredCampaigns = $featuredCampaigns->merge(
                 Campaign::query()->running()
                     ->where('type', 'category_featured')
@@ -428,7 +428,7 @@ class DirectoryController extends Controller
                 ->filter(fn (Branch $b) => $b->openState()['open'])
                 ->values();
             $page = max(1, $request->integer('page', 1));
-            $branches = new \Illuminate\Pagination\LengthAwarePaginator(
+            $branches = new LengthAwarePaginator(
                 $all->forPage($page, $perPage)->values(),
                 $all->count(),
                 $perPage,
@@ -452,6 +452,16 @@ class DirectoryController extends Controller
                 'last_page' => $branches->lastPage(),
                 'total' => $branches->total(),
                 'per_page' => $branches->perPage(),
+            ],
+            // Хайлтыг хэрхэн ойлгосныг хэрэглэгчид харуулна
+            'parsed' => $parsed === null ? null : [
+                'city' => $parsed->city,
+                'district' => $parsed->district,
+                'categories' => $parsed->categoryIds === [] ? [] : Category::whereIn('id', $parsed->categoryIds)
+                    ->whereIn('id', $parsed->matchedRootIds)
+                    ->pluck('name')->all(),
+                'terms' => $parsed->terms,
+                'corrections' => $parsed->corrections,
             ],
         ]);
     }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Branch;
 use App\Models\BranchStat;
+use App\Models\Business;
 use App\Models\Campaign;
 use App\Models\Category;
 use App\Models\Organization;
@@ -132,6 +133,17 @@ class DemoSeeder extends Seeder
                 'desc' => 'IELTS, ярианы англи хэлний эрчимжүүлсэн сургалт.'],
             ['org' => 'Сакура Эдьюкейшн ХХК', 'name' => 'Сакура Япон Хэл', 'slug' => 'sakura-japanese', 'category' => 'education-1-2', 'sub' => 'Япон хэл', 'district' => 'Сүхбаатар', 'address' => 'Их сургуулийн гудамж 7', 'phone' => '99012345', 'price' => '₮₮', 'verified' => true,
                 'desc' => 'JLPT N5–N1 бэлтгэл, Япон руу суралцахад дэмжлэг үзүүлнэ.'],
+            // Хайлтын жишээ: «шүдний эмнэлэг баянзүрх», «тог», «шил хийх»
+            ['org' => 'Мишээл Дент ХХК', 'name' => 'Мишээл Дент', 'slug' => 'misheel-dent', 'category' => 'health-1', 'sub' => 'Шүдний эмнэлэг', 'district' => 'Баянзүрх', 'address' => 'Энхтайваны өргөн чөлөө 101', 'phone' => '70113344', 'price' => '₮₮', 'verified' => true,
+                'desc' => 'Шүдний эмчилгээ, цэвэрлэгээ, имплант. Оройн 21 цаг хүртэл ажиллана.'],
+            ['org' => 'Гэрэл Электрик ХХК', 'name' => 'Гэрэл Электрик', 'slug' => 'gerel-electric', 'category' => 'construction-4', 'sub' => 'Цахилгаанчин', 'district' => 'Баянзүрх', 'address' => 'Их наяд 14', 'phone' => '99223311', 'price' => '₮₮', 'verified' => false,
+                'desc' => 'Байр, оффисын цахилгааны угсралт, засвар. Тог татах, самбар солих, гэрэлтүүлэг.'],
+            ['org' => 'Ус Тех ХХК', 'name' => 'Ус Тех Сантехник', 'slug' => 'us-tekh', 'category' => 'construction-3', 'sub' => 'Сантехник', 'district' => 'Сонгинохайрхан', 'address' => 'Тольт гудамж 5', 'phone' => '99334422', 'price' => '₮', 'verified' => false,
+                'desc' => 'Сантехникийн засвар, ус халаагуур, шугам сүлжээний угсралт.'],
+            ['org' => 'Тунгалаг Цонх ХХК', 'name' => 'Тунгалаг Цонх', 'slug' => 'tungalag-tsonkh', 'category' => 'construction-5', 'sub' => 'Цонх, хаалга', 'district' => 'Сонгинохайрхан', 'address' => 'Үйлдвэрийн гудамж 22', 'phone' => '95556677', 'price' => '₮₮', 'verified' => true,
+                'desc' => 'Хуванцар цонх, хаалганы захиалга. Шил хийх, цонх солих ажил гүйцэтгэнэ.'],
+            ['org' => 'Гэйм Зон ХХК', 'name' => 'Гэйм Зон', 'slug' => 'game-zone', 'category' => 'entertainment-6', 'sub' => 'PC тоглоомын газар', 'district' => 'Баянгол', 'address' => 'Хувьсгалчдын гудамж 8', 'phone' => '80112233', 'price' => '₮', 'verified' => false, 'open24' => true,
+                'desc' => 'RTX тоноглолтой 40 суудалтай PC тоглоомын газар. 24 цаг ажиллана.'],
         ];
 
         foreach ($samples as $sample) {
@@ -198,7 +210,7 @@ class DemoSeeder extends Seeder
             ],
         );
 
-        $nomin = \App\Models\Business::where('slug', 'modern-nomin')->first();
+        $nomin = Business::where('slug', 'modern-nomin')->first();
 
         Campaign::updateOrCreate(
             ['organization_id' => $nomin->organization_id, 'type' => 'home_featured', 'city' => 'Улаанбаатар'],
@@ -273,7 +285,8 @@ class DemoSeeder extends Seeder
         for ($i = 30; $i >= 0; $i--) {
             $views = random_int(30, 160);
             BranchStat::updateOrCreate(
-                ['branch_id' => $branch->id, 'date' => now()->subDays($i)->toDateString()],
+                // Carbon ашиглана — where/insert хоёулаа ижил datetime форматтай байх
+                ['branch_id' => $branch->id, 'date' => now()->subDays($i)->startOfDay()],
                 [
                     'views' => $views,
                     'calls' => (int) round($views * random_int(6, 12) / 100),
