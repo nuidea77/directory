@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ShieldCheck, Store, MessageSquare, Megaphone, BadgeCheck, TicketPercent, LayoutGrid, TrendingUp } from 'lucide-vue-next';
+import { ShieldCheck, Store, MessageSquare, Megaphone, BadgeCheck, TicketPercent, LayoutGrid, Search, TrendingUp } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/auth';
 
 // Админ layout (4a/9b): хар sidebar + өөрийн толгой
@@ -19,6 +19,7 @@ const nav = [
     { name: 'Эрхийн бичиг', route: 'admin-plans', icon: BadgeCheck },
     { name: 'Промо код', route: 'admin-promo', icon: TicketPercent },
     { name: 'Ангилал', route: 'admin-categories', icon: LayoutGrid },
+    { name: 'Хайлтын синоним', route: 'admin-search-aliases', icon: Search },
     { name: 'Эрх, орлого', route: 'admin-revenue', icon: TrendingUp },
 ];
 

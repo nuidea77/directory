@@ -123,6 +123,30 @@ class SearchIndexer
     }
 
     /**
+     * Зөвхөн нэг ангилалд (болон түүний дэд ангилалд) хамаарах салбаруудыг
+     * дахин индексжүүлнэ — синоним нэмэхэд бүх хүснэгтийг гүйлгэхгүй.
+     */
+    public function reindexCategory(Category $category): int
+    {
+        self::flushCache();
+
+        $ids = $category->descendantIds();
+        $count = 0;
+
+        Branch::query()
+            ->with(['business.categories'])
+            ->whereHas('business.categories', fn ($q) => $q->whereIn('categories.id', $ids))
+            ->chunkById(200, function ($branches) use (&$count) {
+                foreach ($branches as $branch) {
+                    $this->index($branch);
+                    $count++;
+                }
+            });
+
+        return $count;
+    }
+
+    /**
      * Бүгдийг дахин индексжүүлнэ (ангилал/синоним өөрчлөгдсөн үед).
      */
     public function reindexAll(): int

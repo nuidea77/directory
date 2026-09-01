@@ -4,17 +4,27 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BranchResource;
-use App\Notifications\BranchModerated;
+use App\Http\Resources\ReviewResource;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Campaign;
+use App\Models\Category;
+use App\Models\Correction;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\Plan;
+use App\Models\PromoCode;
+use App\Models\PromoCodeRedemption;
 use App\Models\Review;
-use App\Models\User;
+use App\Models\SearchAlias;
+use App\Notifications\BranchModerated;
 use App\Services\Billing\CampaignService;
+use App\Services\SearchIndexer;
+use App\Support\SearchText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -205,7 +215,7 @@ class AdminController extends Controller
                 'name' => $b->name,
                 'slug' => $b->slug,
                 'is_verified' => $b->is_verified,
-                'logo_url' => $b->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($b->logo_path) : null,
+                'logo_url' => $b->logo_path ? Storage::disk('public')->url($b->logo_path) : null,
                 'category' => $b->category?->name,
                 'organization' => $org?->name,
                 'plan' => $plan,
@@ -239,7 +249,7 @@ class AdminController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => \App\Http\Resources\ReviewResource::collection($reviews->getCollection()),
+            'data' => ReviewResource::collection($reviews->getCollection()),
             'meta' => ['total' => $reviews->total(), 'current_page' => $reviews->currentPage(), 'last_page' => $reviews->lastPage(), 'per_page' => $reviews->perPage()],
         ]);
     }
@@ -249,24 +259,24 @@ class AdminController extends Controller
      */
     public function plans(): JsonResponse
     {
-        return response()->json(['data' => \App\Models\Plan::orderBy('sort_order')->get()]);
+        return response()->json(['data' => Plan::orderBy('sort_order')->get()]);
     }
 
     public function storePlan(Request $request): JsonResponse
     {
         $data = $this->validatePlan($request);
-        $data['key'] = \Illuminate\Support\Str::slug($request->string('key')) ?: 'plan-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
+        $data['key'] = Str::slug($request->string('key')) ?: 'plan-'.Str::lower(Str::random(6));
 
         $request->validate(['key' => ['required', 'string', 'max:30']]);
-        abort_if(\App\Models\Plan::where('key', $data['key'])->exists(), 422, 'Ийм түлхүүртэй эрх бүртгэлтэй байна.');
+        abort_if(Plan::where('key', $data['key'])->exists(), 422, 'Ийм түлхүүртэй эрх бүртгэлтэй байна.');
 
-        $data['sort_order'] = (int) \App\Models\Plan::max('sort_order') + 1;
-        $plan = \App\Models\Plan::create($data);
+        $data['sort_order'] = (int) Plan::max('sort_order') + 1;
+        $plan = Plan::create($data);
 
         return response()->json(['message' => 'Эрхийн бичиг үүслээ.', 'data' => $plan], 201);
     }
 
-    public function updatePlan(Request $request, \App\Models\Plan $plan): JsonResponse
+    public function updatePlan(Request $request, Plan $plan): JsonResponse
     {
         $plan->update($this->validatePlan($request));
 
@@ -294,6 +304,71 @@ class AdminController extends Controller
     }
 
     /**
+     * Хайлтын синоним (ярианы нэр): «тог» → Цахилгаанчин.
+     * Ангиллаар бүлэглэж буцаана.
+     */
+    public function searchAliases(Request $request): JsonResponse
+    {
+        $aliases = SearchAlias::with('category:id,name,slug,parent_id')
+            ->orderBy('category_id')
+            ->orderBy('term')
+            ->get();
+
+        $groups = $aliases->groupBy('category_id')->map(fn ($rows) => [
+            'category' => [
+                'id' => $rows->first()->category?->id,
+                'name' => $rows->first()->category?->name,
+                'slug' => $rows->first()->category?->slug,
+            ],
+            'terms' => $rows->map(fn ($a) => ['id' => $a->id, 'term' => $a->term])->values(),
+        ])->values();
+
+        return response()->json(['data' => $groups, 'total' => $aliases->count()]);
+    }
+
+    public function storeSearchAlias(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'term' => ['required', 'string', 'max:80'],
+        ]);
+
+        $key = SearchText::fold($data['term']);
+
+        if ($key === '') {
+            return response()->json(['message' => 'Хайлтад ашиглах боломжгүй үг байна.'], 422);
+        }
+
+        $exists = SearchAlias::where('category_id', $data['category_id'])
+            ->where('term_key', $key)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Энэ ангилалд ийм синоним бүртгэлтэй байна.'], 422);
+        }
+
+        $alias = SearchAlias::create($data);
+
+        // Шинэ үгээр шууд хайгдахын тулд тухайн ангиллын салбаруудыг
+        // дахин индексжүүлнэ (бүх хүснэгтийг гүйлгэхгүй)
+        app(SearchIndexer::class)->reindexCategory($alias->category);
+
+        return response()->json(['message' => 'Синоним нэмэгдлээ.', 'data' => $alias], 201);
+    }
+
+    public function destroySearchAlias(SearchAlias $searchAlias): JsonResponse
+    {
+        $category = $searchAlias->category;
+        $searchAlias->delete();
+
+        if ($category !== null) {
+            app(SearchIndexer::class)->reindexCategory($category);
+        }
+
+        return response()->json(['message' => 'Синоним устлаа.']);
+    }
+
+    /**
      * Ангиллын CRUD — админаас нэмэх/засах/устгах.
      */
     public function storeCategory(Request $request): JsonResponse
@@ -309,27 +384,27 @@ class AdminController extends Controller
 
         // Гүн 3-аас хэтрэхгүй: үндсэн → дэд → дэд дэд
         if (($data['parent_id'] ?? null) !== null) {
-            $parent = \App\Models\Category::findOrFail($data['parent_id']);
+            $parent = Category::findOrFail($data['parent_id']);
 
-            if ($parent->depth() >= \App\Models\Category::MAX_DEPTH) {
+            if ($parent->depth() >= Category::MAX_DEPTH) {
                 return response()->json([
-                    'message' => 'Ангиллын мод хамгийн ихдээ '.\App\Models\Category::MAX_DEPTH.' түвшинтэй байна.',
+                    'message' => 'Ангиллын мод хамгийн ихдээ '.Category::MAX_DEPTH.' түвшинтэй байна.',
                 ], 422);
             }
         }
 
-        $category = \App\Models\Category::create([
+        $category = Category::create([
             ...$data,
             'slug' => $this->categorySlug($data['name']),
-            'sort_order' => $data['sort_order'] ?? ((int) \App\Models\Category::max('sort_order') + 1),
+            'sort_order' => $data['sort_order'] ?? ((int) Category::max('sort_order') + 1),
         ]);
 
-        \App\Models\Category::flushCache();
+        Category::flushCache();
 
         return response()->json(['message' => 'Ангилал үүслээ.', 'data' => $category], 201);
     }
 
-    public function updateCategory(Request $request, \App\Models\Category $category): JsonResponse
+    public function updateCategory(Request $request, Category $category): JsonResponse
     {
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
@@ -349,12 +424,12 @@ class AdminController extends Controller
             }
 
             // Зөөсний дараа мод 3 түвшнээс гүнзгийрэхгүй байх ёстой
-            $parent = \App\Models\Category::findOrFail($data['parent_id']);
+            $parent = Category::findOrFail($data['parent_id']);
             $subtreeDepth = $this->subtreeDepth($category);
 
-            if ($parent->depth() + $subtreeDepth > \App\Models\Category::MAX_DEPTH) {
+            if ($parent->depth() + $subtreeDepth > Category::MAX_DEPTH) {
                 return response()->json([
-                    'message' => 'Ангиллын мод хамгийн ихдээ '.\App\Models\Category::MAX_DEPTH.' түвшинтэй байна.',
+                    'message' => 'Ангиллын мод хамгийн ихдээ '.Category::MAX_DEPTH.' түвшинтэй байна.',
                 ], 422);
             }
         }
@@ -373,17 +448,17 @@ class AdminController extends Controller
         }
 
         $category->update($update);
-        \App\Models\Category::flushCache();
+        Category::flushCache();
 
         return response()->json(['message' => 'Хадгалагдлаа.', 'data' => $category->refresh()]);
     }
 
-    public function destroyCategory(Request $request, \App\Models\Category $category): JsonResponse
+    public function destroyCategory(Request $request, Category $category): JsonResponse
     {
         // Бизнестэй эсвэл бизнестэй дэд ангилалтай бол устгахгүй (cascade-аас хамгаална)
         $treeIds = $category->descendantIds();
 
-        $inUse = \App\Models\Business::whereIn('category_id', $treeIds)
+        $inUse = Business::whereIn('category_id', $treeIds)
             ->orWhereHas('categories', fn ($q) => $q->whereIn('categories.id', $treeIds))
             ->exists();
 
@@ -392,8 +467,8 @@ class AdminController extends Controller
         }
 
         // Бүх түвшний дэд ангилал хамт устана
-        \App\Models\Category::whereIn('id', $treeIds)->delete();
-        \App\Models\Category::flushCache();
+        Category::whereIn('id', $treeIds)->delete();
+        Category::flushCache();
 
         return response()->json(['message' => 'Ангилал устгагдлаа.']);
     }
@@ -401,9 +476,9 @@ class AdminController extends Controller
     /**
      * Тухайн ангиллын дэд модны өндөр (өөрөө = 1).
      */
-    protected function subtreeDepth(\App\Models\Category $category): int
+    protected function subtreeDepth(Category $category): int
     {
-        $maps = \App\Models\Category::treeMaps()['children'];
+        $maps = Category::treeMaps()['children'];
 
         $walk = function (int $id, int $level) use (&$walk, $maps): int {
             $max = $level;
@@ -420,11 +495,11 @@ class AdminController extends Controller
 
     protected function categorySlug(string $name): string
     {
-        $base = \Illuminate\Support\Str::slug($name) ?: 'cat-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
+        $base = Str::slug($name) ?: 'cat-'.Str::lower(Str::random(6));
         $slug = $base;
         $n = 1;
 
-        while (\App\Models\Category::where('slug', $slug)->exists()) {
+        while (Category::where('slug', $slug)->exists()) {
             $slug = $base.'-'.(++$n);
         }
 
@@ -523,7 +598,7 @@ class AdminController extends Controller
             'status' => ['nullable', 'in:active,inactive,expired'],
         ]);
 
-        $codes = \App\Models\PromoCode::query()
+        $codes = PromoCode::query()
             ->withCount('redemptions')
             ->withSum('redemptions as discount_given', 'amount')
             ->when($filters['scope'] ?? null, fn ($q, $sc) => $q->where('scope', $sc))
@@ -536,13 +611,13 @@ class AdminController extends Controller
 
         return response()->json([
             'kpis' => [
-                'total' => \App\Models\PromoCode::count(),
-                'active' => \App\Models\PromoCode::where('is_active', true)
+                'total' => PromoCode::count(),
+                'active' => PromoCode::where('is_active', true)
                     ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
-                'redemptions' => \App\Models\PromoCodeRedemption::count(),
-                'discount_given' => (int) \App\Models\PromoCodeRedemption::sum('amount'),
+                'redemptions' => PromoCodeRedemption::count(),
+                'discount_given' => (int) PromoCodeRedemption::sum('amount'),
             ],
-            'data' => $codes->map(fn (\App\Models\PromoCode $c) => [
+            'data' => $codes->map(fn (PromoCode $c) => [
                 'id' => $c->id,
                 'code' => $c->code,
                 'scope' => $c->scope,
@@ -570,18 +645,18 @@ class AdminController extends Controller
     public function storePromoCode(Request $request): JsonResponse
     {
         $data = $this->validatePromoCode($request);
-        $data['code'] = \App\Models\PromoCode::normalize($data['code']);
+        $data['code'] = PromoCode::normalize($data['code']);
 
-        if (\App\Models\PromoCode::where('code', $data['code'])->exists()) {
+        if (PromoCode::where('code', $data['code'])->exists()) {
             return response()->json(['message' => 'Ийм код аль хэдийн бүртгэлтэй байна.'], 422);
         }
 
-        $code = \App\Models\PromoCode::create($data);
+        $code = PromoCode::create($data);
 
         return response()->json(['data' => ['id' => $code->id, 'code' => $code->code]], 201);
     }
 
-    public function updatePromoCode(Request $request, \App\Models\PromoCode $promoCode): JsonResponse
+    public function updatePromoCode(Request $request, PromoCode $promoCode): JsonResponse
     {
         $data = $this->validatePromoCode($request, $promoCode);
 
@@ -594,7 +669,7 @@ class AdminController extends Controller
         return response()->json(['data' => ['id' => $promoCode->id]]);
     }
 
-    public function destroyPromoCode(\App\Models\PromoCode $promoCode): JsonResponse
+    public function destroyPromoCode(PromoCode $promoCode): JsonResponse
     {
         if ($promoCode->redemptions()->exists()) {
             return response()->json([
@@ -607,7 +682,7 @@ class AdminController extends Controller
         return response()->json(['message' => 'Устгагдлаа.']);
     }
 
-    protected function validatePromoCode(Request $request, ?\App\Models\PromoCode $existing = null): array
+    protected function validatePromoCode(Request $request, ?PromoCode $existing = null): array
     {
         // Засварлахад код өөрчлөгддөггүй тул огт шалгахгүй — илгээсэн ч
         // үл хэрэгсэнэ (кирилл үсэг ирвэл дэмий алдаа өгөхгүй)
@@ -635,7 +710,7 @@ class AdminController extends Controller
      */
     public function corrections(Request $request): JsonResponse
     {
-        $corrections = \App\Models\Correction::with(['user:id,name', 'branch.business:id,name,slug'])
+        $corrections = Correction::with(['user:id,name', 'branch.business:id,name,slug'])
             ->where('status', 'pending')
             ->oldest()
             ->paginate(20);
@@ -653,7 +728,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function moderateCorrection(Request $request, \App\Models\Correction $correction): JsonResponse
+    public function moderateCorrection(Request $request, Correction $correction): JsonResponse
     {
         $data = $request->validate(['action' => ['required', 'in:accept,reject']]);
 

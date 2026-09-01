@@ -116,6 +116,9 @@ Route::prefix('v1')->group(function () {
             Route::post('categories', [AdminController::class, 'storeCategory']);
             Route::put('categories/{category}', [AdminController::class, 'updateCategory']);
             Route::delete('categories/{category}', [AdminController::class, 'destroyCategory']);
+            Route::get('search-aliases', [AdminController::class, 'searchAliases']);
+            Route::post('search-aliases', [AdminController::class, 'storeSearchAlias']);
+            Route::delete('search-aliases/{searchAlias}', [AdminController::class, 'destroySearchAlias']);
             Route::get('campaigns', [AdminController::class, 'campaigns']);
             Route::get('promo-codes', [AdminController::class, 'promoCodes']);
             Route::post('promo-codes', [AdminController::class, 'storePromoCode']);

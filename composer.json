@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "khaana/directory",
+    "name": "oirkhon/directory",
     "type": "project",
-    "description": "Хаана.mn — Монголын бизнес лавлах (Laravel + Vue 3 + verify.mn + byl.mn)",
+    "description": "Ойрхон.mn — Монголын бизнес лавлах (Laravel + Vue 3 + verify.mn + byl.mn)",
     "keywords": [
         "directory",
         "mongolia",
