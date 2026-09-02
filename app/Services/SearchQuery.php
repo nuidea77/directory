@@ -36,6 +36,12 @@ class SearchQuery
 
     public ?string $district = null;
 
+    /**
+     * Аймаг ба дүүрэг хоёулаа ижил нэртэй үеийн нэр («Сүхбаатар») —
+     * хот ЭСВЭЛ дүүрэг нь таарвал болно.
+     */
+    public ?string $placeAny = null;
+
     /** @var array<int, string> Залруулсан үгс: буруу → зөв */
     public array $corrections = [];
 
@@ -90,45 +96,52 @@ class SearchQuery
     }
 
     /**
-     * Хот/дүүргийн нэрсийн индекс: fold түлхүүр → [хот, дүүрэг].
+     * Хот/дүүргийн нэрсийн индекс: fold түлхүүр → бүртгэл.
      *
-     * @return array<string, array{0: string, 1: string|null}>
+     * «Сүхбаатар» гэх зарим нэр аймаг БА дүүрэг хоёулаа байдаг тул
+     * хоёуланг нь хадгалж, аль нь ч байж болно гэж үзнэ.
+     *
+     * @return array<string, array{city: string|null, district: string|null, district_city: string|null}>
      */
     public static function placeIndex(): array
     {
-        return Cache::remember('search:places:v1', 3600, function () {
+        return Cache::remember('search:places:v2', 3600, function () {
             $index = [];
 
             foreach (config('locations', []) as $city => $districts) {
-                $index[SearchText::fold($city)] = [$city, null];
+                $key = SearchText::fold($city);
+                $index[$key]['city'] = $city;
 
                 foreach ($districts as $district) {
-                    // Дүүргийн нэр давхардвал (ж: «Булган») хот нь эхэлж
+                    $dKey = SearchText::fold($district);
+
+                    // Дүүргийн нэр давхардвал (ж: «Булган» сум) эхэлж
                     // бүртгэгдсэн нь хүчинтэй
-                    $key = SearchText::fold($district);
-                    $index[$key] ??= [$city, $district];
+                    if (isset($index[$dKey]['district'])) {
+                        continue;
+                    }
+
+                    $index[$dKey]['district'] = $district;
+                    $index[$dKey]['district_city'] = $city;
                 }
             }
 
-            return $index;
+            return array_map(fn (array $row) => $row + ['city' => null, 'district' => null, 'district_city' => null], $index);
         });
     }
 
-    /** @param array<string, array{0: string, 1: string|null}> $places */
+    /** @param array<string, array{city: string|null, district: string|null, district_city: string|null}> $places */
     protected function matchPlace(string $phrase, array $places): bool
     {
         if (isset($places[$phrase])) {
-            [$city, $district] = $places[$phrase];
-            $this->city ??= $city;
-            $this->district ??= $district;
+            $this->applyPlace($places[$phrase]);
 
             return true;
         }
 
-        foreach ($places as $key => [$city, $district]) {
+        foreach ($places as $key => $place) {
             if (SearchText::isClose($phrase, $key)) {
-                $this->city ??= $city;
-                $this->district ??= $district;
+                $this->applyPlace($place);
                 $this->corrections[$phrase] = $key;
 
                 return true;
@@ -136,6 +149,27 @@ class SearchQuery
         }
 
         return false;
+    }
+
+    /** @param array{city: string|null, district: string|null, district_city: string|null} $place */
+    protected function applyPlace(array $place): void
+    {
+        // Аймаг ба дүүрэг хоёулаа ижил нэртэй бол («Сүхбаатар») аль нэгээр
+        // нь хатуу шүүхгүй — хоёуланг нь хамарсан нөхцөл болгоно
+        if ($place['city'] !== null && $place['district'] !== null) {
+            $this->placeAny ??= $place['district'];
+
+            return;
+        }
+
+        if ($place['district'] !== null) {
+            $this->district ??= $place['district'];
+            $this->city ??= $place['district_city'];
+
+            return;
+        }
+
+        $this->city ??= $place['city'];
     }
 
     /** @param array<int, string> $categories */
@@ -201,7 +235,8 @@ class SearchQuery
 
     public function isEmpty(): bool
     {
-        return $this->terms === [] && $this->categoryIds === [] && $this->city === null && $this->district === null;
+        return $this->terms === [] && $this->categoryIds === [] && $this->city === null
+            && $this->district === null && $this->placeAny === null;
     }
 
     /**
@@ -221,6 +256,11 @@ class SearchQuery
                     });
                 }
             });
+        }
+
+        if ($this->placeAny !== null) {
+            $name = $this->placeAny;
+            $query->where(fn (Builder $q) => $q->where('district', $name)->orWhere('city', $name));
         }
 
         foreach ($this->terms as $term) {

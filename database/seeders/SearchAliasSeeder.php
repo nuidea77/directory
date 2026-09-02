@@ -85,6 +85,7 @@ class SearchAliasSeeder extends Seeder
         // Үзвэр
         'entertainment-6' => ['писи', 'pc', 'компьютер тоглоом', 'киберспорт'],
         'entertainment-2' => ['караоке', 'дуу'],
+        'entertainment-3' => ['пул', 'снукер', 'бильярдны газар', 'бильярдны клуб', 'бильярд тоглох'],
     ];
 
     public function run(): void

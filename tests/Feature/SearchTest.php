@@ -134,6 +134,28 @@ class SearchTest extends TestCase
             ->assertJsonPath('meta.total', 0);
     }
 
+    public function test_a_name_that_is_both_an_aimag_and_a_district_matches_either(): void
+    {
+        // «Сүхбаатар» — аймаг ч мөн, Улаанбаатарын дүүрэг ч мөн.
+        // Аль нэгээр нь хатуу шүүвэл нөгөөх нь илэрцээс унана.
+        $inUb = $this->branchFor($this->dental, 'Хотын Дент', 'Сүхбаатар');
+        $inAimag = Branch::factory()->create([
+            'business_id' => Business::factory()->create(['category_id' => $this->dental->id, 'name' => 'Аймгийн Дент'])->id,
+            'city' => 'Сүхбаатар',
+            'district' => 'Баруун-Урт',
+        ]);
+        $this->branchFor($this->dental, 'Өөр Дент', 'Баянзүрх');
+
+        $response = $this->getJson('/api/v1/search?q='.urlencode('шүдний эмнэлэг сүхбаатар'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('parsed.place', 'Сүхбаатар');
+
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertContains($inUb->id, $ids);
+        $this->assertContains($inAimag->id, $ids);
+    }
+
     public function test_fold_maps_cyrillic_and_latin_to_the_same_key(): void
     {
         $this->assertSame(SearchText::fold('Шүдний эмнэлэг'), SearchText::fold('shudnii emneleg'));

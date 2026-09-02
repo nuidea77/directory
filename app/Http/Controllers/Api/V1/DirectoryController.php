@@ -485,6 +485,8 @@ class DirectoryController extends Controller
             'parsed' => $parsed === null ? null : [
                 'city' => $parsed->city,
                 'district' => $parsed->district,
+                // Аймаг/дүүрэг хоёулаа ижил нэртэй үед («Сүхбаатар») хоёуланг нь хамарна
+                'place' => $parsed->placeAny,
                 'categories' => $parsed->categoryIds === [] ? [] : Category::whereIn('id', $parsed->categoryIds)
                     ->whereIn('id', $parsed->matchedRootIds)
                     ->pluck('name')->all(),

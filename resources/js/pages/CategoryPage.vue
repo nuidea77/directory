@@ -49,6 +49,7 @@ const searchHint = computed(() => {
     const parts = [...(p.categories || [])];
     if (p.district) parts.push(p.district);
     else if (p.city) parts.push(p.city);
+    else if (p.place) parts.push(p.place);
     if (!parts.length) return null;
     return { parts, corrected: Object.keys(p.corrections || {}).length > 0 };
 });
