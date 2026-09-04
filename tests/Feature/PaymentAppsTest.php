@@ -17,16 +17,43 @@ class PaymentAppsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_locations_endpoint_lists_the_payment_apps(): void
+    public function test_payments_endpoint_lists_the_apps(): void
     {
-        $payments = $this->getJson('/api/v1/locations')->assertOk()->json('payments');
+        $payments = $this->getJson('/api/v1/payments')->assertOk()->json('data');
 
         $names = array_column($payments, 'name');
 
         $this->assertContains('LendMN', $names);
         $this->assertContains('Storepay', $names);
         $this->assertContains('Pocket', $names);
+        $this->assertContains('Ард Апп', $names);
         $this->assertNotNull($payments[0]['slug']);
+        // Лого байхгүй үед null — UI брэндийн өнгөт тэмдэг рүү шилжинэ
+        $this->assertArrayHasKey('logo', $payments[0]);
+        $this->assertArrayHasKey('wordmark', $payments[0]);
+    }
+
+    public function test_a_dropped_in_logo_file_is_served_with_the_app(): void
+    {
+        $path = public_path('img/payments/lendmn.svg');
+        $existed = is_file($path);
+
+        if (! $existed) {
+            @mkdir(dirname($path), 0755, true);
+            file_put_contents($path, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"></svg>');
+        }
+
+        try {
+            $payments = collect($this->getJson('/api/v1/payments')->assertOk()->json('data'));
+            $lend = $payments->firstWhere('slug', 'lendmn');
+
+            $this->assertNotNull($lend['logo']);
+            $this->assertStringContainsString('img/payments/lendmn.svg', $lend['logo']);
+        } finally {
+            if (! $existed) {
+                @unlink($path);
+            }
+        }
     }
 
     public function test_search_filters_by_payment_app(): void

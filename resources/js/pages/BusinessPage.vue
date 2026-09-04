@@ -28,6 +28,18 @@ const business = ref(null);
 // Үйлчилгээ/онцлогийн нэр → icon (тухайн ангиллын сангаас)
 const amenityIcons = ref({});
 
+// Зээлийн аппын нэр → { slug, logo, wordmark }
+const paymentInfo = ref({});
+
+async function fetchPayments() {
+    try {
+        const res = await api.get('/payments');
+        paymentInfo.value = Object.fromEntries((res.data || []).map((p) => [p.name, p]));
+    } catch {
+        paymentInfo.value = {};
+    }
+}
+
 async function fetchAmenityIcons(slug) {
     try {
         const res = await api.get('/amenities', slug ? { category: slug } : {});
@@ -131,6 +143,7 @@ async function fetchBusiness() {
         similar.value = data.similar;
         document.title = `${business.value.name} — ${business.value.category?.name || 'Бизнес'} | Ойрхон.mn`;
         fetchAmenityIcons(business.value.category?.slug);
+        fetchPayments();
 
         // Сэтгэгдэл бичсэний дараа дахин ачаалахад сонгосон салбар 1-рт
         // үсэрдэг байсан — байгаа сонголтоо хадгална
@@ -335,8 +348,8 @@ onMounted(fetchBusiness);
                             <p class="mb-3.5 text-[12.5px] text-mute">Эдгээр аппаар хэсэгчилсэн төлбөр, зээлээр үйлчилнэ.</p>
                             <div class="flex flex-wrap gap-2">
                                 <span v-for="p in branch.payments" :key="p" class="inline-flex items-center gap-2 rounded-full border border-line bg-white py-1.5 pl-1.5 pr-3.5">
-                                    <PaymentBadge :name="p" :size="22" />
-                                    <span class="text-[12.5px] font-semibold text-body">{{ p }}</span>
+                                    <PaymentBadge :name="p" :slug="paymentInfo[p]?.slug || ''" :logo="paymentInfo[p]?.logo || ''" :size="22" />
+                                    <span v-if="!paymentInfo[p]?.wordmark" class="text-[12.5px] font-semibold text-body">{{ p }}</span>
                                 </span>
                             </div>
                         </div>

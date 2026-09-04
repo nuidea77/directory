@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
     Route::get('search', [DirectoryController::class, 'search']);
     Route::get('locations', [DirectoryController::class, 'locations']);
     Route::get('amenities', [DirectoryController::class, 'amenities']);
+    Route::get('payments', [DirectoryController::class, 'payments']);
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
     Route::get('businesses/{slug}', [DirectoryController::class, 'business']);

@@ -13,6 +13,7 @@ use App\Models\Category;
 use App\Services\Billing\CampaignService;
 use App\Services\SearchQuery;
 use App\Support\Amenities;
+use App\Support\Payments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,9 +40,16 @@ class DirectoryController extends Controller
                 ->values(),
             // Хуучин flat хэлбэр — ангилал мэдэгдэхгүй үеийн нийтлэг багц
             'amenities' => Amenities::defaultNames(),
-            // Зээл, хэсэгчилсэн төлбөрийн аппууд
-            'payments' => config('payments'),
         ]);
+    }
+
+    /**
+     * Зээл, хэсэгчилсэн төлбөрийн аппууд (нэр + лого).
+     * Лого нь public/img/payments/{slug}.svg байвал автоматаар орно.
+     */
+    public function payments(): JsonResponse
+    {
+        return response()->json(['data' => Payments::all()]);
     }
 
     /**

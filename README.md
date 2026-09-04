@@ -131,7 +131,7 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 | Бүлэг | Endpoints |
 |---|---|
 | Auth | `POST auth/register`, `auth/login`, `auth/login-sms`, `auth/reset`, `auth/reset/confirm`, `GET auth/verifications/{uuid}`, `POST auth/verify/start`, `auth/logout`, `GET/PUT me`, `PUT me/password` |
-| Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, open_24_7, verified, amenity, payment, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `locations`, `amenities?category=slug`, `pricing`, `POST branches/{id}/event` |
+| Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, open_24_7, verified, amenity, payment, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `locations`, `amenities?category=slug`, `payments`, `pricing`, `POST branches/{id}/event` |
 | Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections` |
 | Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply` |
 | Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
@@ -175,9 +175,16 @@ php artisan search:reindex
 |---|---|
 | `config/locations.php` | Нийслэл + 21 аймаг, дүүрэг/сумдтайгаа |
 | `config/amenities.php` | Үйлчилгээ/онцлог — `common` + ангиллын slug тус бүрийн багц (нэр → lucide icon) |
-| `config/payments.php` | Зээл, хэсэгчилсэн төлбөрийн аппууд |
+| `config/payments.php` | Зээл, хэсэгчилсэн төлбөрийн аппууд (лого: `public/img/payments/{slug}.svg`) |
 | `config/billing.php` | Эрхийн бичиг, салбарын нэмэлт, зарын үнэ/зай |
 | `database/seeders/SearchAliasSeeder.php` | Ангиллын ярианы нэр (синоним) |
+
+**Зээлийн аппын лого**: `public/img/payments/` дотор `{slug}.svg` (эсвэл `.png`, `.webp`)
+файл байрлуулбал бүртгэл, салбарын засвар, бизнесийн хуудас, шүүлтүүр бүхэнд автоматаар
+харагдана — код өөрчлөх шаардлагагүй. Файл байхгүй бол брэндийн өнгөтэй түр тэмдэг гарна.
+Лого нь нэрээ агуулсан бол `config/payments.php`-д `'wordmark' => true` гэж нэмнэ.
+Лого нь тухайн компаниудын барааны тэмдэг тул албан ёсны brand kit / merchant
+гэрээгээр авсан файлыг ашиглана.
 
 Ангиллын amenity нэрийг өөрчилвөл хуучин салбаруудын хадгалсан утга таарахаа болино —
 шинэ нэр нэмэх нь аюулгүй, байгаа нэрийг засах бол өгөгдлийг хамт шилжүүлнэ.

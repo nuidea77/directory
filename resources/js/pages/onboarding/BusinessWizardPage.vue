@@ -261,10 +261,14 @@ onMounted(async () => {
         router.push({ name: 'verify' });
         return;
     }
-    const [cats, locs] = await Promise.all([api.get('/categories'), api.get('/locations')]);
+    const [cats, locs, pays] = await Promise.all([
+        api.get('/categories'),
+        api.get('/locations'),
+        api.get('/payments'),
+    ]);
+    paymentOptions.value = pays.data || [];
     categories.value = cats.data;
     locations.value = locs.data;
-    paymentOptions.value = locs.payments || [];
     fetchAmenityOptions();
 });
 </script>
@@ -469,7 +473,7 @@ onMounted(async () => {
                                             class="inline-flex cursor-pointer items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-[12.5px] font-semibold"
                                             :class="form.payments.includes(p.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
                                             @click="togglePayment(form, p.name)"
-                                        ><PaymentBadge :name="p.name" :slug="p.slug" :size="20" />{{ p.name }}</button>
+                                        ><PaymentBadge :name="p.name" :slug="p.slug" :logo="p.logo || ''" :size="20" /><span v-if="!p.wordmark">{{ p.name }}</span></button>
                                     </div>
                                 </div>
                             </div>
