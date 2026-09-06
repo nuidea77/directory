@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
-import { categoryIcon } from '../data/categoryIcons';
+import { categoryFallbackIcon, staticCategoryIcon } from '../data/categoryIcons';
+import { useLucideIcon } from '../composables/useLucideIcon';
+import IconGlyph from './IconGlyph.vue';
 
 // Ангиллын icon-ыг нэгэн жигд хэмжээ, өнгөөр харуулна
 const props = defineProps({
@@ -8,9 +9,9 @@ const props = defineProps({
     size: { type: Number, default: 18 },
 });
 
-const icon = computed(() => categoryIcon(props.name));
+const { component, nodes } = useLucideIcon(() => props.name || '', staticCategoryIcon, categoryFallbackIcon);
 </script>
 
 <template>
-    <component :is="icon" :size="size" :stroke-width="1.75" aria-hidden="true" />
+    <IconGlyph :component="component" :nodes="nodes" :size="size" />
 </template>

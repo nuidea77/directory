@@ -196,7 +196,13 @@ php artisan search:reindex
 
 Онцлог болон аппын **нэрийг админаас өөрчлөхөд** бүртгэлтэй салбаруудын хадгалсан
 утга автоматаар хамт шинэчлэгддэг тул шүүлтүүр эвдрэхгүй.
-Шинэ icon нэмбэл `resources/js/data/amenityIcons.js`-д бүртгэнэ.
+
+**Icon**: админы сонгогч lucide-ийн бүх icon-ыг (1,700+) дүрсээр нь харуулна.
+Түгээмэл icon-ууд `resources/js/data/amenityIcons.js` / `categoryIcons.js`-д
+статикаар суусан тул нийтийн хуудсууд нэмэлт юм татдаггүй; бусад icon-ы зурах
+өгөгдлийг `public/icons/lucide.json`-оос (~76 KB gz) хэрэгтэй үед нь татна.
+Энэ файлыг `npm run build` (болон `npm run dev`) өөрөө үүсгэдэг —
+`scripts/build-lucide-data.mjs`.
 
 ## Тэмдэглэл
 

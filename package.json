@@ -4,7 +4,10 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "build:icons": "node scripts/build-lucide-data.mjs",
+        "prebuild": "node scripts/build-lucide-data.mjs",
+        "predev": "node scripts/build-lucide-data.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

@@ -46,6 +46,12 @@ const ICONS = {
 
 export const iconNames = Object.keys(ICONS);
 
+export function staticCategoryIcon(name) {
+    return ICONS[name] || null;
+}
+
 export function categoryIcon(name) {
     return ICONS[name] || Store;
 }
+
+export const categoryFallbackIcon = Store;

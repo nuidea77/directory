@@ -26,3 +26,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /database/database.sqlite
+
+# Build-ээр үүсдэг icon сан
+/public/icons/lucide.json

@@ -89,6 +89,13 @@ const ICONS = {
 // Админы icon сонголтод (config/amenities.php-д ашиглаж болох нэрс)
 export const amenityIconNames = Object.keys(ICONS).sort();
 
+// Статик сангаас (олдохгүй бол null — дуудагч нь бүх lucide-аас хайна)
+export function staticAmenityIcon(name) {
+    return ICONS[name] || null;
+}
+
 export function amenityIcon(name) {
     return ICONS[name] || Settings;
 }
+
+export const amenityFallbackIcon = Settings;
