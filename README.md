@@ -51,7 +51,7 @@ verify.mn (MO SMS) баталгаажуулалт, byl.mn төлбөр.
 | Давхарга | Хэрэгсэл |
 |---|---|
 | Backend | Laravel 13, PHP 8.4, Sanctum (API token) |
-| Frontend | Vue 3 SPA, Vue Router, Pinia, Tailwind CSS 4, Vite, lucide icons |
+| Frontend | Vue 3 SPA, Vue Router, Pinia, Tailwind CSS 4, Vite, lucide icons, Mapbox GL JS |
 | Өгөгдлийн сан | MySQL (production) · SQLite (dev/test) |
 | Хайлт | Өөрийн индекс (`branches.search_text`) + галиг/fuzzy/синоним (`search_aliases`) |
 | SMS баталгаажуулалт | [verify.mn](https://verify.mn) — MO SMS |
@@ -213,8 +213,8 @@ php artisan search:reindex
   ирсэн жинхэнэ shortcode/кодыг харуулна.
 - Зээлийн аппуудын лого нь тухайн компанийн өмч тул зурган лого ашиглаагүй —
   брэндийн өнгө + товчлол харуулна.
-- Зураглал: Leaflet + **Mapbox** Static Tiles (`VITE_MAPBOX_TOKEN`, хэв маяг
-  `VITE_MAPBOX_STYLE`, анхдагч `mapbox/light-v11` — POI icon-гүй: барилга, зам,
-  тээвэр, газрын нэр). Token байхгүй бол OSM стандарт руу буцна; дурын өөр
-  үйлчилгээг `VITE_MAP_TILES`-ээр өгч болно. Vite env тул `npm run build` хийнэ.
-  «Зам заах» нь Google Maps руу гардаг.
+- Зураглал: **Mapbox GL JS** (`VITE_MAPBOX_TOKEN`, хэв маяг `VITE_MAPBOX_STYLE`,
+  анхдагч `mapbox/light-v11`). `VITE_MAP_HIDE_LAYERS` (анхдагч `poi-label`)
+  давхаргыг нууж, дэлгүүр/ресторан шошгогүй, барилга, зам, автобусны буудалтай
+  цэвэрхэн зураг гаргана; шошго монголоор. Token байхгүй бол OSM raster руу буцна.
+  Vite env тул `npm run build` хийнэ. «Зам заах» нь Google Maps руу гардаг.
