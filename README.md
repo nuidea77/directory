@@ -213,7 +213,8 @@ php artisan search:reindex
   ирсэн жинхэнэ shortcode/кодыг харуулна.
 - Зээлийн аппуудын лого нь тухайн компанийн өмч тул зурган лого ашиглаагүй —
   брэндийн өнгө + товчлол харуулна.
-- Зураглал: Leaflet. Анхдагч суурь зураг OSM стандарт (түлхүүргүй, POI icon-той).
-  Барилга, зам, тээврийн зангилаа л харагдах цэвэрхэн хэв маяг (Stadia Alidade
-  Smooth / CARTO Voyager / MapTiler) үнэгүй түлхүүр шаарддаг — `.env.example` дахь
-  загвараар `VITE_MAP_TILES`-д тавиад `npm run build`. «Зам заах» нь Google Maps руу гардаг.
+- Зураглал: Leaflet + **Mapbox** Static Tiles (`VITE_MAPBOX_TOKEN`, хэв маяг
+  `VITE_MAPBOX_STYLE`, анхдагч `mapbox/light-v11` — POI icon-гүй: барилга, зам,
+  тээвэр, газрын нэр). Token байхгүй бол OSM стандарт руу буцна; дурын өөр
+  үйлчилгээг `VITE_MAP_TILES`-ээр өгч болно. Vite env тул `npm run build` хийнэ.
+  «Зам заах» нь Google Maps руу гардаг.
