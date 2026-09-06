@@ -117,6 +117,16 @@ Route::prefix('v1')->group(function () {
             Route::post('categories', [AdminController::class, 'storeCategory']);
             Route::put('categories/{category}', [AdminController::class, 'updateCategory']);
             Route::delete('categories/{category}', [AdminController::class, 'destroyCategory']);
+            Route::get('amenities', [AdminController::class, 'amenities']);
+            Route::post('amenities', [AdminController::class, 'storeAmenity']);
+            Route::put('amenities/{amenity}', [AdminController::class, 'updateAmenity']);
+            Route::delete('amenities/{amenity}', [AdminController::class, 'destroyAmenity']);
+            Route::get('payment-apps', [AdminController::class, 'paymentApps']);
+            Route::post('payment-apps', [AdminController::class, 'storePaymentApp']);
+            Route::put('payment-apps/{paymentApp}', [AdminController::class, 'updatePaymentApp']);
+            Route::post('payment-apps/{paymentApp}/logo', [AdminController::class, 'uploadPaymentLogo']);
+            Route::delete('payment-apps/{paymentApp}/logo', [AdminController::class, 'destroyPaymentLogo']);
+            Route::delete('payment-apps/{paymentApp}', [AdminController::class, 'destroyPaymentApp']);
             Route::get('search-aliases', [AdminController::class, 'searchAliases']);
             Route::post('search-aliases', [AdminController::class, 'storeSearchAlias']);
             Route::delete('search-aliases/{searchAlias}', [AdminController::class, 'destroySearchAlias']);

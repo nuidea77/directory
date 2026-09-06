@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Organization;
 use App\Models\User;
+use Database\Seeders\PaymentAppSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -16,6 +17,14 @@ use Tests\TestCase;
 class PaymentAppsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Аппуудын анхны жагсаалт (config → payment_apps)
+        $this->seed(PaymentAppSeeder::class);
+    }
 
     public function test_payments_endpoint_lists_the_apps(): void
     {

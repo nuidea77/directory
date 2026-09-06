@@ -350,7 +350,7 @@ onMounted(async () => {
                             class="inline-flex cursor-pointer items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-[12.5px] font-semibold"
                             :class="form.payments.includes(p.name) ? 'border-brand bg-brand text-white' : 'border-inputline bg-white text-body'"
                             @click="togglePayment(p.name)"
-                        ><PaymentBadge :name="p.name" :slug="p.slug" :logo="p.logo || ''" :size="20" /><span v-if="!p.wordmark">{{ p.name }}</span></button>
+                        ><PaymentBadge :name="p.name" :slug="p.slug" :logo="p.logo || ''" :color="p.color || ''" :size="20" /><span v-if="!p.wordmark">{{ p.name }}</span></button>
                     </div>
                 </div>
 

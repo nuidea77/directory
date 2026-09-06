@@ -39,6 +39,9 @@ verify.mn (MO SMS) баталгаажуулалт, byl.mn төлбөр.
 **Админ**
 - Модерацын дараалал (шинэ салбар батлах/татгалзах), дата чанарын үзүүлэлт
 - Ангиллын 3 түвшний CRUD, эрхийн бичиг CRUD, промо код CRUD, зарын жагсаалт
+- **Үйлчилгээ, онцлог**: ангилал бүрийн дагалдах онцлогийг нэмэх/засах/устгах, icon сонгох
+- **Зээлийн апп**: нэр, өнгө, дараалал, идэвх, лого байршуулах
+- **Хайлтын синоним**: ярианы нэрийг ангилалд холбох
 - Орлогын тайлан: эрх/зарын орлого, эрхийн тархалт, онцлох зайн инвентор
 
 ## Технологи
@@ -135,12 +138,12 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 | Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections` |
 | Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply` |
 | Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
-| Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve\|reject`, `GET admin/revenue`, `admin/businesses`, `admin/categories` CRUD, `admin/plans` CRUD, `admin/promo-codes` CRUD, `admin/reviews` + `moderate`, `admin/corrections` + `moderate` |
+| Админ | `GET admin/moderation`, `POST admin/branches/{id}/approve\|reject`, `GET admin/revenue`, `admin/businesses`, `admin/categories` CRUD, `admin/plans` CRUD, `admin/promo-codes` CRUD, `admin/amenities` CRUD, `admin/payment-apps` CRUD + `logo`, `admin/search-aliases` CRUD, `admin/reviews` + `moderate`, `admin/corrections` + `moderate` |
 
 ## Тест
 
 ```bash
-php artisan test   # 114 тест: хайлт (галиг/fuzzy/синоним), ангилалын amenity, зээлийн апп,
+php artisan test   # 132 тест: хайлт (галиг/fuzzy/синоним), ангилалын amenity, зээлийн апп,
                    # verify.mn урсгал (mock, expired/401), byl checkout + webhook, brute-force түгжээ,
                    # салбарын нэмэлт, зайн дараалал/promote, ангиллын мод, промо код, scheduler
 ```
@@ -174,20 +177,25 @@ php artisan search:reindex
 | Файл | Агуулга |
 |---|---|
 | `config/locations.php` | Нийслэл + 21 аймаг, дүүрэг/сумдтайгаа |
-| `config/amenities.php` | Үйлчилгээ/онцлог — `common` + ангиллын slug тус бүрийн багц (нэр → lucide icon) |
-| `config/payments.php` | Зээл, хэсэгчилсэн төлбөрийн аппууд (лого: `public/img/payments/{slug}.svg`) |
+| `config/amenities.php` | Үйлчилгээ/онцлогийн **анхны** багц — `AmenitySeeder`-ээр `amenities` хүснэгтэд буудаг (цаашид админаас удирдана) |
+| `config/payments.php` | Зээлийн аппуудын **анхны** жагсаалт — `PaymentAppSeeder`-ээр `payment_apps` хүснэгтэд буудаг (цаашид админаас удирдана) |
 | `config/billing.php` | Эрхийн бичиг, салбарын нэмэлт, зарын үнэ/зай |
 | `database/seeders/SearchAliasSeeder.php` | Ангиллын ярианы нэр (синоним) |
 
-**Зээлийн аппын лого**: `public/img/payments/` дотор `{slug}.svg` (эсвэл `.png`, `.webp`)
-файл байрлуулбал бүртгэл, салбарын засвар, бизнесийн хуудас, шүүлтүүр бүхэнд автоматаар
-харагдана — код өөрчлөх шаардлагагүй. Файл байхгүй бол брэндийн өнгөтэй түр тэмдэг гарна.
-Лого нь нэрээ агуулсан бол `config/payments.php`-д `'wordmark' => true` гэж нэмнэ.
+Эдгээр config нь зөвхөн **анхны утга** — ажиллах үед жагсаалтууд нь `amenities`,
+`payment_apps` хүснэгтээс уншигдана. Админ → «Үйлчилгээ, онцлог» ба «Зээлийн апп»
+хэсгээс нэмэх, засах, устгах, лого байршуулах боломжтой (код байршуулах шаардлагагүй).
+
+**Зээлийн аппын лого** — 2 арга:
+1. Админ → Зээлийн апп → «Лого» товчоор байршуулна (SVG/PNG/WebP, 512 KB хүртэл).
+2. Эсвэл репод `public/img/payments/{slug}.svg` файл тавина.
+Байршуулсан нь давуу эрхтэй. Аль нь ч байхгүй бол сонгосон өнгөөр товчлол гарна.
+Лого нь өөрөө нэрээ агуулсан бол «Wordmark»-ыг тэмдэглэвэл текст давхардахгүй.
 Лого нь тухайн компаниудын барааны тэмдэг тул албан ёсны brand kit / merchant
 гэрээгээр авсан файлыг ашиглана.
 
-Ангиллын amenity нэрийг өөрчилвөл хуучин салбаруудын хадгалсан утга таарахаа болино —
-шинэ нэр нэмэх нь аюулгүй, байгаа нэрийг засах бол өгөгдлийг хамт шилжүүлнэ.
+Онцлог болон аппын **нэрийг админаас өөрчлөхөд** бүртгэлтэй салбаруудын хадгалсан
+утга автоматаар хамт шинэчлэгддэг тул шүүлтүүр эвдрэхгүй.
 Шинэ icon нэмбэл `resources/js/data/amenityIcons.js`-д бүртгэнэ.
 
 ## Тэмдэглэл

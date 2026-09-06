@@ -11,10 +11,16 @@ const props = defineProps({
     name: { type: String, required: true },
     slug: { type: String, default: '' },
     logo: { type: String, default: '' },
+    // Брэндийн өнгө API-аас ирнэ; ирээгүй бол дотоод жагсаалтаас
+    color: { type: String, default: '' },
     size: { type: Number, default: 24 },
 });
 
-const brand = computed(() => paymentBrand(props.slug || props.name));
+const brand = computed(() => {
+    const fallback = paymentBrand(props.slug || props.name);
+
+    return { short: fallback.short, color: props.color || fallback.color };
+});
 </script>
 
 <template>

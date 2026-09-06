@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
             PlanSeeder::class,
             CategorySeeder::class,
             SearchAliasSeeder::class,
+            AmenitySeeder::class,
+            PaymentAppSeeder::class,
         ]);
 
         if (app()->environment('local')) {

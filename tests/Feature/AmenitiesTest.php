@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use Database\Seeders\AmenitySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,8 +14,16 @@ class AmenitiesTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Ангиллуудыг үүсгэсний дараа анхны багцыг хүснэгтэд буулгана */
+    protected function seedAmenities(): void
+    {
+        $this->seed(AmenitySeeder::class);
+    }
+
     public function test_without_category_returns_the_common_set(): void
     {
+        $this->seedAmenities();
+
         $response = $this->getJson('/api/v1/amenities')->assertOk();
 
         $names = array_column($response->json('data'), 'name');
@@ -27,6 +36,7 @@ class AmenitiesTest extends TestCase
     public function test_category_set_extends_the_common_set(): void
     {
         Category::factory()->create(['name' => 'Зочид буудал', 'slug' => 'hotels']);
+        $this->seedAmenities();
 
         $names = array_column(
             $this->getJson('/api/v1/amenities?category=hotels')->assertOk()->json('data'),
@@ -43,6 +53,7 @@ class AmenitiesTest extends TestCase
         $root = Category::factory()->create(['name' => 'Үзвэр, амралт', 'slug' => 'entertainment']);
         $pc = Category::factory()->create(['name' => 'PC тоглоомын газар', 'slug' => 'entertainment-6', 'parent_id' => $root->id]);
         Category::factory()->create(['name' => 'Киберспорт клуб', 'slug' => 'entertainment-6-1', 'parent_id' => $pc->id]);
+        $this->seedAmenities();
 
         $names = array_column(
             $this->getJson('/api/v1/amenities?category=entertainment-6-1')->assertOk()->json('data'),
@@ -59,6 +70,7 @@ class AmenitiesTest extends TestCase
     {
         $root = Category::factory()->create(['name' => 'Үзвэр, амралт', 'slug' => 'entertainment']);
         Category::factory()->create(['name' => 'Билльярд', 'slug' => 'entertainment-3', 'parent_id' => $root->id]);
+        $this->seedAmenities();
 
         $data = $this->getJson('/api/v1/amenities?category=entertainment-3')->assertOk()->json('data');
         $names = array_column($data, 'name');
@@ -88,6 +100,8 @@ class AmenitiesTest extends TestCase
 
     public function test_locations_endpoint_keeps_the_flat_amenity_names(): void
     {
+        $this->seedAmenities();
+
         $amenities = $this->getJson('/api/v1/locations')->assertOk()->json('amenities');
 
         $this->assertIsArray($amenities);

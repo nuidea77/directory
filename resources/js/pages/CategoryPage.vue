@@ -460,7 +460,7 @@ onMounted(async () => {
                         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-medium"
                         :class="filters.payment === p.name ? 'border-blueline bg-bluetint text-brand' : 'border-searchline bg-white text-body'"
                         @click="filters.payment = filters.payment === p.name ? '' : p.name; apply()"
-                    ><PaymentBadge :name="p.name" :slug="p.slug" :logo="p.logo || ''" :size="18" /><span v-if="!p.wordmark">{{ p.name }}</span></button>
+                    ><PaymentBadge :name="p.name" :slug="p.slug" :logo="p.logo || ''" :color="p.color || ''" :size="18" /><span v-if="!p.wordmark">{{ p.name }}</span></button>
                 </div>
 
                 <div class="mb-2 mt-5 text-[11px] font-bold tracking-[.08em] text-mute">ОНЦЛОГ</div>

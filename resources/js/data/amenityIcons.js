@@ -86,6 +86,9 @@ const ICONS = {
     zap: Zap,
 };
 
+// Админы icon сонголтод (config/amenities.php-д ашиглаж болох нэрс)
+export const amenityIconNames = Object.keys(ICONS).sort();
+
 export function amenityIcon(name) {
     return ICONS[name] || Settings;
 }

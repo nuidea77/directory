@@ -63,6 +63,8 @@ const routes = [
             { path: 'plans', name: 'admin-plans', component: () => import('./pages/admin/PlansTab.vue') },
             { path: 'promo-codes', name: 'admin-promo', component: () => import('./pages/admin/PromoCodesTab.vue') },
             { path: 'categories', name: 'admin-categories', component: () => import('./pages/admin/CategoriesAdminTab.vue') },
+            { path: 'amenities', name: 'admin-amenities', component: () => import('./pages/admin/AmenitiesAdminTab.vue') },
+            { path: 'payment-apps', name: 'admin-payment-apps', component: () => import('./pages/admin/PaymentAppsAdminTab.vue') },
             { path: 'search-aliases', name: 'admin-search-aliases', component: () => import('./pages/admin/SearchAliasesTab.vue') },
         ],
     },

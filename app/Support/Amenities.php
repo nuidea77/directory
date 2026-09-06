@@ -2,27 +2,48 @@
 
 namespace App\Support;
 
+use App\Models\Amenity;
 use App\Models\Category;
+use Illuminate\Support\Facades\Cache;
 
 /**
- * Ангилалд тохирсон үйлчилгээ/онцлогийн санг config/amenities.php-ээс
- * уншина. Дэд ангилал эцгүүдийнхээ багцыг өвлөнө (common → root → ... → leaf).
+ * Ангилалд тохирсон үйлчилгээ/онцлогийн сан (amenities хүснэгт).
+ * Дэд ангилал эцгүүдийнхээ багцыг өвлөнө: нийтлэг → root → ... → leaf.
  */
 class Amenities
 {
+    /**
+     * category_id (эсвэл 0 = нийтлэг) → [нэр => icon]
+     *
+     * @return array<int, array<string, string>>
+     */
+    public static function map(): array
+    {
+        return Cache::remember('amenities:map:v1', 600, function () {
+            $map = [];
+
+            foreach (Amenity::orderBy('sort_order')->orderBy('id')->get() as $amenity) {
+                $map[$amenity->category_id ?? 0][$amenity->name] = $amenity->icon;
+            }
+
+            return $map;
+        });
+    }
+
     /**
      * @return array<int, array{name: string, icon: string}>
      */
     public static function forCategory(?Category $category): array
     {
-        $merged = config('amenities.common', []);
+        $map = self::map();
+        $merged = $map[0] ?? [];
 
         if ($category !== null) {
-            $slugs = array_column($category->ancestors(), 'slug');
-            $slugs[] = $category->slug;
+            $ids = array_column($category->ancestors(), 'id');
+            $ids[] = $category->id;
 
-            foreach ($slugs as $slug) {
-                $merged = [...$merged, ...config("amenities.{$slug}", [])];
+            foreach ($ids as $id) {
+                $merged = [...$merged, ...($map[$id] ?? [])];
             }
         }
 

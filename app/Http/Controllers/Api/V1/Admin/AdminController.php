@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BranchResource;
 use App\Http\Resources\ReviewResource;
+use App\Models\Amenity;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Campaign;
@@ -12,6 +13,7 @@ use App\Models\Category;
 use App\Models\Correction;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\PaymentApp;
 use App\Models\Plan;
 use App\Models\PromoCode;
 use App\Models\PromoCodeRedemption;
@@ -20,6 +22,7 @@ use App\Models\SearchAlias;
 use App\Notifications\BranchModerated;
 use App\Services\Billing\CampaignService;
 use App\Services\SearchIndexer;
+use App\Support\Payments;
 use App\Support\SearchText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -301,6 +304,202 @@ class AdminController extends Controller
         ]);
 
         return $data;
+    }
+
+    /**
+     * Үйлчилгээ/онцлог (дагалдах ангилал) — ангиллаар бүлэглэж буцаана.
+     * category = null бүлэг нь бүх ангилалд харагдана.
+     */
+    public function amenities(): JsonResponse
+    {
+        $rows = Amenity::with('category:id,name,slug,parent_id')
+            ->orderBy('sort_order')->orderBy('id')->get();
+
+        $groups = $rows->groupBy(fn ($a) => $a->category_id ?? 0)
+            ->map(fn ($items) => [
+                'category' => $items->first()->category === null ? null : [
+                    'id' => $items->first()->category->id,
+                    'name' => $items->first()->category->name,
+                    'slug' => $items->first()->category->slug,
+                ],
+                'items' => $items->map(fn ($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'icon' => $a->icon,
+                    'sort_order' => $a->sort_order,
+                ])->values(),
+            ])
+            // Нийтлэг бүлэг эхэндээ
+            ->sortBy(fn ($g) => $g['category'] === null ? '' : $g['category']['name'])
+            ->values();
+
+        return response()->json(['data' => $groups, 'total' => $rows->count()]);
+    }
+
+    public function storeAmenity(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'name' => ['required', 'string', 'max:60'],
+            'icon' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $exists = Amenity::where('category_id', $data['category_id'] ?? null)
+            ->where('name', $data['name'])
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Энэ ангилалд ийм нэр бүртгэлтэй байна.'], 422);
+        }
+
+        $amenity = Amenity::create([
+            ...$data,
+            'sort_order' => $data['sort_order'] ?? ((int) Amenity::max('sort_order') + 10),
+        ]);
+
+        return response()->json(['message' => 'Онцлог нэмэгдлээ.', 'data' => $amenity], 201);
+    }
+
+    public function updateAmenity(Request $request, Amenity $amenity): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:60'],
+            'icon' => ['sometimes', 'required', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $oldName = $amenity->name;
+        $amenity->update($data);
+
+        // Нэр солигдвол салбаруудын хадгалсан утгыг хамт шилжүүлнэ —
+        // үгүй бол шүүлтүүр, icon таарахаа болино
+        if (isset($data['name']) && $data['name'] !== $oldName) {
+            $this->renameStoredValue('amenities', $oldName, $data['name']);
+        }
+
+        return response()->json(['message' => 'Хадгаллаа.', 'data' => $amenity->fresh()]);
+    }
+
+    public function destroyAmenity(Amenity $amenity): JsonResponse
+    {
+        $amenity->delete();
+
+        return response()->json(['message' => 'Устлаа.']);
+    }
+
+    /**
+     * Зээлийн аппууд — админаас нэмэх/засах/лого байршуулах.
+     */
+    public function paymentApps(): JsonResponse
+    {
+        $apps = PaymentApp::orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn (PaymentApp $app) => [
+                'id' => $app->id,
+                ...Payments::present($app),
+                'is_active' => $app->is_active,
+                'sort_order' => $app->sort_order,
+                'has_upload' => $app->logo_path !== null,
+            ]);
+
+        return response()->json(['data' => $apps]);
+    }
+
+    public function storePaymentApp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'slug' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/', 'unique:payment_apps,slug'],
+            'name' => ['required', 'string', 'max:60'],
+            'color' => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'wordmark' => ['boolean'],
+            'is_active' => ['boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $app = PaymentApp::create([
+            ...$data,
+            'sort_order' => $data['sort_order'] ?? ((int) PaymentApp::max('sort_order') + 10),
+        ]);
+
+        return response()->json(['message' => 'Апп нэмэгдлээ.', 'data' => $app], 201);
+    }
+
+    public function updatePaymentApp(Request $request, PaymentApp $paymentApp): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:60'],
+            'color' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'wordmark' => ['boolean'],
+            'is_active' => ['boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $oldName = $paymentApp->name;
+        $paymentApp->update($data);
+
+        if (isset($data['name']) && $data['name'] !== $oldName) {
+            $this->renameStoredValue('payments', $oldName, $data['name']);
+        }
+
+        return response()->json(['message' => 'Хадгаллаа.', 'data' => $paymentApp->fresh()]);
+    }
+
+    public function uploadPaymentLogo(Request $request, PaymentApp $paymentApp): JsonResponse
+    {
+        $request->validate([
+            'logo' => ['required', 'file', 'mimes:svg,png,webp', 'max:512'],
+        ]);
+
+        if ($paymentApp->logo_path) {
+            Storage::disk('public')->delete($paymentApp->logo_path);
+        }
+
+        $path = $request->file('logo')->store('payments', 'public');
+        $paymentApp->update(['logo_path' => $path]);
+
+        return response()->json([
+            'message' => 'Лого байршлаа.',
+            'data' => Payments::present($paymentApp->fresh()),
+        ]);
+    }
+
+    public function destroyPaymentLogo(PaymentApp $paymentApp): JsonResponse
+    {
+        if ($paymentApp->logo_path) {
+            Storage::disk('public')->delete($paymentApp->logo_path);
+            $paymentApp->update(['logo_path' => null]);
+        }
+
+        return response()->json(['message' => 'Лого устлаа.']);
+    }
+
+    public function destroyPaymentApp(PaymentApp $paymentApp): JsonResponse
+    {
+        if ($paymentApp->logo_path) {
+            Storage::disk('public')->delete($paymentApp->logo_path);
+        }
+
+        $paymentApp->delete();
+
+        return response()->json(['message' => 'Устлаа.']);
+    }
+
+    /**
+     * Салбаруудын JSON багана дахь хуучин нэрийг шинэ нэрээр солино
+     * (amenities / payments). Нэр солиход шүүлтүүр эвдрэхээс сэргийлнэ.
+     */
+    protected function renameStoredValue(string $column, string $old, string $new): void
+    {
+        Branch::query()
+            ->whereJsonContains($column, $old)
+            ->get()
+            ->each(function (Branch $branch) use ($column, $old, $new) {
+                $values = collect($branch->{$column} ?? [])
+                    ->map(fn (string $v) => $v === $old ? $new : $v)
+                    ->unique()->values()->all();
+
+                $branch->update([$column => $values]);
+            });
     }
 
     /**
