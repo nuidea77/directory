@@ -5,7 +5,7 @@ import { api, ApiError } from '../../api';
 import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 import PanelStat from '../../components/panel/PanelStat.vue';
 import AmenityIcon from '../../components/AmenityIcon.vue';
-import { amenityIconNames } from '../../data/amenityIcons';
+import IconPicker from '../../components/IconPicker.vue';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
 // Ангилал бүрийн дагалдах онцлог (үйлчилгээ). Ангилалгүй нь бүх ангилалд гарна.
@@ -137,16 +137,9 @@ onMounted(load);
                     <label class="field-label !text-[12px]">Нэр</label>
                     <input v-model="form.name" class="input !py-2 !text-[12.5px]" placeholder="Усан сан" @keyup.enter="create" />
                 </div>
-                <div class="min-w-[150px]">
+                <div>
                     <label class="field-label !text-[12px]">Icon</label>
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
-                            <AmenityIcon :name="form.icon" :size="17" />
-                        </span>
-                        <select v-model="form.icon" class="input cursor-pointer !py-2 !text-[12.5px]">
-                            <option v-for="n in amenityIconNames" :key="n" :value="n">{{ n }}</option>
-                        </select>
-                    </div>
+                    <IconPicker v-model="form.icon" type="amenity" />
                 </div>
                 <button class="btn-primary !px-4 !py-2.5 !text-[13px]" :disabled="busy || !form.name.trim()" @click="create">
                     {{ busy ? 'Нэмж байна…' : 'Нэмэх' }}
@@ -174,9 +167,7 @@ onMounted(load);
                     <template v-for="item in g.items" :key="item.id">
                         <!-- Засварлаж байгаа -->
                         <span v-if="editingId === item.id" class="inline-flex items-center gap-1.5 rounded-full border border-brand bg-white py-1 pl-2 pr-1.5">
-                            <select v-model="editForm.icon" class="cursor-pointer rounded-md border border-inputline px-1.5 py-1 text-[11px]">
-                                <option v-for="n in amenityIconNames" :key="n" :value="n">{{ n }}</option>
-                            </select>
+                            <IconPicker v-model="editForm.icon" type="amenity" :size="15" />
                             <input v-model="editForm.name" class="w-[130px] rounded-md border border-inputline px-2 py-1 text-[12px]" @keyup.enter="saveEdit(item)" />
                             <button class="cursor-pointer rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40" :disabled="busyId === item.id" @click="saveEdit(item)">Хадгал</button>
                             <button class="cursor-pointer px-1.5 text-[11px] font-semibold text-mute" @click="editingId = null">✕</button>

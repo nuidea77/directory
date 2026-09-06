@@ -4,7 +4,7 @@ import { api, ApiError } from '../../api';
 import CategoryIcon from '../../components/CategoryIcon.vue';
 import PanelPageHeader from '../../components/panel/PanelPageHeader.vue';
 import PanelBadge from '../../components/panel/PanelBadge.vue';
-import { iconNames } from '../../data/categoryIcons';
+import IconPicker from '../../components/IconPicker.vue';
 import { flattenCategories, optionLabel } from '../../utils/categories';
 
 /**
@@ -240,17 +240,9 @@ onMounted(fetchCategories);
                         <option v-for="c in parentOptions()" :key="c.id" :value="c.id">{{ optionLabel(c) }}</option>
                     </select>
                 </div>
-                <div class="min-w-[170px]">
+                <div>
                     <label class="field-label !text-[11px]">Icon</label>
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
-                            <CategoryIcon :name="newCat.icon" :size="18" />
-                        </span>
-                        <select v-model="newCat.icon" class="input cursor-pointer !py-2.5">
-                            <option value="">— Ерөнхий —</option>
-                            <option v-for="n in iconNames" :key="n" :value="n">{{ n }}</option>
-                        </select>
-                    </div>
+                    <IconPicker v-model="newCat.icon" type="category" clearable :size="18" />
                 </div>
                 <button type="submit" class="btn-primary !px-5 !py-2.5 !text-[12.5px]">Нэмэх</button>
             </form>
@@ -334,15 +326,7 @@ onMounted(fetchCategories);
 
                         <div v-if="editing.depth === 1" class="sm:col-span-4">
                             <label class="field-label !text-[11px]">Icon</label>
-                            <div class="flex items-center gap-2">
-                                <span class="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-blueline bg-bluetint text-brand">
-                                    <CategoryIcon :name="editing.icon" :size="17" />
-                                </span>
-                                <select v-model="editing.icon" class="input cursor-pointer !w-[240px] !py-2">
-                                    <option value="">— Ерөнхий —</option>
-                                    <option v-for="n in iconNames" :key="n" :value="n">{{ n }}</option>
-                                </select>
-                            </div>
+                            <IconPicker v-model="editing.icon" type="category" clearable :size="17" />
                         </div>
                     </form>
                 </div>
