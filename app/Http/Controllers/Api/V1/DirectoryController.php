@@ -13,6 +13,7 @@ use App\Models\Category;
 use App\Services\Billing\CampaignService;
 use App\Services\SearchQuery;
 use App\Support\Amenities;
+use App\Support\Geocoder;
 use App\Support\Payments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,23 @@ class DirectoryController extends Controller
                 ->values(),
             // Хуучин flat хэлбэр — ангилал мэдэгдэхгүй үеийн нийтлэг багц
             'amenities' => Amenities::defaultNames(),
+        ]);
+    }
+
+    /**
+     * Дүүрэг/сум, хорооны газрын зургийн төв — бүртгэлийн зураг тэр хавь руу
+     * очно. Олдохгүй бол null (frontend аймгийн төвөө ашиглана).
+     */
+    public function geocode(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'city' => ['required', 'string', 'max:60'],
+            'district' => ['required', 'string', 'max:60'],
+            'khoroo' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        return response()->json([
+            'data' => Geocoder::lookup($data['city'], $data['district'], $data['khoroo'] ?? null),
         ]);
     }
 

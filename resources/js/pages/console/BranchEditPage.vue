@@ -86,7 +86,7 @@ async function save() {
     busy.value = true;
     try {
         const data = await api.put(`/console/branches/${branch.value.id}`, {
-            ...form.value,
+            ...Object.fromEntries(Object.entries(form.value).filter(([k]) => !k.startsWith('_'))),
             phone: String(form.value.phone).replace(/\s/g, ''),
         });
         branch.value = data.data;
@@ -169,12 +169,46 @@ function useMyLocation() {
     );
 }
 
-// Аймаг солиход зураг тухайн төв рүү шилжинэ (координат сонгоогүй үед)
+// Зургийн төв: хадгалсан цэг → дүүрэг/хорооны төв → аймгийн төв
 const mapCenter = computed(() => {
     if (form.value?.lat) return { lat: Number(form.value.lat), lng: Number(form.value.lng) };
+    if (form.value?._area) return { lat: form.value._area.lat, lng: form.value._area.lng };
     const c = cityCenters[form.value?.city] || cityCenters['Улаанбаатар'];
     return { lat: c.lat, lng: c.lng };
 });
+
+// Дүүрэг/сум, хороо солиход зураг тэр хавь руу очно
+let areaTimer = null;
+let areaReq = 0;
+
+async function refreshArea() {
+    const token = ++areaReq;
+
+    if (!form.value?.district) {
+        form.value._area = null;
+        return;
+    }
+
+    try {
+        const res = await api.get('/geocode', { city: form.value.city, district: form.value.district, khoroo: form.value.khoroo || undefined });
+        if (token !== areaReq) return;
+        form.value._area = res.data;
+    } catch {
+        /* олдохгүй бол аймгийн төвөөр үргэлжилнэ */
+    }
+}
+
+// Дүүрэг солиход өмнөх дүүрэгт тавьсан цэг хүчингүй
+function onDistrictChange() {
+    form.value.lat = null;
+    form.value.lng = null;
+    refreshArea();
+}
+
+function onKhorooInput() {
+    clearTimeout(areaTimer);
+    areaTimer = setTimeout(refreshArea, 600);
+}
 
 onMounted(async () => {
     await fetchBranch();
@@ -247,20 +281,20 @@ onMounted(async () => {
                         </div>
                         <div>
                             <label class="field-label">Аймаг / Нийслэл</label>
-                            <select v-model="form.city" class="input cursor-pointer" @change="form.district = ''">
+                            <select v-model="form.city" class="input cursor-pointer" @change="form.district = ''; onDistrictChange()">
                                 <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
                             </select>
                         </div>
                         <div>
                             <label class="field-label">{{ form.city === 'Улаанбаатар' ? 'Дүүрэг' : 'Сум' }}</label>
-                            <select v-model="form.district" class="input cursor-pointer">
+                            <select v-model="form.district" class="input cursor-pointer" @change="onDistrictChange()">
                                 <option value="" disabled>Сонгоно уу</option>
                                 <option v-for="d in districtOptions" :key="d" :value="d">{{ d }}</option>
                             </select>
                         </div>
                         <div>
                             <label class="field-label">Хороо</label>
-                            <input v-model="form.khoroo" type="text" class="input" />
+                            <input v-model="form.khoroo" type="text" class="input" @input="onKhorooInput()" />
                         </div>
                         <div>
                             <label class="field-label">Ориентир</label>
@@ -268,7 +302,7 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="mt-3.5 overflow-hidden rounded-[11px] border border-line">
-                        <MapView :center="mapCenter" :zoom="form.lat ? 15 : 12" picker height="230px" @pick="onPick" />
+                        <MapView :center="mapCenter" :zoom="form.lat ? 15 : (form._area?.zoom || 12)" picker height="230px" @pick="onPick" />
                         <div class="flex flex-wrap items-center gap-2 border-t border-line bg-panel px-3 py-2">
                             <span class="text-[11.5px] font-medium text-mute">Зураг дээр дарж эсвэл цэгийг чирж байршлаа тавина</span>
                             <button type="button" class="ml-auto cursor-pointer rounded-[7px] border border-inputline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-brand" :disabled="locating" @click="useMyLocation">

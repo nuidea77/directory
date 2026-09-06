@@ -40,6 +40,8 @@ Route::prefix('v1')->group(function () {
     Route::get('locations', [DirectoryController::class, 'locations']);
     Route::get('amenities', [DirectoryController::class, 'amenities']);
     Route::get('payments', [DirectoryController::class, 'payments']);
+    // Nominatim секундэд 1 хүсэлт зөвшөөрдөг тул хэрэглэгч тус бүрд хязгаартай
+    Route::get('geocode', [DirectoryController::class, 'geocode'])->middleware('throttle:20,1');
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
     Route::get('businesses/{slug}', [DirectoryController::class, 'business']);

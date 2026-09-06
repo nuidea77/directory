@@ -22,7 +22,9 @@ verify.mn (MO SMS) баталгаажуулалт, byl.mn төлбөр.
 
 **Бизнес эзэн («Бизнес зөвлөл»)**
 - Байгууллага → бизнес → салбар бүтэц: нэр/лого/ангилал байгууллагад, хаяг/утас/цаг/зураг салбарт
-- 3 шаттай бүртгэл: мэдээлэл → салбарууд (газрын зурган дээр байршлаа тавих) → verify.mn
+- 3 шаттай бүртгэл: мэдээлэл → салбарууд (газрын зурган дээр байршлаа тавих) → verify.mn.
+  Дүүрэг/сум, хороо оруулахад зураг тэр хавь руу өөрөө очно (УБ дүүрэг — өөрийн
+  хүснэгт, хороо ба аймгийн сум — OpenStreetMap Nominatim, 30 хоног кэшлэнэ)
 - Дашбоард: салбаруудын KPI, статистик (хандалт/залгалт график, «хэрхэн олсон»),
   сэтгэгдэлд хариулах, нэхэмжлэх, тохиргоо
 - Салбар засах: бүрэн байдлын checklist, зураг (эрхийн хязгаартай), хаяг өөрчлөгдвөл дахин хяналт
@@ -134,7 +136,7 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 | Бүлэг | Endpoints |
 |---|---|
 | Auth | `POST auth/register`, `auth/login`, `auth/login-sms`, `auth/reset`, `auth/reset/confirm`, `GET auth/verifications/{uuid}`, `POST auth/verify/start`, `auth/logout`, `GET/PUT me`, `PUT me/password` |
-| Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, open_24_7, verified, amenity, payment, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `locations`, `amenities?category=slug`, `payments`, `pricing`, `POST branches/{id}/event` |
+| Лавлах | `GET home`, `search` (q, category, district, price, rating, open_now, open_24_7, verified, amenity, payment, lat/lng/radius, sort), `categories`, `categories/{slug}`, `businesses/{slug}`, `locations`, `amenities?category=slug`, `payments`, `geocode?city&district&khoroo`, `pricing`, `POST branches/{id}/event` |
 | Хэрэглэгч | `GET favorites`, `POST businesses/{id}/favorite`, `GET my/reviews`, `POST/DELETE branches/{id}/reviews`, `POST …/reviews/{id}/report`, `POST reviews/{id}/helpful`, `POST branches/{id}/corrections` |
 | Бизнес зөвлөл | `GET/POST console/organizations`, `PUT console/organizations/{id}`, `POST console/businesses/{id}` (multipart), салбарын CRUD + зураг, `GET …/stats`, `…/reviews` + `reply` |
 | Төлбөр | `POST checkout`, `GET orders`, `orders/{id}`, `GET slots`, `GET console/organizations/{id}/campaigns` |
@@ -143,7 +145,7 @@ Base: `/api/v1` · Auth: `Authorization: Bearer <token>` (Sanctum)
 ## Тест
 
 ```bash
-php artisan test   # 132 тест: хайлт (галиг/fuzzy/синоним), ангилалын amenity, зээлийн апп,
+php artisan test   # 141 тест: хайлт (галиг/fuzzy/синоним), ангилалын amenity, зээлийн апп,
                    # verify.mn урсгал (mock, expired/401), byl checkout + webhook, brute-force түгжээ,
                    # салбарын нэмэлт, зайн дараалал/promote, ангиллын мод, промо код, scheduler
 ```
@@ -180,6 +182,7 @@ php artisan search:reindex
 | `config/amenities.php` | Үйлчилгээ/онцлогийн **анхны** багц — `AmenitySeeder`-ээр `amenities` хүснэгтэд буудаг (цаашид админаас удирдана) |
 | `config/payments.php` | Зээлийн аппуудын **анхны** жагсаалт — `PaymentAppSeeder`-ээр `payment_apps` хүснэгтэд буудаг (цаашид админаас удирдана) |
 | `config/billing.php` | Эрхийн бичиг, салбарын нэмэлт, зарын үнэ/зай |
+| `config/geo.php` | УБ дүүргүүдийн хотын төв, Nominatim тохиргоо (`NOMINATIM_USER_AGENT`) |
 | `database/seeders/SearchAliasSeeder.php` | Ангиллын ярианы нэр (синоним) |
 
 Эдгээр config нь зөвхөн **анхны утга** — ажиллах үед жагсаалтууд нь `amenities`,

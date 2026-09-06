@@ -125,6 +125,7 @@ function newBranchForm() {
         city: 'Улаанбаатар', district: '', khoroo: '', address: '', landmark: '',
         lat: null, lng: null,
         phone: '', email: '', hours: defaultHours(), amenities: [], payments: [],
+        _area: null, // дүүрэг/хорооноос олсон зургийн төв (сервер рүү явахгүй)
     };
 }
 
@@ -150,11 +151,48 @@ function useMyLocation(form, i) {
     );
 }
 
-// Аймаг солиход зураг тухайн төв рүү шилжинэ (цэг тавиагүй үед)
+// Зургийн төв: тавьсан цэг → дүүрэг/хорооны төв → аймгийн төв
 function centerFor(form) {
     if (form.lat) return { lat: Number(form.lat), lng: Number(form.lng) };
+    if (form._area) return { lat: form._area.lat, lng: form._area.lng };
     const c = cityCenters[form.city] || cityCenters['Улаанбаатар'];
     return { lat: c.lat, lng: c.lng };
+}
+
+// Дүүрэг/сум, хороо оруулахад зураг тэр хавь руу очно. Хожуу ирсэн хуучин
+// хариуг үл тоомсорлохын тулд форм бүр өөрийн дугаартай.
+const areaTimers = new WeakMap();
+const areaReqs = new WeakMap();
+
+async function refreshArea(form) {
+    const token = (areaReqs.get(form) || 0) + 1;
+    areaReqs.set(form, token);
+
+    if (!form.district) {
+        form._area = null;
+        return;
+    }
+
+    try {
+        const res = await api.get('/geocode', { city: form.city, district: form.district, khoroo: form.khoroo || undefined });
+        if (areaReqs.get(form) !== token) return;
+        form._area = res.data;
+    } catch {
+        /* олдохгүй бол аймгийн төвөөр үргэлжилнэ */
+    }
+}
+
+// Дүүрэг солиход өмнөх дүүрэгт тавьсан цэг хүчингүй — зураг шинэ дүүрэг рүү очно
+function onDistrictChange(form) {
+    form.lat = null;
+    form.lng = null;
+    refreshArea(form);
+}
+
+// Хороо бичиж дуустал хүлээнэ
+function onKhorooInput(form) {
+    clearTimeout(areaTimers.get(form));
+    areaTimers.set(form, setTimeout(() => refreshArea(form), 600));
 }
 
 function toggleAmenity(form, amenity) {
@@ -216,8 +254,10 @@ async function submitBranches() {
             // Алдаа гарч дахин илгээхэд өмнө нь үүссэн салбарыг давхардуулахгүй
             if (form._created) continue;
 
+            // Зөвхөн UI-д хэрэгтэй талбаруудыг сервер рүү явуулахгүй
+            const { _area, _created, ...fields } = form;
             const payload = {
-                ...form,
+                ...fields,
                 name: form.district + ' салбар',
                 phone: form.phone.replace(/\s/g, ''),
             };
@@ -404,20 +444,20 @@ onMounted(async () => {
                             <div class="grid grid-cols-1 gap-3.5 p-4 sm:grid-cols-2">
                                 <div>
                                     <label class="field-label !text-[12px]">Аймаг / Нийслэл</label>
-                                    <select v-model="form.city" class="input cursor-pointer" required @change="form.district = ''">
+                                    <select v-model="form.city" class="input cursor-pointer" required @change="form.district = ''; onDistrictChange(form)">
                                         <option v-for="l in locations" :key="l.city" :value="l.city">{{ l.city }}</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="field-label !text-[12px]">{{ form.city === 'Улаанбаатар' ? 'Дүүрэг' : 'Сум' }}</label>
-                                    <select v-model="form.district" class="input cursor-pointer" required>
+                                    <select v-model="form.district" class="input cursor-pointer" required @change="onDistrictChange(form)">
                                         <option value="" disabled>Сонгоно уу</option>
                                         <option v-for="d in districtsFor(form.city)" :key="d" :value="d">{{ d }}</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="field-label !text-[12px]">Хороо / баг (сонголт)</label>
-                                    <input v-model="form.khoroo" type="text" placeholder="13-р хороо" class="input" />
+                                    <input v-model="form.khoroo" type="text" placeholder="13-р хороо" class="input" @input="onKhorooInput(form)" />
                                 </div>
                                 <div class="sm:col-span-2">
                                     <label class="field-label !text-[12px]">Гудамж, тоот</label>
@@ -434,7 +474,7 @@ onMounted(async () => {
                                 <div class="sm:col-span-2">
                                     <label class="field-label !text-[12px]">Газрын зураг дээрх байршил <span class="font-normal text-mute">— «Ойролцоо» хайлтад хэрэгтэй</span></label>
                                     <div class="overflow-hidden rounded-[11px] border border-line">
-                                        <MapView :center="centerFor(form)" :zoom="form.lat ? 15 : 12" picker height="210px" @pick="pickLocation(form, $event)" />
+                                        <MapView :center="centerFor(form)" :zoom="form.lat ? 15 : (form._area?.zoom || 12)" picker height="210px" @pick="pickLocation(form, $event)" />
                                         <div class="flex flex-wrap items-center gap-2 border-t border-line bg-panel px-3 py-2">
                                             <span class="text-[11.5px] font-medium" :class="form.lat ? 'text-green' : 'text-mute'">
                                                 {{ form.lat ? '✓ Байршил тэмдэглэгдлээ' : 'Зураг дээр дарж эсвэл цэгийг чирж байршлаа тавина' }}
