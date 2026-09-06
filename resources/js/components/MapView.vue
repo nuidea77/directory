@@ -31,11 +31,13 @@ let circleLayer = null;
 const UB = { lat: 47.9184, lng: 106.9177 };
 
 // Суурь зургийн эх сурвалж — .env (VITE_MAP_TILES, VITE_MAP_ATTRIBUTION)-ээр солино.
-// Илүү цайвар хувилбар: https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png
+// Анхдагч нь OSM стандарт (түлхүүргүй, харин POI icon-той). POI icon-гүй цэвэрхэн
+// хэв маяг (Stadia Alidade Smooth, CARTO Voyager, MapTiler) үнэгүй түлхүүр
+// шаарддаг тул .env.example дахь загвараар тохируулна.
 const TILE_URL = import.meta.env.VITE_MAP_TILES
-    || 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION
-    || '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>';
+    || '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 function pinIcon(label, selected) {
     return L.divIcon({
@@ -106,9 +108,7 @@ function fitView() {
 onMounted(() => {
     map = L.map(el.value, { attributionControl: true, scrollWheelZoom: false });
 
-    // Цэвэрхэн суурь зураг: барилга, зам, тээврийн зангилаа, газрын нэр — харин
-    // дэлгүүр/ресторан гэх мэт POI icon-гүй, тиймээс өөрсдийн pin тод харагдана.
-    // Анхдагч нь CARTO Voyager (түлхүүргүй, OSM өгөгдөл); VITE_MAP_TILES-ээр солино.
+    // {s} орлуулагчтай үйлчилгээнд (CARTO: abcd) тохирно; OSM-д {s} байхгүй тул нөлөөгүй
     L.tileLayer(TILE_URL, {
         maxZoom: 19,
         subdomains: 'abcd',
