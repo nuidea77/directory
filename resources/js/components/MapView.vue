@@ -147,7 +147,9 @@ onMounted(() => {
             center: [UB.lng, UB.lat],
             zoom: 12,
             scrollZoom: false,
-            attributionControl: true,
+            // Attribution-ыг compact (ⓘ товч) хэлбэрээр доор нэмнэ — текст зураг дээр
+            // байнга харагдахгүй, харин Mapbox/OSM-ийн нөхцөл хангагдана
+            attributionControl: false,
             // Монголын хэрэглэгчдэд Mapbox-ийн telemetry шаардлагагүй
             trackResize: true,
         });
@@ -160,6 +162,7 @@ onMounted(() => {
     el.value.__map = map;
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('style.load', () => {
         styleReady = true;
