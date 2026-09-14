@@ -169,6 +169,27 @@ function track(type) {
     if (branch.value) api.post(`/branches/${branch.value.id}/event`, { type }).catch(() => {});
 }
 
+// Утасны дугаарыг шууд харуулахгүй — «Дугаар харах» товчоор нээнэ (салбар тус бүрд тусдаа)
+const revealedPhones = ref(new Set());
+const phoneRevealed = computed(() => !!branch.value && revealedPhones.value.has(branch.value.id));
+const phoneDigits = computed(() => String(branch.value?.phone || '').replace(/\D/g, ''));
+// 8 оронтой дугаарыг «9900 0001» хэлбэрээр
+const phonePretty = computed(() => {
+    const d = phoneDigits.value;
+    return d.length === 8 ? `${d.slice(0, 4)} ${d.slice(4)}` : branch.value?.phone || '';
+});
+// Нуусан үед эхний 4 орон + одоор: «9900 ••••»
+const phoneMasked = computed(() => {
+    const d = phoneDigits.value;
+    return d.length >= 6 ? `${d.slice(0, 4)} ••••` : '•••• ••••';
+});
+function revealPhone() {
+    if (!branch.value || phoneRevealed.value) return;
+    revealedPhones.value = new Set([...revealedPhones.value, branch.value.id]);
+    // Дугаар харах = залгах санаа; статистикт нэг удаа бүртгэнэ (tel: дээр дахин тоолохгүй)
+    track('call');
+}
+
 async function toggleFavorite() {
     if (!auth.isLoggedIn) return router.push({ name: 'login', query: { redirect: route.fullPath } });
     favoriteBusy.value = true;
@@ -439,14 +460,38 @@ onMounted(fetchBusiness);
                 <!-- Sidebar -->
                 <aside class="flex flex-col gap-3">
                     <div class="rounded-xl border border-line bg-panel p-[18px]">
-                        <a :href="`tel:${branch?.phone}`" class="block rounded-[9px] bg-brand py-3 text-center text-[13.5px] font-bold text-white hover:bg-brand-dark" @click="track('call')">
-                            Залгах · {{ branch?.phone }}
+                        <button
+                            v-if="!phoneRevealed"
+                            type="button"
+                            class="flex w-full items-center justify-center gap-2 rounded-[9px] bg-brand py-3 text-[13.5px] font-bold text-white hover:bg-brand-dark"
+                            data-test="phone-reveal"
+                            @click="revealPhone"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            Дугаар харах · {{ phoneMasked }}
+                        </button>
+                        <a
+                            v-else
+                            :href="`tel:${phoneDigits || branch?.phone}`"
+                            class="flex w-full items-center justify-center gap-2 rounded-[9px] bg-brand py-3 text-[13.5px] font-bold text-white hover:bg-brand-dark"
+                            data-test="phone-call"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            Залгах · {{ phonePretty }}
                         </a>
+                        <p v-if="phoneRevealed" class="mt-2 text-center text-[11.5px] text-mute">Дугаар дээр дарахад залгана</p>
 
                         <div class="my-[18px] h-px bg-divider"></div>
                         <div class="flex flex-col gap-3.5 text-[13.5px]">
                             <div><div class="kicker !text-[11px]">ХАЯГ</div><div class="mt-1 font-medium leading-normal text-ink">{{ branch?.city && branch.city !== 'Улаанбаатар' ? branch.city + ', ' : '' }}{{ branch?.district }}{{ branch?.khoroo ? ', ' + branch.khoroo : '' }}, {{ branch?.address }}</div></div>
-                            <div><div class="kicker !text-[11px]">УТАС</div><div class="mt-1 font-medium text-ink">{{ branch?.phone }}</div></div>
+                            <div>
+                                <div class="kicker !text-[11px]">УТАС</div>
+                                <a v-if="phoneRevealed" :href="`tel:${phoneDigits || branch?.phone}`" class="mt-1 block font-medium text-brand">{{ phonePretty }}</a>
+                                <div v-else class="mt-1 flex items-center gap-2 font-medium text-ink">
+                                    <span class="tracking-wider">{{ phoneMasked }}</span>
+                                    <button type="button" class="text-[12.5px] font-semibold text-brand hover:underline" @click="revealPhone">Харах</button>
+                                </div>
+                            </div>
                             <div v-if="business.website"><div class="kicker !text-[11px]">ВЭБ</div><a :href="'https://' + business.website.replace(/^https?:\/\//, '')" target="_blank" rel="noopener" class="mt-1 block font-medium text-brand">{{ business.website }}</a></div>
                             <div v-if="business.email"><div class="kicker !text-[11px]">И-МЭЙЛ</div><a :href="`mailto:${business.email}`" class="mt-1 block font-medium text-brand">{{ business.email }}</a></div>
                             <div v-if="business.facebook || business.instagram"><div class="kicker !text-[11px]">СОШИАЛ</div><div class="mt-1 flex gap-2 font-medium text-brand">
